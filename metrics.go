@@ -1,5 +1,7 @@
 package pcp
 
+import "hash/fnv"
+
 // MetricType is an enumerated type representing all valid types for a metric
 type MetricType int32
 
@@ -168,15 +170,45 @@ func (ms MetricSemantics) String() string {
 // Metric defines the general interface a type needs to implement to qualify
 // as a valid PCP metric
 type Metric interface {
-	Val() interface{} // gets the value of the metric
-
-	Set(interface{}) error // sets the value of the metric to a value, optionally returns an error on failure
-
-	Type() MetricType // gets the type of a metric
-
-	Unit() MetricUnit // gets the unit of a metric
-
+	Val() interface{}           // gets the value of the metric
+	Set(interface{}) error      // sets the value of the metric to a value, optionally returns an error on failure
+	Type() MetricType           // gets the type of a metric
+	Unit() MetricUnit           // gets the unit of a metric
 	Semantics() MetricSemantics // gets the semantics for a metric
+	Description() string        // gets the description of a metric
+}
 
-	Description() string // gets the description of a metric
+type InstanceDomain struct {
+	id                          uint32
+	name                        string
+	shortHelpText, longHelpText string
+}
+
+// NOTE: this declaration alone doesn't make this usable
+// it needs to be 'made' at the beginning of monitoring
+var instanceDomainCache map[uint32]*InstanceDomain
+
+func getHash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
+}
+
+// NOTE: this is different from parfait's idea of generating ids for InstanceDomains
+// We simply generate a unique 32 bit hash for an instance domain name, and if it has not
+// already been created, we create it, otherwise we return the already created version
+func NewInstanceDomain(name string) *InstanceDomain {
+	h := getHash(name)
+
+	v, present := instanceDomainCache[h]
+	if present {
+		return v
+	}
+
+	instanceDomainCache[h] = &InstanceDomain{
+		id:   h,
+		name: name,
+	}
+
+	return instanceDomainCache[h]
 }
