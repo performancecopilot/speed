@@ -1,6 +1,9 @@
 package pcp
 
-import "hash/fnv"
+import (
+	"fmt"
+	"hash/fnv"
+)
 
 // MetricType is an enumerated type representing all valid types for a metric
 type MetricType int32
@@ -184,4 +187,30 @@ func getHash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	return h.Sum32()
+}
+
+// MetricDesc is a metric metadata wrapper
+// each metric type can wrap its metadata by containing a MetricDesc type and only define its own
+// specific properties assuming MetricDesc will handle the rest
+//
+// when writing, this type is supposed to map directly to the pmDesc struct as defined in PCP core
+type MetricDesc struct {
+	id                                uint32          // unique metric id
+	name                              string          // the name
+	indom                             InstanceDomain  // the instance domain
+	t                                 MetricType      // the type of a metric
+	sem                               MetricSemantics // the semantics
+	u                                 MetricUnit      // the unit
+	shortDescription, longDescription string
+}
+
+// NewMetricDesc creates a new Metric Description wrapper type
+func NewMetricDesc(name string, indom InstanceDomain, t MetricType, semantics MetricSemantics, unit MetricUnit, short, long string) *MetricDesc {
+	return &MetricDesc{
+		getHash(name), name, indom, t, semantics, unit, short, long,
+	}
+}
+
+func (md *MetricDesc) String() string {
+	return fmt.Sprintf("%s{%v, %v, %v, %v}", md.name, md.indom, md.t, md.sem, md.u)
 }
