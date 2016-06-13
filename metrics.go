@@ -1,6 +1,9 @@
 package pcp
 
-import "hash/fnv"
+import (
+	"errors"
+	"hash/fnv"
+)
 
 // MetricType is an enumerated type representing all valid types for a metric
 type MetricType int32
@@ -178,21 +181,43 @@ type Metric interface {
 	Description() string        // gets the description of a metric
 }
 
+// generate a unique uint32 hash for a string
+// NOTE: make sure this is as fast as possible
+func getHash(s string) uint32 {
+	h := fnv.New32a()
+	h.Write([]byte(s))
+	return h.Sum32()
+}
+
+// Instance wraps a PCP compatible Instance
+type Instance struct {
+	name  string
+	id    uint32
+	indom *InstanceDomain
+}
+
+// NewInstance generates a new Instance type based on the passed parameters
+// the id is passed explicitly as it is assumed that this will be constructed
+// after initializing the InstanceDomain
+// this is not a part of the public API as this is not supposed to be used directly,
+// but instead added using the AddInstance method of InstanceDomain
+func newInstance(id uint32, name string, indom *InstanceDomain) *Instance {
+	return &Instance{
+		name, id, indom,
+	}
+}
+
+// InstanceDomain wraps a PCP compatible instance domain
 type InstanceDomain struct {
 	id                          uint32
 	name                        string
+	instanceCache               map[uint32]*Instance // the instances for this InstanceDomain stored as a map
 	shortHelpText, longHelpText string
 }
 
 // NOTE: this declaration alone doesn't make this usable
 // it needs to be 'made' at the beginning of monitoring
 var instanceDomainCache map[uint32]*InstanceDomain
-
-func getHash(s string) uint32 {
-	h := fnv.New32a()
-	h.Write([]byte(s))
-	return h.Sum32()
-}
 
 // NOTE: this is different from parfait's idea of generating ids for InstanceDomains
 // We simply generate a unique 32 bit hash for an instance domain name, and if it has not
@@ -211,4 +236,19 @@ func NewInstanceDomain(name string) *InstanceDomain {
 	}
 
 	return instanceDomainCache[h]
+}
+
+// AddInstance adds a new instance to the current InstanceDomain
+func (indom *InstanceDomain) AddInstance(name string) error {
+	h := getHash(name)
+
+	_, present := indom.instanceCache[h]
+	if present {
+		return errors.New("Instance with same name already created for the InstanceDomain")
+	}
+
+	ins := newInstance(h, name, indom)
+	indom.instanceCache[h] = ins
+
+	return nil
 }
