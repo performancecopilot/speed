@@ -184,6 +184,8 @@ type Metric interface {
 
 // generate a unique uint32 hash for a string
 // NOTE: make sure this is as fast as possible
+//
+// see: http://programmers.stackexchange.com/a/145633
 func getHash(s string) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
@@ -224,10 +226,8 @@ type PCPMetric struct {
 	mu   sync.Mutex  // mutex to control reads and writes of value to the metric
 }
 
-// newPCPMetric creates a new instance of PCPMetric
-// this is not a part of the public API as metrics will be added using the
-// AddMetric method of Writer rather than being initialized on their own
-func newPCPMetric(val interface{}, name string, indom InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *PCPMetric {
+// NewPCPMetric creates a new instance of PCPMetric
+func NewPCPMetric(val interface{}, name string, indom InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *PCPMetric {
 	return &PCPMetric{
 		val:  val,
 		desc: NewMetricDesc(name, indom, t, s, u, short, long),
