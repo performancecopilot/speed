@@ -1,4 +1,4 @@
-package pcp
+package speed
 
 import "errors"
 
@@ -6,13 +6,13 @@ import "errors"
 type InstanceDomain struct {
 	id                          uint32
 	name                        string
-	instanceCache               map[uint32]*Instance // the instances for this InstanceDomain stored as a map
+	instances                   map[uint32]*Instance // the instances for this InstanceDomain stored as a map
 	shortHelpText, longHelpText string
 }
 
 // NOTE: this declaration alone doesn't make this usable
 // it needs to be 'made' at the beginning of monitoring
-var instanceDomainCache map[uint32]*InstanceDomain
+var instanceDomains map[uint32]*InstanceDomain
 
 // NewInstanceDomain creates a new instance domain or returns an already created one for the passed name
 // NOTE: this is different from parfait's idea of generating ids for InstanceDomains
@@ -21,43 +21,43 @@ var instanceDomainCache map[uint32]*InstanceDomain
 func NewInstanceDomain(name, shortDescription, longDescription string) *InstanceDomain {
 	h := getHash(name)
 
-	v, present := instanceDomainCache[h]
+	v, present := instanceDomains[h]
 	if present {
 		return v
 	}
 
 	cache := make(map[uint32]*Instance)
-	instanceDomainCache[h] = &InstanceDomain{
+	instanceDomains[h] = &InstanceDomain{
 		id:            h,
 		name:          name,
-		instanceCache: cache,
+		instances:     cache,
 		shortHelpText: shortDescription,
 		longHelpText:  longDescription,
 	}
 
-	return instanceDomainCache[h]
+	return instanceDomains[h]
 }
 
 // AddInstance adds a new instance to the current InstanceDomain
 func (indom *InstanceDomain) AddInstance(name string) error {
 	h := getHash(name)
 
-	_, present := indom.instanceCache[h]
+	_, present := indom.instances[h]
 	if present {
 		return errors.New("Instance with same name already created for the InstanceDomain")
 	}
 
 	ins := newInstance(h, name, indom)
-	indom.instanceCache[h] = ins
+	indom.instances[h] = ins
 
 	return nil
 }
 
 func (indom *InstanceDomain) String() string {
 	s := "InstanceDomain: " + indom.name
-	if len(indom.instanceCache) > 0 {
+	if len(indom.instances) > 0 {
 		s += "["
-		for _, i := range indom.instanceCache {
+		for _, i := range indom.instances {
 			s += i.name + ","
 		}
 		s += "]"

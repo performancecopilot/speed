@@ -1,6 +1,6 @@
-// config implements PCP configuration fetching from the environment
+// this file implements PCP configuration fetching from the environment
 
-package pcp
+package speed
 
 import (
 	"bufio"

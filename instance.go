@@ -1,4 +1,4 @@
-package pcp
+package speed
 
 // Instance wraps a PCP compatible Instance
 type Instance struct {
@@ -7,7 +7,7 @@ type Instance struct {
 	indom *InstanceDomain
 }
 
-// NewInstance generates a new Instance type based on the passed parameters
+// newInstance generates a new Instance type based on the passed parameters
 // the id is passed explicitly as it is assumed that this will be constructed
 // after initializing the InstanceDomain
 // this is not a part of the public API as this is not supposed to be used directly,

@@ -1,4 +1,4 @@
-package pcp
+package speed
 
 import (
 	"fmt"
@@ -205,9 +205,9 @@ type MetricDesc struct {
 }
 
 // NewMetricDesc creates a new Metric Description wrapper type
-func NewMetricDesc(name string, indom InstanceDomain, t MetricType, semantics MetricSemantics, unit MetricUnit, short, long string) *MetricDesc {
+func NewMetricDesc(n string, i InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *MetricDesc {
 	return &MetricDesc{
-		getHash(name), name, indom, t, semantics, unit, short, long,
+		getHash(n), n, i, t, s, u, short, long,
 	}
 }
 

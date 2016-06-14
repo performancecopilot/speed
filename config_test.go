@@ -1,4 +1,4 @@
-package pcp
+package speed
 
 import (
 	"os"
