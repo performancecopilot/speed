@@ -10,32 +10,18 @@ type InstanceDomain struct {
 	shortHelpText, longHelpText string
 }
 
-// NOTE: this declaration alone doesn't make this usable
-// it needs to be 'made' at the beginning of monitoring
-var instanceDomains map[uint32]*InstanceDomain
-
 // NewInstanceDomain creates a new instance domain or returns an already created one for the passed name
 // NOTE: this is different from parfait's idea of generating ids for InstanceDomains
 // We simply generate a unique 32 bit hash for an instance domain name, and if it has not
 // already been created, we create it, otherwise we return the already created version
 func NewInstanceDomain(name, shortDescription, longDescription string) *InstanceDomain {
-	h := getHash(name)
-
-	v, present := instanceDomains[h]
-	if present {
-		return v
-	}
-
-	cache := make(map[uint32]*Instance)
-	instanceDomains[h] = &InstanceDomain{
-		id:            h,
+	return &InstanceDomain{
+		id:            getHash(name),
 		name:          name,
-		instances:     cache,
+		instances:     make(map[uint32]*Instance),
 		shortHelpText: shortDescription,
 		longHelpText:  longDescription,
 	}
-
-	return instanceDomains[h]
 }
 
 // AddInstance adds a new instance to the current InstanceDomain
