@@ -3,6 +3,7 @@ package speed
 import (
 	"fmt"
 	"hash/fnv"
+	"sync"
 )
 
 // MetricType is an enumerated type representing all valid types for a metric
@@ -214,3 +215,61 @@ func NewMetricDesc(n string, i InstanceDomain, t MetricType, s MetricSemantics, 
 func (md *MetricDesc) String() string {
 	return fmt.Sprintf("%s{%v, %v, %v, %v}", md.name, md.indom, md.t, md.sem, md.u)
 }
+
+// PCPMetric defines a PCP compatible metric type that can be constructed by specifying values
+// for type, semantics and unit
+type PCPMetric struct {
+	val  interface{} // all bets are off, store whatever you want
+	desc *MetricDesc // the metadata associated with this metric
+	mu   sync.Mutex  // mutex to control reads and writes of value to the metric
+}
+
+// NewPCPMetric creates a new instance of PCPMetric
+func NewPCPMetric(val interface{}, name string, indom InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *PCPMetric {
+	return &PCPMetric{
+		val:  val,
+		desc: NewMetricDesc(name, indom, t, s, u, short, long),
+	}
+}
+
+// Val returns the current set value of PCPMetric
+func (m *PCPMetric) Val() interface{} {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.val
+}
+
+// Set sets the current value of PCPMetric
+func (m *PCPMetric) Set(val interface{}) error {
+	if val != m.val {
+		m.mu.Lock()
+		defer m.mu.Unlock()
+		m.val = val
+	}
+	return nil
+}
+
+// Semantics returns the current stored value for PCPMetric
+func (m *PCPMetric) Semantics() MetricSemantics { return m.desc.sem }
+
+// Unit returns the unit for PCPMetric
+func (m *PCPMetric) Unit() MetricUnit { return m.desc.u }
+
+// Type returns the type for PCPMetric
+func (m *PCPMetric) Type() MetricType { return m.desc.t }
+
+// Description returns the description for PCPMetric
+func (m *PCPMetric) Description() string {
+	sd := m.desc.shortDescription
+	ld := m.desc.longDescription
+	if len(ld) > 0 {
+		return sd + "\n\n" + ld
+	}
+	return sd
+}
+
+func (m *PCPMetric) String() string {
+	return fmt.Sprintf("Val: %v\n%v", m.val, m.Description())
+}
+
+// TODO: implement PCPCounterMetric, PCPGaugeMetric ...
