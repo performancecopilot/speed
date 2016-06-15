@@ -1,5 +1,3 @@
-// this file implements PCP configuration fetching from the environment
-
 package speed
 
 import (

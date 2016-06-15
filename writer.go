@@ -1,5 +1,3 @@
-// this file implements a MMV file writer for speed
-
 package speed
 
 // Writer defines the interface of a MMV file writer's properties
