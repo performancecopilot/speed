@@ -4,7 +4,7 @@ package speed
 type Instance struct {
 	name  string
 	id    uint32
-	indom *InstanceDomain
+	indom InstanceDomain
 }
 
 // newInstance generates a new Instance type based on the passed parameters
@@ -12,7 +12,7 @@ type Instance struct {
 // after initializing the InstanceDomain
 // this is not a part of the public API as this is not supposed to be used directly,
 // but instead added using the AddInstance method of InstanceDomain
-func newInstance(id uint32, name string, indom *InstanceDomain) *Instance {
+func newInstance(id uint32, name string, indom InstanceDomain) *Instance {
 	return &Instance{
 		name, id, indom,
 	}
