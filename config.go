@@ -19,7 +19,8 @@ var Config map[string]string
 // pat stores a valid key-value pattern line
 var pat = "([A-Z0-9_]+)=(.*)"
 
-func init() {
+// initConfig initializes the config constants
+func initConfig() error {
 	re, _ := regexp.Compile(pat)
 
 	rootPath, ok := os.LookupEnv("PCP_DIR")
@@ -36,8 +37,7 @@ func init() {
 
 	f, err := os.Open(ConfPath)
 	if err != nil {
-		// TODO: figure out if something better can be done here
-		panic(err)
+		return err
 	}
 
 	// if we reach at this point, it means we have a valid config
@@ -51,4 +51,6 @@ func init() {
 			Config[matches[1]] = matches[2]
 		}
 	}
+
+	return nil
 }
