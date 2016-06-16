@@ -10,6 +10,11 @@ type InstanceDomain interface {
 	Description() string
 }
 
+// PCPInstanceDomainBitLength is the maximum bit length of a PCP Instance Domain
+//
+// see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
+const PCPInstanceDomainBitLength = 22
+
 // PCPInstanceDomain wraps a PCP compatible instance domain
 type PCPInstanceDomain struct {
 	id                          uint32
@@ -24,7 +29,7 @@ type PCPInstanceDomain struct {
 // already been created, we create it, otherwise we return the already created version
 func NewPCPInstanceDomain(name, shortDescription, longDescription string) *PCPInstanceDomain {
 	return &PCPInstanceDomain{
-		id:            getHash(name),
+		id:            getHash(name, PCPInstanceDomainBitLength),
 		name:          name,
 		instances:     make(map[uint32]*Instance),
 		shortHelpText: shortDescription,
@@ -34,7 +39,7 @@ func NewPCPInstanceDomain(name, shortDescription, longDescription string) *PCPIn
 
 // AddInstance adds a new instance to the current PCPInstanceDomain
 func (indom *PCPInstanceDomain) AddInstance(name string) error {
-	h := getHash(name)
+	h := getHash(name, 0)
 
 	_, present := indom.instances[h]
 	if present {

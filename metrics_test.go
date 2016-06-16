@@ -13,6 +13,6 @@ func BenchmarkGetHash(b *testing.B) {
 
 	l := len(strings)
 	for i := 0; i < b.N; i++ {
-		_ = getHash(strings[i%l])
+		_ = getHash(strings[i%l], 0)
 	}
 }

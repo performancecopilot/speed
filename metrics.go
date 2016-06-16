@@ -183,15 +183,24 @@ type Metric interface {
 	Description() string        // gets the description of a metric
 }
 
-// generate a unique uint32 hash for a string
+// generate a unique hash for a string of the specified bit length
 // NOTE: make sure this is as fast as possible
 //
 // see: http://programmers.stackexchange.com/a/145633
-func getHash(s string) uint32 {
+func getHash(s string, b uint32) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
-	return h.Sum32()
+	val := h.Sum32()
+	if b == 0 {
+		return val
+	}
+	return val & ((1 << b) - 1)
 }
+
+// PCPMetricBitLength is the maximum bit size of a PCP Metric id
+//
+// see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
+const PCPMetricBitLength = 10
 
 // MetricDesc is a metric metadata wrapper
 // each metric type can wrap its metadata by containing a MetricDesc type and only define its own
@@ -211,7 +220,7 @@ type MetricDesc struct {
 // NewMetricDesc creates a new Metric Description wrapper type
 func NewMetricDesc(n string, i InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *MetricDesc {
 	return &MetricDesc{
-		getHash(n), n, i, t, s, u, short, long,
+		getHash(n, PCPMetricBitLength), n, i, t, s, u, short, long,
 	}
 }
 
