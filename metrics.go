@@ -176,6 +176,7 @@ type Metric interface {
 	Val() interface{}           // gets the value of the metric
 	Set(interface{}) error      // sets the value of the metric to a value, optionally returns an error on failure
 	ID() uint32                 // gets the unique id generated for this metric
+	Name() string               // gets the name for the metric
 	Type() MetricType           // gets the type of a metric
 	Unit() MetricUnit           // gets the unit of a metric
 	Semantics() MetricSemantics // gets the semantics for a metric
@@ -248,6 +249,9 @@ func (m *PCPMetric) Set(val interface{}) error {
 
 // ID returns the generated id for PCPMetric
 func (m *PCPMetric) ID() uint32 { return m.desc.id }
+
+// Name returns the generated id for PCPMetric
+func (m *PCPMetric) Name() string { return m.desc.name }
 
 // Semantics returns the current stored value for PCPMetric
 func (m *PCPMetric) Semantics() MetricSemantics { return m.desc.sem }
