@@ -95,7 +95,7 @@ func (r *PCPRegistry) AddInstanceDomainByName(name string, instances []string) (
 // IdentifierPat contains the pattern for a valid name identifier
 const IdentifierPat = "[\\p{L}\\p{N}]+"
 
-const p = "\\A((" + IdentifierPat + ")(\\." + IdentifierPat + ")*)(\\[(" + IdentifierPat + ")\\])((\\." + IdentifierPat + ")*)\\z"
+const p = "\\A((" + IdentifierPat + ")(\\." + IdentifierPat + ")*?)(\\[(" + IdentifierPat + ")\\])?((\\." + IdentifierPat + ")*)\\z"
 
 // IdentifierRegex gets the *regexp.Regexp object representing a valid metric identifier
 var IdentifierRegex, _ = regexp.Compile(p)
@@ -106,7 +106,7 @@ func parseString(name string) (iname string, indomname string, mname string, err
 	}
 
 	matches := IdentifierRegex.FindStringSubmatch(name)
-	iname, indomname, mname, err = matches[5], matches[1], matches[6][1:], nil
+	iname, indomname, mname, err = matches[5], matches[1], matches[1]+matches[6], nil
 	return
 }
 
