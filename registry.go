@@ -56,7 +56,7 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 // HasMetric checks if a metric of specified name already exists
 // in registry or not
 func (r *PCPRegistry) HasMetric(name string) bool {
-	id := getHash(name, PCPMetricBitLength)
+	id := getHash(name, PCPMetricItemBitLength)
 	_, present := r.metrics[id]
 	return present
 }
@@ -144,7 +144,7 @@ func (r *PCPRegistry) UpdateMetricByName(name string, val interface{}) error {
 		return errors.New("The Metric doesn't exist for this registry")
 	}
 
-	h := getHash(name, PCPMetricBitLength)
+	h := getHash(name, PCPMetricItemBitLength)
 	m := r.metrics[h]
 
 	return m.Set(val)

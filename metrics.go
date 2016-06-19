@@ -183,10 +183,10 @@ type Metric interface {
 	Description() string        // gets the description of a metric
 }
 
-// PCPMetricBitLength is the maximum bit size of a PCP Metric id
+// PCPMetricItemBitLength is the maximum bit size of a PCP Metric id
 //
 // see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
-const PCPMetricBitLength = 10
+const PCPMetricItemBitLength = 10
 
 // MetricDesc is a metric metadata wrapper
 // each metric type can wrap its metadata by containing a MetricDesc type and only define its own
@@ -206,7 +206,7 @@ type MetricDesc struct {
 // NewMetricDesc creates a new Metric Description wrapper type
 func NewMetricDesc(n string, i InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *MetricDesc {
 	return &MetricDesc{
-		getHash(n, PCPMetricBitLength), n, i, t, s, u, short, long,
+		getHash(n, PCPMetricItemBitLength), n, i, t, s, u, short, long,
 	}
 }
 
