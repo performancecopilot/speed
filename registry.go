@@ -8,20 +8,43 @@ import (
 
 // Registry defines a valid set of instance domains and metrics
 type Registry interface {
-	HasInstanceDomain(name string) bool                                                                                   // checks if an instance domain of the passed name is already present or not
-	HasMetric(name string) bool                                                                                           // checks if an metric of the passed name is already present or not
-	AddInstanceDomain(InstanceDomain) error                                                                               // adds a InstanceDomain object to the writer
-	AddInstanceDomainByName(name string, instances []string) (InstanceDomain, error)                                      // adds a InstanceDomain object after constructing it using passed name and instances
-	AddMetric(Metric) error                                                                                               // adds a Metric object to the writer
-	AddMetricByString(name string, initialval interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) // adds a Metric object after parsing the passed string for Instances and InstanceDomains
-	UpdateMetricByName(name string, val interface{}) error                                                                // updates a Metric object by looking it up by name and updating its value
+	// checks if an instance domain of the passed name is already present or not
+	HasInstanceDomain(name string) bool
+
+	// checks if an metric of the passed name is already present or not
+	HasMetric(name string) bool
+
+	// returns the number of Metrics in the current registry
+	MetricCount() int
+
+	// returns the number of Instance Domains in the current registry
+	InstanceDomainCount() int
+
+	// returns the number of instances across all instance domains in the current registry
+	InstanceCount() int
+
+	// adds a InstanceDomain object to the writer
+	AddInstanceDomain(InstanceDomain) error
+
+	// adds a InstanceDomain object after constructing it using passed name and instances
+	AddInstanceDomainByName(name string, instances []string) (InstanceDomain, error)
+
+	// adds a Metric object to the writer
+	AddMetric(Metric) error
+
+	// adds a Metric object after parsing the passed string for Instances and InstanceDomains
+	AddMetricByString(name string, initialval interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error)
+
+	// updates a Metric object by looking it up by name and updating its value
+	UpdateMetricByName(name string, val interface{}) error
 }
 
 // PCPRegistry implements a registry for PCP as the client
 type PCPRegistry struct {
 	instanceDomains map[uint32]InstanceDomain // a cache for instanceDomains
 	metrics         map[uint32]Metric         // a cache for metrics
-	mu              sync.Mutex                // mutex to synchronize access
+	instanceCount   int
+	mu              sync.Mutex // mutex to synchronize access
 }
 
 // NewPCPRegistry creates a new PCPRegistry object
@@ -50,8 +73,18 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 	}
 
 	r.instanceDomains[indom.ID()] = indom
+	r.instanceCount += indom.InstanceCount()
 	return nil
 }
+
+// InstanceCount returns the number of instances across all indoms in the registry
+func (r *PCPRegistry) InstanceCount() int { return r.instanceCount }
+
+// InstanceDomainCount returns the number of instance domains in the registry
+func (r *PCPRegistry) InstanceDomainCount() int { return len(r.instanceDomains) }
+
+// MetricCount returns the number of metrics in the registry
+func (r *PCPRegistry) MetricCount() int { return len(r.metrics) }
 
 // HasMetric checks if a metric of specified name already exists
 // in registry or not
