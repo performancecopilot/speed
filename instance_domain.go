@@ -4,10 +4,11 @@ import "errors"
 
 // InstanceDomain defines the interface for an instance domain
 type InstanceDomain interface {
-	AddInstance(name string) error
-	ID() uint32
-	Name() string
-	Description() string
+	ID() uint32                    // unique identifier for the instance domain
+	Name() string                  // name of the instance domain
+	Description() string           // description for the instance domain
+	AddInstance(name string) error // adds an instance to the indom
+	InstanceCount() int            // returns the number of instances in the indom
 }
 
 // PCPInstanceDomainBitLength is the maximum bit length of a PCP Instance Domain
@@ -57,6 +58,9 @@ func (indom *PCPInstanceDomain) ID() uint32 { return indom.id }
 
 // Name returns the name for PCPInstanceDomain
 func (indom *PCPInstanceDomain) Name() string { return indom.name }
+
+// InstanceCount returns the number of instances in the current instance domain
+func (indom *PCPInstanceDomain) InstanceCount() int { return len(indom.instances) }
 
 // Description returns the description for PCPInstanceDomain
 func (indom *PCPInstanceDomain) Description() string {
