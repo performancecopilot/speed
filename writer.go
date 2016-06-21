@@ -2,6 +2,7 @@ package speed
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path"
 	"strings"
@@ -9,8 +10,9 @@ import (
 
 // Writer defines the interface of a MMV file writer's properties
 type Writer interface {
+	io.Writer
 	Registry() Registry // a writer must contain a registry of metrics and instance domains
-	Write() error       // writes an mmv file
+	Start() error       // writes an mmv file
 }
 
 func mmvFileLocation(name string) (string, error) {
