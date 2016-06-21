@@ -217,9 +217,9 @@ func (md *MetricDesc) String() string {
 // PCPMetric defines a PCP compatible metric type that can be constructed by specifying values
 // for type, semantics and unit
 type PCPMetric struct {
+	sync.RWMutex
 	val  interface{} // all bets are off, store whatever you want
 	desc *MetricDesc // the metadata associated with this metric
-	mu   sync.Mutex  // mutex to control reads and writes of value to the metric
 }
 
 // NewPCPMetric creates a new instance of PCPMetric
@@ -232,16 +232,16 @@ func NewPCPMetric(val interface{}, name string, indom InstanceDomain, t MetricTy
 
 // Val returns the current set value of PCPMetric
 func (m *PCPMetric) Val() interface{} {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+	m.RLock()
+	defer m.RUnlock()
 	return m.val
 }
 
 // Set sets the current value of PCPMetric
 func (m *PCPMetric) Set(val interface{}) error {
 	if val != m.val {
-		m.mu.Lock()
-		defer m.mu.Unlock()
+		m.Lock()
+		defer m.Unlock()
 		m.val = val
 	}
 	return nil
