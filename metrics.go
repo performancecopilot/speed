@@ -113,15 +113,20 @@ type MetricDesc struct {
 	t                                 MetricType      // the type of a metric
 	sem                               MetricSemantics // the semantics
 	u                                 MetricUnit      // the unit
+	offset                            int             // memory storage offset for the metric description
 	shortDescription, longDescription string
 }
 
 // NewMetricDesc creates a new Metric Description wrapper type
 func NewMetricDesc(n string, i InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *MetricDesc {
 	return &MetricDesc{
-		getHash(n, PCPMetricItemBitLength), n, i, t, s, u, short, long,
+		getHash(n, PCPMetricItemBitLength), n, i, t, s, u, 0, short, long,
 	}
 }
+
+func (md *MetricDesc) Offset() int { return md.offset }
+
+func (md *MetricDesc) SetOffset(offset int) { md.offset = offset }
 
 func (md *MetricDesc) String() string {
 	return fmt.Sprintf("%s{%v, %v, %v, %v}", md.name, md.indom, md.t, md.sem, md.u)
@@ -131,8 +136,9 @@ func (md *MetricDesc) String() string {
 // for type, semantics and unit
 type PCPMetric struct {
 	sync.RWMutex
-	val  interface{} // all bets are off, store whatever you want
-	desc *MetricDesc // the metadata associated with this metric
+	val    interface{} // all bets are off, store whatever you want
+	desc   *MetricDesc // the metadata associated with this metric
+	offset int         // memory storage offset for the metric value
 }
 
 // NewPCPMetric creates a new instance of PCPMetric
@@ -184,6 +190,10 @@ func (m *PCPMetric) Description() string {
 	}
 	return sd
 }
+
+func (m *PCPMetric) Offset() int { return m.offset }
+
+func (m *PCPMetric) SetOffset(offset int) { m.offset = offset }
 
 func (m *PCPMetric) String() string {
 	return fmt.Sprintf("Val: %v\n%v", m.val, m.Description())
