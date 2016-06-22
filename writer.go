@@ -111,3 +111,34 @@ func (w *PCPWriter) Length() int {
 		(w.Registry().InstanceDomainCount() * InstanceDomainLength) +
 		(w.Registry().MetricCount() * (MetricLength + ValueLength))
 }
+
+func (w *PCPWriter) initializeOffsets() {
+	indomoffset := HeaderLength + TocLength*w.tocCount()
+	instanceoffset := indomoffset + InstanceDomainLength*w.r.InstanceDomainCount()
+	metricsoffset := instanceoffset + InstanceLength*w.r.InstanceCount()
+	valuesoffset := metricsoffset + MetricLength*w.r.MetricCount()
+
+	w.r.indomoffset = indomoffset
+	w.r.instanceoffset = instanceoffset
+	w.r.metricsoffset = metricsoffset
+	w.r.valuesoffset = valuesoffset
+
+	for _, indom := range w.r.instanceDomains {
+		indom.SetOffset(indomoffset)
+		indomoffset += InstanceDomainLength
+
+		for _, i := range indom.instances {
+			i.SetOffset(instanceoffset)
+			instanceoffset += InstanceLength
+		}
+	}
+
+	for _, metric := range w.r.metrics {
+		metric.desc.SetOffset(metricsoffset)
+		metricsoffset += MetricLength
+		metric.SetOffset(valuesoffset)
+		valuesoffset += ValueLength
+	}
+
+	// TODO: string offsets
+}
