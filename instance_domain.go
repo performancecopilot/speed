@@ -21,6 +21,7 @@ type PCPInstanceDomain struct {
 	id                          uint32
 	name                        string
 	instances                   map[uint32]*Instance // the instances for this InstanceDomain stored as a map
+	offset                      int
 	shortHelpText, longHelpText string
 }
 
@@ -70,6 +71,10 @@ func (indom *PCPInstanceDomain) Description() string {
 	}
 	return s
 }
+
+func (indom *PCPInstanceDomain) Offset() int { return indom.offset }
+
+func (indom *PCPInstanceDomain) SetOffset(offset int) { indom.offset = offset }
 
 func (indom *PCPInstanceDomain) String() string {
 	s := "InstanceDomain: " + indom.name
