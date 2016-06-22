@@ -43,6 +43,8 @@ func mmvFileLocation(name string) (string, error) {
 	return path.Join(loc, "mmv", name), nil
 }
 
+// PCPClusterIDBitLength is the bit length of the cluster id
+// for a set of PCP metrics
 const PCPClusterIDBitLength = 12
 
 // MMVFlag represents an enumerated type to represent mmv flag values
@@ -51,15 +53,17 @@ type MMVFlag int
 // values for MMVFlag
 const (
 	NoPrefixFlag MMVFlag = 1 << iota
-	ProcessFlag  MMVFlag = 1 << iota
-	SentinelFlag MMVFlag = 1 << iota
+	ProcessFlag
+	SentinelFlag
 )
+
+//go:generate stringer -type=MMVFlag
 
 // PCPWriter implements a writer that can write PCP compatible MMV files
 type PCPWriter struct {
 	sync.Mutex
 	loc       string       // absolute location of the mmv file
-	clusterId uint32       // cluster identifier for the writer
+	clusterID uint32       // cluster identifier for the writer
 	flag      MMVFlag      // write flag
 	r         *PCPRegistry // current registry
 }
@@ -74,7 +78,7 @@ func NewPCPWriter(name string, flag MMVFlag) (*PCPWriter, error) {
 	return &PCPWriter{
 		loc:       fileLocation,
 		r:         NewPCPRegistry(),
-		clusterId: getHash(name, PCPClusterIDBitLength),
+		clusterID: getHash(name, PCPClusterIDBitLength),
 		flag:      flag,
 	}, nil
 }
