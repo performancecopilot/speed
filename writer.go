@@ -7,6 +7,9 @@ import (
 	"path"
 	"strings"
 	"sync"
+	"time"
+
+	"github.com/performancecopilot/speed/bytebuffer"
 )
 
 // byte lengths of different components in an mmv file
@@ -141,4 +144,85 @@ func (w *PCPWriter) initializeOffsets() {
 	}
 
 	// TODO: string offsets
+}
+
+func (w *PCPWriter) writeHeaderBlock(buffer *bytebuffer.Buffer) {
+	// tag
+	buffer.WriteString("MMV")
+
+	// version
+	buffer.WriteVal(1)
+
+	// generation
+	gen := time.Now().Unix()
+	buffer.WriteVal(gen)
+
+	// genOffset := buffer.Pos()
+
+	buffer.WriteVal(0)
+
+	// tocCount
+	buffer.WriteVal(w.tocCount())
+
+	// flag mask
+	buffer.WriteVal(int(w.flag))
+
+	// process identifier
+	buffer.WriteVal(os.Getpid())
+
+	// cluster identifier
+	buffer.WriteVal(w.clusterID)
+}
+
+func (w *PCPWriter) writeTocBlock(buffer *bytebuffer.Buffer) {
+	tocpos := HeaderLength
+
+	// instance domains toc
+	if w.Registry().InstanceDomainCount() > 0 {
+		buffer.SetPos(tocpos)
+		buffer.WriteVal(1) // Instance Domain identifier
+		buffer.WriteVal(w.Registry().InstanceDomainCount())
+		buffer.WriteVal(w.r.indomoffset)
+		tocpos += TocLength
+	}
+
+	// instances toc
+	if w.Registry().InstanceCount() > 0 {
+		buffer.SetPos(tocpos)
+		buffer.WriteVal(2) // Instance identifier
+		buffer.WriteVal(w.Registry().InstanceCount())
+		buffer.WriteVal(w.r.instanceoffset)
+		tocpos += TocLength
+	}
+
+	metricsoffset, valuesoffset := w.r.metricsoffset, w.r.valuesoffset
+	if w.Registry().MetricCount() == 0 {
+		metricsoffset, valuesoffset = 0, 0
+	}
+
+	// metrics and values toc
+	buffer.SetPos(tocpos)
+	buffer.WriteVal(3) // Metrics identifier
+	buffer.WriteVal(w.Registry().MetricCount())
+	buffer.WriteVal(metricsoffset)
+	tocpos += TocLength
+
+	buffer.SetPos(tocpos)
+	buffer.WriteVal(4) // Values identifier
+	buffer.WriteVal(w.Registry().MetricCount())
+	buffer.WriteVal(valuesoffset)
+	tocpos += TocLength
+
+	// TODO: strings toc
+}
+
+// fillData will fill a byte slice with the mmv file
+// data as long as something doesn't go wrong
+func (w *PCPWriter) fillData(data []byte) error {
+	buffer := bytebuffer.NewBufferSlice(data)
+
+	w.writeHeaderBlock(buffer)
+	w.writeTocBlock(buffer)
+
+	return nil
 }
