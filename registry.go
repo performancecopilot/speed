@@ -44,7 +44,8 @@ type PCPRegistry struct {
 	instanceDomains map[uint32]InstanceDomain // a cache for instanceDomains
 	metrics         map[uint32]Metric         // a cache for metrics
 	instanceCount   int
-	mu              sync.Mutex // mutex to synchronize access
+	indomlock       sync.RWMutex
+	metricslock     sync.RWMutex
 }
 
 // NewPCPRegistry creates a new PCPRegistry object
@@ -58,6 +59,9 @@ func NewPCPRegistry() *PCPRegistry {
 // HasInstanceDomain checks if an instance domain of specified name already exists
 // in registry or not
 func (r *PCPRegistry) HasInstanceDomain(name string) bool {
+	r.indomlock.RLock()
+	defer r.indomlock.RUnlock()
+
 	id := getHash(name, PCPInstanceDomainBitLength)
 	_, present := r.instanceDomains[id]
 	return present
@@ -65,8 +69,8 @@ func (r *PCPRegistry) HasInstanceDomain(name string) bool {
 
 // AddInstanceDomain will add a new instance domain to the current registry
 func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.indomlock.Lock()
+	defer r.indomlock.Unlock()
 
 	if r.HasInstanceDomain(indom.Name()) {
 		return errors.New("InstanceDomain is already defined for the current registry")
@@ -78,17 +82,35 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 }
 
 // InstanceCount returns the number of instances across all indoms in the registry
-func (r *PCPRegistry) InstanceCount() int { return r.instanceCount }
+func (r *PCPRegistry) InstanceCount() int {
+	r.indomlock.RLock()
+	defer r.indomlock.RUnlock()
+
+	return r.instanceCount
+}
 
 // InstanceDomainCount returns the number of instance domains in the registry
-func (r *PCPRegistry) InstanceDomainCount() int { return len(r.instanceDomains) }
+func (r *PCPRegistry) InstanceDomainCount() int {
+	r.indomlock.RLock()
+	defer r.indomlock.RUnlock()
+
+	return len(r.instanceDomains)
+}
 
 // MetricCount returns the number of metrics in the registry
-func (r *PCPRegistry) MetricCount() int { return len(r.metrics) }
+func (r *PCPRegistry) MetricCount() int {
+	r.metricslock.RLock()
+	defer r.metricslock.RUnlock()
+
+	return len(r.metrics)
+}
 
 // HasMetric checks if a metric of specified name already exists
 // in registry or not
 func (r *PCPRegistry) HasMetric(name string) bool {
+	r.metricslock.RLock()
+	defer r.metricslock.RUnlock()
+
 	id := getHash(name, PCPMetricItemBitLength)
 	_, present := r.metrics[id]
 	return present
@@ -96,8 +118,8 @@ func (r *PCPRegistry) HasMetric(name string) bool {
 
 // AddMetric will add a new metric to the current registry
 func (r *PCPRegistry) AddMetric(m Metric) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.metricslock.Lock()
+	defer r.metricslock.Unlock()
 
 	if r.HasMetric(m.Name()) {
 		return errors.New("Metric is already defined for the current registry")
@@ -109,9 +131,6 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 
 // AddInstanceDomainByName adds an instance domain using passed parameters
 func (r *PCPRegistry) AddInstanceDomainByName(name string, instances []string) (InstanceDomain, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	if r.HasInstanceDomain(name) {
 		return nil, errors.New("The InstanceDomain already exists for this registry")
 	}
@@ -122,6 +141,7 @@ func (r *PCPRegistry) AddInstanceDomainByName(name string, instances []string) (
 		indom.AddInstance(i)
 	}
 
+	r.AddInstanceDomain(indom)
 	return indom, nil
 }
 
@@ -145,9 +165,6 @@ func parseString(name string) (iname string, indomname string, mname string, err
 
 // AddMetricByString provides parfait style metric creation
 func (r *PCPRegistry) AddMetricByString(name string, initialval interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-
 	iname, indomname, mname, err := parseString(name)
 	if err != nil {
 		return nil, err
@@ -170,8 +187,8 @@ func (r *PCPRegistry) AddMetricByString(name string, initialval interface{}, s M
 
 // UpdateMetricByName safely updates the value of a metric
 func (r *PCPRegistry) UpdateMetricByName(name string, val interface{}) error {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.metricslock.Lock()
+	defer r.metricslock.Unlock()
 
 	if !r.HasMetric(name) {
 		return errors.New("The Metric doesn't exist for this registry")
