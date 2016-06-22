@@ -43,30 +43,39 @@ func mmvFileLocation(name string) (string, error) {
 	return path.Join(loc, "mmv", name), nil
 }
 
+const PCPClusterIDBitLength = 12
+
+// MMVFlag represents an enumerated type to represent mmv flag values
+type MMVFlag int
+
+// values for MMVFlag
+const (
+	NoPrefixFlag MMVFlag = 1 << iota
+	ProcessFlag  MMVFlag = 1 << iota
+	SentinelFlag MMVFlag = 1 << iota
+)
+
 // PCPWriter implements a writer that can write PCP compatible MMV files
 type PCPWriter struct {
 	sync.Mutex
-	loc string       // absolute location of the mmv file
-	w   io.Writer    // writer to the mmv file
-	r   *PCPRegistry // current registry
+	loc       string       // absolute location of the mmv file
+	clusterId uint32       // cluster identifier for the writer
+	flag      MMVFlag      // write flag
+	r         *PCPRegistry // current registry
 }
 
 // NewPCPWriter initializes a new PCPWriter object
-func NewPCPWriter(name string) (*PCPWriter, error) {
+func NewPCPWriter(name string, flag MMVFlag) (*PCPWriter, error) {
 	fileLocation, err := mmvFileLocation(name)
 	if err != nil {
 		return nil, err
 	}
 
-	w, err := os.Create(fileLocation)
-	if err != nil {
-		return nil, err
-	}
-
 	return &PCPWriter{
-		loc: fileLocation,
-		r:   NewPCPRegistry(),
-		w:   w,
+		loc:       fileLocation,
+		r:         NewPCPRegistry(),
+		clusterId: getHash(name, PCPClusterIDBitLength),
+		flag:      flag,
 	}, nil
 }
 
@@ -77,18 +86,23 @@ func (w *PCPWriter) Registry() Registry {
 	return w.r
 }
 
+func (w *PCPWriter) tocCount() int {
+	ans := 2
+
+	if w.Registry().InstanceCount() > 0 {
+		ans += 2
+	}
+
+	return ans
+}
+
 // Length returns the byte length of data in the mmv file written by the current writer
 func (w *PCPWriter) Length() int {
 	w.Lock()
 	defer w.Unlock()
 
-	tocCount := 2
-	if w.Registry().InstanceCount() > 0 {
-		tocCount += 2
-	}
-
 	return HeaderLength +
-		(tocCount * TocLength) +
+		(w.tocCount() * TocLength) +
 		(w.Registry().InstanceCount() * InstanceLength) +
 		(w.Registry().InstanceDomainCount() * InstanceDomainLength) +
 		(w.Registry().MetricCount() * (MetricLength + ValueLength))
