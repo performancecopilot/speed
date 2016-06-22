@@ -41,18 +41,22 @@ type Registry interface {
 
 // PCPRegistry implements a registry for PCP as the client
 type PCPRegistry struct {
-	instanceDomains map[uint32]InstanceDomain // a cache for instanceDomains
-	metrics         map[uint32]Metric         // a cache for metrics
+	instanceDomains map[uint32]*PCPInstanceDomain // a cache for instanceDomains
+	metrics         map[uint32]*PCPMetric         // a cache for metrics
 	instanceCount   int
 	indomlock       sync.RWMutex
 	metricslock     sync.RWMutex
+	instanceoffset  int
+	indomoffset     int
+	metricsoffset   int
+	valuesoffset    int
 }
 
 // NewPCPRegistry creates a new PCPRegistry object
 func NewPCPRegistry() *PCPRegistry {
 	return &PCPRegistry{
-		instanceDomains: make(map[uint32]InstanceDomain),
-		metrics:         make(map[uint32]Metric),
+		instanceDomains: make(map[uint32]*PCPInstanceDomain),
+		metrics:         make(map[uint32]*PCPMetric),
 	}
 }
 
@@ -76,7 +80,7 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 		return errors.New("InstanceDomain is already defined for the current registry")
 	}
 
-	r.instanceDomains[indom.ID()] = indom
+	r.instanceDomains[indom.ID()] = indom.(*PCPInstanceDomain)
 	r.instanceCount += indom.InstanceCount()
 	return nil
 }
@@ -125,7 +129,7 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 		return errors.New("Metric is already defined for the current registry")
 	}
 
-	r.metrics[m.ID()] = m
+	r.metrics[m.ID()] = m.(*PCPMetric)
 	return nil
 }
 
