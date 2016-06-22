@@ -10,53 +10,22 @@ type MetricType int32
 
 // Possible values for a MetricType
 const (
-	NoSupportType       MetricType = iota
-	Int32Type           MetricType = iota
-	Uint32Type          MetricType = iota
-	Int64Type           MetricType = iota
-	Uint64Type          MetricType = iota
-	FloatType           MetricType = iota
-	DoubleType          MetricType = iota
-	StringType          MetricType = iota
-	AggregateType       MetricType = iota
-	AggregateStaticType MetricType = iota
-	EventType           MetricType = iota
-	HighresEventType    MetricType = iota
-	UnknownType         MetricType = iota
+	NoSupportType MetricType = iota
+	Int32Type
+	Uint32Type
+	Int64Type
+	Uint64Type
+	FloatType
+	DoubleType
+	StringType
+	AggregateType
+	AggregateStaticType
+	EventType
+	HighresEventType
+	UnknownType
 )
 
-func (mt MetricType) String() string {
-	switch mt {
-	case NoSupportType:
-		return "Type: No Support"
-	case Int32Type:
-		return "Type: Int32"
-	case Int64Type:
-		return "Type: Int64"
-	case Uint32Type:
-		return "Type: Uint32"
-	case Uint64Type:
-		return "Type: Uint64"
-	case FloatType:
-		return "Type: Float"
-	case DoubleType:
-		return "Type: Double"
-	case StringType:
-		return "Type: String"
-	case AggregateType:
-		return "Type: Aggregate"
-	case AggregateStaticType:
-		return "Type: Aggregate Static"
-	case EventType:
-		return "Type: Event"
-	case HighresEventType:
-		return "Type: Highres Event"
-	case UnknownType:
-		return "Type: Unknown"
-	default:
-		return "Type: Invalid"
-	}
-}
+//go:generate stringer -type=MetricType
 
 // MetricUnit is an enumerated type representing all possible values for a valid PCP unit
 type MetricUnit int32
@@ -66,67 +35,31 @@ type SpaceUnit MetricUnit
 
 // Possible values for SpaceUnit
 const (
-	ByteUnit     SpaceUnit = iota
-	KilobyteUnit SpaceUnit = iota
-	MegabyteUnit SpaceUnit = iota
-	GigabyteUnit SpaceUnit = iota
-	TerabyteUnit SpaceUnit = iota
-	PetabyteUnit SpaceUnit = iota
-	ExabyteUnit  SpaceUnit = iota
+	ByteUnit SpaceUnit = iota
+	KilobyteUnit
+	MegabyteUnit
+	GigabyteUnit
+	TerabyteUnit
+	PetabyteUnit
+	ExabyteUnit
 )
 
-func (su SpaceUnit) String() string {
-	switch su {
-	case ByteUnit:
-		return "Unit: Byte"
-	case KilobyteUnit:
-		return "Unit: Kilobyte"
-	case MegabyteUnit:
-		return "Unit: Megabyte"
-	case GigabyteUnit:
-		return "Unit: Gigabyte"
-	case TerabyteUnit:
-		return "Unit: Terabyte"
-	case PetabyteUnit:
-		return "Unit: Petabyte"
-	case ExabyteUnit:
-		return "Unit: Exabyte"
-	default:
-		return "Unit: Invalid SpaceUnit"
-	}
-}
+//go:generate stringer -type=SpaceUnit
 
 // TimeUnit is an enumerated type representing all possible units for representing time
 type TimeUnit MetricUnit
 
 // Possible Values for TimeUnit
 const (
-	NanosecondUnit  TimeUnit = iota
-	MicrosecondUnit TimeUnit = iota
-	MillisecondUnit TimeUnit = iota
-	SecondUnit      TimeUnit = iota
-	MinuteUnit      TimeUnit = iota
-	HourUnit        TimeUnit = iota
+	NanosecondUnit TimeUnit = iota
+	MicrosecondUnit
+	MillisecondUnit
+	SecondUnit
+	MinuteUnit
+	HourUnit
 )
 
-func (tu TimeUnit) String() string {
-	switch tu {
-	case NanosecondUnit:
-		return "Unit: Nanosecond"
-	case MicrosecondUnit:
-		return "Unit: Microsecond"
-	case MillisecondUnit:
-		return "Unit: Millisecond"
-	case SecondUnit:
-		return "Unit: Second"
-	case MinuteUnit:
-		return "Unit: Minute"
-	case HourUnit:
-		return "Unit: Hour"
-	default:
-		return "Unit: Invalid TimeUnit"
-	}
-}
+//go:generate stringer -type=TimeUnit
 
 // CountUnit is a type representing a counted quantity
 type CountUnit MetricUnit
@@ -134,14 +67,7 @@ type CountUnit MetricUnit
 // OneUnit represents the only CountUnit
 const OneUnit CountUnit = iota
 
-func (cu CountUnit) String() string {
-	switch cu {
-	case OneUnit:
-		return "Unit: One"
-	default:
-		return "Unit: Invalid CounterUnit"
-	}
-}
+//go:generate stringer -type=CountUnit
 
 // MetricSemantics represents an enumerated type representing the possible
 // values for the semantics of a metric
@@ -149,26 +75,13 @@ type MetricSemantics int32
 
 // Possible values for MetricSemantics
 const (
-	NoSemantics       MetricSemantics = iota
-	CounterSemantics  MetricSemantics = iota
-	InstantSemantics  MetricSemantics = iota
-	DiscreteSemantics MetricSemantics = iota
+	NoSemantics MetricSemantics = iota
+	CounterSemantics
+	InstantSemantics
+	DiscreteSemantics
 )
 
-func (ms MetricSemantics) String() string {
-	switch ms {
-	case NoSemantics:
-		return "Semantics: None"
-	case CounterSemantics:
-		return "Semantics: Counter"
-	case InstantSemantics:
-		return "Semantics: Instant"
-	case DiscreteSemantics:
-		return "Semantics: Discrete"
-	default:
-		return "Semantics: Invalid"
-	}
-}
+//go:generate stringer -type=MetricSemantics
 
 // Metric defines the general interface a type needs to implement to qualify
 // as a valid PCP metric
