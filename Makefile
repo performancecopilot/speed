@@ -1,3 +1,10 @@
+build: deps
+	go generate
+	go build
+
+deps:
+	go get golang.org/x/tools/cmd/stringer
+
 test:
 	go test -cover
 
