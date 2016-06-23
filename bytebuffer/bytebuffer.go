@@ -57,16 +57,16 @@ func (b *ByteBuffer) WriteString(s string) {
 
 func (b *ByteBuffer) WriteUint32(val uint32) {
 	b.Write([]byte{
-		byte(val >> 24),
-		byte((val >> 16) & 0xFF),
-		byte((val >> 8) & 0xFF),
 		byte(val & 0xFF),
+		byte((val >> 8) & 0xFF),
+		byte((val >> 16) & 0xFF),
+		byte(val >> 24),
 	})
 }
 
 func (b *ByteBuffer) WriteUint64(val uint64) {
-	b.WriteUint32(uint32(val >> 32))
 	b.WriteUint32(uint32(val & 0xFFFF))
+	b.WriteUint32(uint32(val >> 32))
 }
 
 func (b *ByteBuffer) WriteInt32(val int32) {
