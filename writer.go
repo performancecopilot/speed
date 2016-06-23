@@ -6,7 +6,6 @@ import (
 	"os"
 	"path"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/performancecopilot/speed/bytebuffer"
@@ -64,7 +63,6 @@ const (
 
 // PCPWriter implements a writer that can write PCP compatible MMV files
 type PCPWriter struct {
-	sync.Mutex
 	loc       string       // absolute location of the mmv file
 	clusterID uint32       // cluster identifier for the writer
 	flag      MMVFlag      // write flag
@@ -88,8 +86,6 @@ func NewPCPWriter(name string, flag MMVFlag) (*PCPWriter, error) {
 
 // Registry returns a writer's registry
 func (w *PCPWriter) Registry() Registry {
-	w.Lock()
-	defer w.Unlock()
 	return w.r
 }
 
@@ -105,9 +101,6 @@ func (w *PCPWriter) tocCount() int {
 
 // Length returns the byte length of data in the mmv file written by the current writer
 func (w *PCPWriter) Length() int {
-	w.Lock()
-	defer w.Unlock()
-
 	return HeaderLength +
 		(w.tocCount() * TocLength) +
 		(w.Registry().InstanceCount() * InstanceLength) +
@@ -150,6 +143,7 @@ func (w *PCPWriter) initializeOffsets() {
 func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) (gen2offset int, generation int64) {
 	// tag
 	buffer.WriteString("MMV")
+	buffer.SetPos(buffer.Pos() + 1) // extra null byte is needed and \0 isn't a valid escape character in go
 
 	// version
 	buffer.WriteUint32(1)
@@ -302,4 +296,24 @@ func (w *PCPWriter) fillData(buffer bytebuffer.Buffer) error {
 	buffer.WriteUint64(uint64(generation))
 
 	return nil
+}
+
+func (w *PCPWriter) Write(data []byte) (int, error) {
+	f, err := os.Create(w.loc)
+	if err != nil {
+		panic(err)
+	}
+
+	return f.Write(data)
+}
+
+// Start dumps existing registry data
+func (w *PCPWriter) Start() {
+	l := w.Length()
+
+	w.initializeOffsets()
+	buffer := bytebuffer.NewByteBuffer(l)
+	w.fillData(buffer)
+
+	w.Write(buffer.Buffer())
 }
