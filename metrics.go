@@ -10,19 +10,19 @@ type MetricType int32
 
 // Possible values for a MetricType
 const (
-	NoSupportType MetricType = iota
-	Int32Type
-	Uint32Type
-	Int64Type
-	Uint64Type
-	FloatType
-	DoubleType
-	StringType
-	AggregateType
-	AggregateStaticType
-	EventType
-	HighresEventType
-	UnknownType
+	NoSupportType       MetricType = -1
+	Int32Type           MetricType = 0
+	Uint32Type          MetricType = 1
+	Int64Type           MetricType = 2
+	Uint64Type          MetricType = 3
+	FloatType           MetricType = 4
+	DoubleType          MetricType = 5
+	StringType          MetricType = 6
+	AggregateType       MetricType = 7
+	AggregateStaticType MetricType = 8
+	EventType           MetricType = 9
+	HighresEventType    MetricType = 10
+	UnknownType         MetricType = 255
 )
 
 //go:generate stringer -type=MetricType
