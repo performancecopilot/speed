@@ -146,7 +146,7 @@ func (w *PCPWriter) initializeOffsets() {
 	// TODO: string offsets
 }
 
-func (w *PCPWriter) writeHeaderBlock(buffer *bytebuffer.Buffer) {
+func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) {
 	// tag
 	buffer.WriteString("MMV")
 
@@ -174,7 +174,7 @@ func (w *PCPWriter) writeHeaderBlock(buffer *bytebuffer.Buffer) {
 	buffer.WriteVal(w.clusterID)
 }
 
-func (w *PCPWriter) writeTocBlock(buffer *bytebuffer.Buffer) {
+func (w *PCPWriter) writeTocBlock(buffer bytebuffer.Buffer) {
 	tocpos := HeaderLength
 
 	// instance domains toc
@@ -218,9 +218,7 @@ func (w *PCPWriter) writeTocBlock(buffer *bytebuffer.Buffer) {
 
 // fillData will fill a byte slice with the mmv file
 // data as long as something doesn't go wrong
-func (w *PCPWriter) fillData(data []byte) error {
-	buffer := bytebuffer.NewBufferSlice(data)
-
+func (w *PCPWriter) fillData(buffer bytebuffer.Buffer) error {
 	w.writeHeaderBlock(buffer)
 	w.writeTocBlock(buffer)
 
