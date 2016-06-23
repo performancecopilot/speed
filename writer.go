@@ -151,27 +151,27 @@ func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) {
 	buffer.WriteString("MMV")
 
 	// version
-	buffer.WriteVal(1)
+	buffer.WriteUint32(1)
 
 	// generation
 	gen := time.Now().Unix()
-	buffer.WriteVal(gen)
+	buffer.WriteInt64(gen)
 
 	// genOffset := buffer.Pos()
 
-	buffer.WriteVal(0)
+	buffer.WriteInt64(0)
 
 	// tocCount
-	buffer.WriteVal(w.tocCount())
+	buffer.WriteInt(w.tocCount())
 
 	// flag mask
-	buffer.WriteVal(int(w.flag))
+	buffer.WriteInt(int(w.flag))
 
 	// process identifier
-	buffer.WriteVal(os.Getpid())
+	buffer.WriteInt(os.Getpid())
 
 	// cluster identifier
-	buffer.WriteVal(w.clusterID)
+	buffer.WriteUint32(w.clusterID)
 }
 
 func (w *PCPWriter) writeTocBlock(buffer bytebuffer.Buffer) {
@@ -180,18 +180,18 @@ func (w *PCPWriter) writeTocBlock(buffer bytebuffer.Buffer) {
 	// instance domains toc
 	if w.Registry().InstanceDomainCount() > 0 {
 		buffer.SetPos(tocpos)
-		buffer.WriteVal(1) // Instance Domain identifier
-		buffer.WriteVal(w.Registry().InstanceDomainCount())
-		buffer.WriteVal(w.r.indomoffset)
+		buffer.WriteInt(1) // Instance Domain identifier
+		buffer.WriteInt(w.Registry().InstanceDomainCount())
+		buffer.WriteUint64(uint64(w.r.indomoffset))
 		tocpos += TocLength
 	}
 
 	// instances toc
 	if w.Registry().InstanceCount() > 0 {
 		buffer.SetPos(tocpos)
-		buffer.WriteVal(2) // Instance identifier
-		buffer.WriteVal(w.Registry().InstanceCount())
-		buffer.WriteVal(w.r.instanceoffset)
+		buffer.WriteInt(2) // Instance identifier
+		buffer.WriteInt(w.Registry().InstanceCount())
+		buffer.WriteUint64(uint64(w.r.instanceoffset))
 		tocpos += TocLength
 	}
 
@@ -202,15 +202,15 @@ func (w *PCPWriter) writeTocBlock(buffer bytebuffer.Buffer) {
 
 	// metrics and values toc
 	buffer.SetPos(tocpos)
-	buffer.WriteVal(3) // Metrics identifier
-	buffer.WriteVal(w.Registry().MetricCount())
-	buffer.WriteVal(metricsoffset)
+	buffer.WriteInt(3) // Metrics identifier
+	buffer.WriteInt(w.Registry().MetricCount())
+	buffer.WriteUint64(uint64(metricsoffset))
 	tocpos += TocLength
 
 	buffer.SetPos(tocpos)
-	buffer.WriteVal(4) // Values identifier
-	buffer.WriteVal(w.Registry().MetricCount())
-	buffer.WriteVal(valuesoffset)
+	buffer.WriteInt(4) // Values identifier
+	buffer.WriteInt(w.Registry().MetricCount())
+	buffer.WriteUint64(uint64(valuesoffset))
 	tocpos += TocLength
 
 	// TODO: strings toc
