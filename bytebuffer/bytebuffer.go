@@ -1,4 +1,5 @@
 // Package bytebuffer implements a java like bytebuffer for go
+//
 // initially tried to use bytes.Buffer but the main restriction with that is that
 // it does not allow the freedom to move around in the buffer. Further, it always
 // writes at the end of the buffer
@@ -21,28 +22,38 @@ import (
 	"fmt"
 )
 
-type Buffer struct {
+type Buffer interface {
+	Pos() int
+	SetPos(int)
+	Len() int
+	Buffer() []byte
+	Write([]byte)
+	WriteString(string)
+	WriteVal(interface{})
+}
+
+type ByteBuffer struct {
 	pos    int
 	buffer []byte
 }
 
-func NewBuffer(n int) *Buffer {
-	return &Buffer{
+func NewByteBuffer(n int) *ByteBuffer {
+	return &ByteBuffer{
 		pos:    0,
 		buffer: make([]byte, n),
 	}
 }
 
-func NewBufferSlice(buffer []byte) *Buffer {
-	return &Buffer{
+func NewByteBufferSlice(buffer []byte) *ByteBuffer {
+	return &ByteBuffer{
 		pos:    0,
 		buffer: buffer,
 	}
 }
 
-func (b *Buffer) Pos() int { return b.pos }
+func (b *ByteBuffer) Pos() int { return b.pos }
 
-func (b *Buffer) SetPos(position int) {
+func (b *ByteBuffer) SetPos(position int) {
 	if position < 0 || position >= len(b.buffer) {
 		// TODO: make a better error message
 		panic(errors.New("Out of Range"))
@@ -51,11 +62,11 @@ func (b *Buffer) SetPos(position int) {
 	b.pos = position
 }
 
-func (b *Buffer) Len() int { return len(b.buffer) }
+func (b *ByteBuffer) Len() int { return len(b.buffer) }
 
-func (b *Buffer) Buffer() []byte { return b.buffer }
+func (b *ByteBuffer) ByteBuffer() []byte { return b.buffer }
 
-func (b *Buffer) Write(data []byte) {
+func (b *ByteBuffer) Write(data []byte) {
 	l := len(data)
 
 	if b.Pos()+l > b.Len() {
@@ -70,10 +81,10 @@ func (b *Buffer) Write(data []byte) {
 	b.pos += l
 }
 
-func (b *Buffer) WriteString(s string) {
+func (b *ByteBuffer) WriteString(s string) {
 	b.Write([]byte(s))
 }
 
-func (b *Buffer) WriteVal(val interface{}) {
+func (b *ByteBuffer) WriteVal(val interface{}) {
 	b.WriteString(fmt.Sprintf("%v", val))
 }
