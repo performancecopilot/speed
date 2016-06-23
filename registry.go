@@ -122,12 +122,12 @@ func (r *PCPRegistry) HasMetric(name string) bool {
 
 // AddMetric will add a new metric to the current registry
 func (r *PCPRegistry) AddMetric(m Metric) error {
-	r.metricslock.Lock()
-	defer r.metricslock.Unlock()
-
 	if r.HasMetric(m.Name()) {
 		return errors.New("Metric is already defined for the current registry")
 	}
+
+	r.metricslock.Lock()
+	defer r.metricslock.Unlock()
 
 	r.metrics[m.ID()] = m.(*PCPMetric)
 	return nil
