@@ -128,6 +128,7 @@ func (w *PCPWriter) initializeOffsets() {
 
 	for _, indom := range w.r.instanceDomains {
 		indom.SetOffset(indomoffset)
+		indom.instanceOffset = instanceoffset
 		indomoffset += InstanceDomainLength
 
 		for _, i := range indom.instances {
@@ -146,7 +147,7 @@ func (w *PCPWriter) initializeOffsets() {
 	// TODO: string offsets
 }
 
-func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) {
+func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) (gen2offset int, generation int64) {
 	// tag
 	buffer.WriteString("MMV")
 
@@ -154,10 +155,10 @@ func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) {
 	buffer.WriteUint32(1)
 
 	// generation
-	gen := time.Now().Unix()
-	buffer.WriteInt64(gen)
+	generation = time.Now().Unix()
+	buffer.WriteInt64(generation)
 
-	// genOffset := buffer.Pos()
+	gen2offset = buffer.Pos()
 
 	buffer.WriteInt64(0)
 
@@ -172,6 +173,8 @@ func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) {
 
 	// cluster identifier
 	buffer.WriteUint32(w.clusterID)
+
+	return
 }
 
 func (w *PCPWriter) writeTocBlock(buffer bytebuffer.Buffer) {
@@ -216,11 +219,87 @@ func (w *PCPWriter) writeTocBlock(buffer bytebuffer.Buffer) {
 	// TODO: strings toc
 }
 
+func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer) {
+	for _, indom := range w.r.instanceDomains {
+		buffer.SetPos(indom.Offset())
+		buffer.WriteUint32(indom.ID())
+		buffer.WriteInt(indom.InstanceCount())
+		buffer.WriteInt64(int64(indom.instanceOffset))
+		// TODO: write indom string descriptions offsets
+
+		for _, i := range indom.instances {
+			buffer.SetPos(i.Offset())
+			buffer.WriteInt64(int64(indom.Offset()))
+			buffer.WriteInt(0)
+			buffer.WriteUint32(i.id)
+			buffer.WriteString(i.name)
+		}
+	}
+}
+
+const (
+	MetricNameLimit = 63
+	DataValueLength = 16
+)
+
+func (w *PCPWriter) writeMetricDesc(desc *MetricDesc, buffer bytebuffer.Buffer) {
+	pos := desc.Offset()
+	buffer.SetPos(pos)
+
+	buffer.WriteString(desc.name)
+	buffer.Write([]byte{0})
+	buffer.SetPos(pos + MetricNameLimit + 1)
+	buffer.WriteUint32(desc.id)
+	buffer.WriteInt32(int32(desc.t))
+	buffer.WriteInt32(int32(desc.sem))
+	buffer.WriteInt32(int32(desc.u)) // TODO: fix this
+	if desc.indom != nil {
+		buffer.WriteUint32(desc.indom.ID())
+	} else {
+		buffer.WriteInt32(-1)
+	}
+	buffer.WriteInt(0)
+	// TODO: write string descriptions
+}
+
+func (w *PCPWriter) writeMetricVal(m *PCPMetric, buffer bytebuffer.Buffer) {
+	pos := m.Offset()
+	buffer.SetPos(pos)
+
+	switch m.desc.t {
+	case Int32Type:
+		buffer.WriteInt32(m.val.(int32))
+	case Int64Type:
+		buffer.WriteInt64(m.val.(int64))
+	case Uint32Type:
+		buffer.WriteUint32(m.val.(uint32))
+	case Uint64Type:
+		buffer.WriteUint64(m.val.(uint64))
+	}
+
+	buffer.SetPos(pos + DataValueLength)
+	buffer.WriteInt64(int64(m.desc.Offset()))
+	buffer.WriteInt64(int64(m.desc.indom.(*PCPInstanceDomain).instanceOffset))
+}
+
+func (w *PCPWriter) writeMetricsAndValuesBlock(buffer bytebuffer.Buffer) {
+	for _, metric := range w.r.metrics {
+		w.writeMetricDesc(metric.desc, buffer)
+		w.writeMetricVal(metric, buffer)
+	}
+}
+
 // fillData will fill a byte slice with the mmv file
 // data as long as something doesn't go wrong
 func (w *PCPWriter) fillData(buffer bytebuffer.Buffer) error {
-	w.writeHeaderBlock(buffer)
+	gen2offset, generation := w.writeHeaderBlock(buffer)
 	w.writeTocBlock(buffer)
+	w.writeInstanceAndInstanceDomainBlock(buffer)
+	w.writeMetricsAndValuesBlock(buffer)
+	// TODO: write strings block
+
+	buffer.SetPos(gen2offset)
+	buffer.WriteUint64(uint64(generation))
 
 	return nil
 }
