@@ -22,6 +22,7 @@ type PCPInstanceDomain struct {
 	name                        string
 	instances                   map[uint32]*Instance // the instances for this InstanceDomain stored as a map
 	offset                      int
+	instanceOffset              int
 	shortHelpText, longHelpText string
 }
 
