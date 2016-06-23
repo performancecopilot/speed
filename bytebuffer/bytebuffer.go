@@ -34,7 +34,7 @@ func (b *ByteBuffer) SetPos(position int) {
 
 func (b *ByteBuffer) Len() int { return len(b.buffer) }
 
-func (b *ByteBuffer) ByteBuffer() []byte { return b.buffer }
+func (b *ByteBuffer) Buffer() []byte { return b.buffer }
 
 func (b *ByteBuffer) Write(data []byte) {
 	l := len(data)
@@ -45,7 +45,7 @@ func (b *ByteBuffer) Write(data []byte) {
 	}
 
 	for i := 0; i < l; i++ {
-		data[b.pos+i] = data[i]
+		b.buffer[b.pos+i] = data[i]
 	}
 
 	b.pos += l
@@ -55,7 +55,7 @@ func (b *ByteBuffer) WriteString(s string) {
 	b.Write([]byte(s))
 }
 
-func (b *ByteBuffer) WriteUInt32(val uint32) {
+func (b *ByteBuffer) WriteUint32(val uint32) {
 	b.Write([]byte{
 		byte(val >> 24),
 		byte((val >> 16) & 0xFF),
@@ -64,19 +64,19 @@ func (b *ByteBuffer) WriteUInt32(val uint32) {
 	})
 }
 
-func (b *ByteBuffer) WriteUInt64(val uint64) {
-	b.WriteUInt32(uint32(val >> 32))
-	b.WriteUInt32(uint32(val & 0xFFFF))
+func (b *ByteBuffer) WriteUint64(val uint64) {
+	b.WriteUint32(uint32(val >> 32))
+	b.WriteUint32(uint32(val & 0xFFFF))
 }
 
 func (b *ByteBuffer) WriteInt32(val int32) {
-	b.WriteUInt32(uint32(val))
+	b.WriteUint32(uint32(val))
 }
 
 func (b *ByteBuffer) WriteInt64(val int64) {
-	b.WriteUInt64(uint64(val))
+	b.WriteUint64(uint64(val))
 }
 
 func (b *ByteBuffer) WriteInt(val int) {
-	b.WriteUInt32(uint32(val))
+	b.WriteUint32(uint32(val))
 }
