@@ -273,7 +273,11 @@ func (w *PCPWriter) writeMetricVal(m *PCPMetric, buffer bytebuffer.Buffer) {
 
 	buffer.SetPos(pos + DataValueLength)
 	buffer.WriteInt64(int64(m.desc.Offset()))
-	buffer.WriteInt64(int64(m.desc.indom.(*PCPInstanceDomain).instanceOffset))
+	if m.desc.indom != nil {
+		buffer.WriteInt64(int64(m.desc.indom.(*PCPInstanceDomain).instanceOffset))
+	} else {
+		buffer.WriteInt64(0)
+	}
 }
 
 func (w *PCPWriter) writeMetricsAndValuesBlock(buffer bytebuffer.Buffer) {
