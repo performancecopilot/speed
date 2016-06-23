@@ -1,36 +1,6 @@
-// Package bytebuffer implements a java like bytebuffer for go
-//
-// initially tried to use bytes.Buffer but the main restriction with that is that
-// it does not allow the freedom to move around in the buffer. Further, it always
-// writes at the end of the buffer
-//
-// another attempt was to maintain a position identifier that was always passed
-// to any function that wrote anything and the function *had* to return the
-// next writable location, which resulted in calls like
-//
-//	pos = writeString(buffer, pos, "mmv")
-//
-// which became unmaintainable after a while, and along with all the side
-// maintainance looked extremely ugly
-//
-// this (tries) to implement a minimal buffer wrapper that gives the freedom
-// to move around and write anywhere you want
 package bytebuffer
 
-import (
-	"errors"
-	"fmt"
-)
-
-type Buffer interface {
-	Pos() int
-	SetPos(int)
-	Len() int
-	Buffer() []byte
-	Write([]byte)
-	WriteString(string)
-	WriteVal(interface{})
-}
+import "errors"
 
 type ByteBuffer struct {
 	pos    int
@@ -85,6 +55,28 @@ func (b *ByteBuffer) WriteString(s string) {
 	b.Write([]byte(s))
 }
 
-func (b *ByteBuffer) WriteVal(val interface{}) {
-	b.WriteString(fmt.Sprintf("%v", val))
+func (b *ByteBuffer) WriteUInt32(val uint32) {
+	b.Write([]byte{
+		byte(val >> 24),
+		byte((val >> 16) & 0xFF),
+		byte((val >> 8) & 0xFF),
+		byte(val & 0xFF),
+	})
+}
+
+func (b *ByteBuffer) WriteUInt64(val uint64) {
+	b.WriteUInt32(uint32(val >> 32))
+	b.WriteUInt32(uint32(val & 0xFFFF))
+}
+
+func (b *ByteBuffer) WriteInt32(val int32) {
+	b.WriteUInt32(uint32(val))
+}
+
+func (b *ByteBuffer) WriteInt64(val int64) {
+	b.WriteUInt64(uint64(val))
+}
+
+func (b *ByteBuffer) WriteInt(val int) {
+	b.WriteUInt32(uint32(val))
 }
