@@ -18,10 +18,10 @@
 package bytebuffer
 
 type Buffer interface {
+	Bytes() []byte
 	Pos() int
 	SetPos(int)
 	Len() int
-	Buffer() []byte
 	Write([]byte)
 	WriteString(string)
 	WriteInt(int)

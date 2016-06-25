@@ -319,5 +319,5 @@ func (w *PCPWriter) Start() {
 	buffer := bytebuffer.NewByteBuffer(l)
 	w.fillData(buffer)
 
-	w.Write(buffer.Buffer())
+	w.Write(buffer.Bytes())
 }

@@ -34,7 +34,7 @@ func (b *ByteBuffer) SetPos(position int) {
 
 func (b *ByteBuffer) Len() int { return len(b.buffer) }
 
-func (b *ByteBuffer) Buffer() []byte { return b.buffer }
+func (b *ByteBuffer) Bytes() []byte { return b.buffer }
 
 func (b *ByteBuffer) Write(data []byte) {
 	l := len(data)
