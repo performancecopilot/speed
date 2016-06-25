@@ -65,7 +65,7 @@ func (b *ByteBuffer) WriteUint32(val uint32) {
 }
 
 func (b *ByteBuffer) WriteUint64(val uint64) {
-	b.WriteUint32(uint32(val & 0xFFFF))
+	b.WriteUint32(uint32(val & 0xFFFFFFFF))
 	b.WriteUint32(uint32(val >> 32))
 }
 
