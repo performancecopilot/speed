@@ -114,13 +114,15 @@ type MetricDesc struct {
 	sem                               MetricSemantics // the semantics
 	u                                 MetricUnit      // the unit
 	offset                            int             // memory storage offset for the metric description
-	shortDescription, longDescription string
+	shortDescription, longDescription *PCPString
 }
 
 // NewMetricDesc creates a new Metric Description wrapper type
 func NewMetricDesc(n string, i InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *MetricDesc {
 	return &MetricDesc{
-		getHash(n, PCPMetricItemBitLength), n, i, t, s, u, 0, short, long,
+		getHash(n, PCPMetricItemBitLength),
+		n, i, t, s, u, 0,
+		NewPCPString(short), NewPCPString(long),
 	}
 }
 
@@ -185,10 +187,10 @@ func (m *PCPMetric) Type() MetricType { return m.desc.t }
 func (m *PCPMetric) Description() string {
 	sd := m.desc.shortDescription
 	ld := m.desc.longDescription
-	if len(ld) > 0 {
-		return sd + "\n\n" + ld
+	if len(ld.val) > 0 {
+		return sd.val + "\n\n" + ld.val
 	}
-	return sd
+	return sd.val
 }
 
 func (m *PCPMetric) Offset() int { return m.offset }

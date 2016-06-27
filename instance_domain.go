@@ -23,7 +23,7 @@ type PCPInstanceDomain struct {
 	instances                   map[uint32]*Instance // the instances for this InstanceDomain stored as a map
 	offset                      int
 	instanceOffset              int
-	shortHelpText, longHelpText string
+	shortHelpText, longHelpText *PCPString
 }
 
 // NewPCPInstanceDomain creates a new instance domain or returns an already created one for the passed name
@@ -35,8 +35,8 @@ func NewPCPInstanceDomain(name, shortDescription, longDescription string) *PCPIn
 		id:            getHash(name, PCPInstanceDomainBitLength),
 		name:          name,
 		instances:     make(map[uint32]*Instance),
-		shortHelpText: shortDescription,
-		longHelpText:  longDescription,
+		shortHelpText: NewPCPString(shortDescription),
+		longHelpText:  NewPCPString(longDescription),
 	}
 }
 
@@ -66,7 +66,7 @@ func (indom *PCPInstanceDomain) InstanceCount() int { return len(indom.instances
 
 // Description returns the description for PCPInstanceDomain
 func (indom *PCPInstanceDomain) Description() string {
-	s, l := indom.shortHelpText, indom.longHelpText
+	s, l := indom.shortHelpText.val, indom.longHelpText.val
 	if l != "" {
 		return s + "\n\n" + l
 	}

@@ -7,3 +7,18 @@ type PCPValue interface {
 	Offset() int   // returns the memory offset a value is supposed to be stored at
 	SetOffset(int) // sets the memory offset
 }
+
+// PCPString defines a string that also has a memory offset containing
+// the location where it will be written
+type PCPString struct {
+	val    string
+	offset int
+}
+
+func NewPCPString(s string) *PCPString {
+	return &PCPString{s, 0}
+}
+
+func (s *PCPString) Offset() int { return s.offset }
+
+func (s *PCPString) SetOffset(offset int) { s.offset = offset }
