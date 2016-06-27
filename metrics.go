@@ -86,14 +86,29 @@ const (
 // Metric defines the general interface a type needs to implement to qualify
 // as a valid PCP metric
 type Metric interface {
-	Val() interface{}           // gets the value of the metric
-	Set(interface{}) error      // sets the value of the metric to a value, optionally returns an error on failure
-	ID() uint32                 // gets the unique id generated for this metric
-	Name() string               // gets the name for the metric
-	Type() MetricType           // gets the type of a metric
-	Unit() MetricUnit           // gets the unit of a metric
-	Semantics() MetricSemantics // gets the semantics for a metric
-	Description() string        // gets the description of a metric
+	// gets the value of the metric
+	Val() interface{}
+
+	// Sets the value of the metric to a value, optionally returns an error on failure
+	Set(interface{}) error
+
+	// gets the unique id generated for this metric
+	ID() uint32
+
+	// gets the name for the metric
+	Name() string
+
+	// gets the type of a metric
+	Type() MetricType
+
+	// gets the unit of a metric
+	Unit() MetricUnit
+
+	// gets the semantics for a metric
+	Semantics() MetricSemantics
+
+	// gets the description of a metric
+	Description() string
 }
 
 // PCPMetricItemBitLength is the maximum bit size of a PCP Metric id
@@ -101,12 +116,12 @@ type Metric interface {
 // see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
 const PCPMetricItemBitLength = 10
 
-// MetricDesc is a metric metadata wrapper
-// each metric type can wrap its metadata by containing a MetricDesc type and only define its own
-// specific properties assuming MetricDesc will handle the rest
+// pcpMetricDesc is a metric metadata wrapper
+// each metric type can wrap its metadata by containing a pcpMetricDesc type and only define its own
+// specific properties assuming pcpMetricDesc will handle the rest
 //
 // when writing, this type is supposed to map directly to the pmDesc struct as defined in PCP core
-type MetricDesc struct {
+type pcpMetricDesc struct {
 	id                                uint32          // unique metric id
 	name                              string          // the name
 	indom                             InstanceDomain  // the instance domain
@@ -117,48 +132,46 @@ type MetricDesc struct {
 	shortDescription, longDescription *PCPString
 }
 
-// NewMetricDesc creates a new Metric Description wrapper type
-func NewMetricDesc(n string, i InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *MetricDesc {
-	return &MetricDesc{
+// newpcpMetricDesc creates a new Metric Description wrapper type
+func newpcpMetricDesc(n string, i InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *pcpMetricDesc {
+	return &pcpMetricDesc{
 		getHash(n, PCPMetricItemBitLength),
 		n, i, t, s, u, 0,
 		NewPCPString(short), NewPCPString(long),
 	}
 }
 
-func (md *MetricDesc) Offset() int { return md.offset }
+// Offset returns the memory offset the metric description will be written at
+func (md *pcpMetricDesc) Offset() int { return md.offset }
 
-func (md *MetricDesc) SetOffset(offset int) { md.offset = offset }
-
-func (md *MetricDesc) String() string {
-	return fmt.Sprintf("%s{%v, %v, %v, %v}", md.name, md.indom, md.t, md.sem, md.u)
-}
+// SetOffset Sets the memory offset the metric description will be written at
+func (md *pcpMetricDesc) SetOffset(offset int) { md.offset = offset }
 
 // PCPMetric defines a PCP compatible metric type that can be constructed by specifying values
 // for type, semantics and unit
 type PCPMetric struct {
 	sync.RWMutex
-	val    interface{} // all bets are off, store whatever you want
-	desc   *MetricDesc // the metadata associated with this metric
-	offset int         // memory storage offset for the metric value
+	val    interface{}    // all bets are off, store whatever you want
+	desc   *pcpMetricDesc // the metadata associated with this metric
+	offset int            // memory storage offset for the metric value
 }
 
 // NewPCPMetric creates a new instance of PCPMetric
 func NewPCPMetric(val interface{}, name string, indom InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *PCPMetric {
 	return &PCPMetric{
 		val:  val,
-		desc: NewMetricDesc(name, indom, t, s, u, short, long),
+		desc: newpcpMetricDesc(name, indom, t, s, u, short, long),
 	}
 }
 
-// Val returns the current set value of PCPMetric
+// Val returns the current Set value of PCPMetric
 func (m *PCPMetric) Val() interface{} {
 	m.RLock()
 	defer m.RUnlock()
 	return m.val
 }
 
-// Set sets the current value of PCPMetric
+// Set Sets the current value of PCPMetric
 func (m *PCPMetric) Set(val interface{}) error {
 	if val != m.val {
 		m.Lock()
@@ -193,8 +206,10 @@ func (m *PCPMetric) Description() string {
 	return sd.val
 }
 
+// Offset returns the memory offset the metric value will be written at
 func (m *PCPMetric) Offset() int { return m.offset }
 
+// SetOffset Sets the memory offset the metric value will be written at
 func (m *PCPMetric) SetOffset(offset int) { m.offset = offset }
 
 func (m *PCPMetric) String() string {
