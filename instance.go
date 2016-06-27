@@ -25,4 +25,4 @@ func (i *pcpInstance) String() string {
 
 func (i *pcpInstance) Offset() int { return i.offset }
 
-func (i *pcpInstance) SetOffset(offset int) { i.offset = offset }
+func (i *pcpInstance) setOffset(offset int) { i.offset = offset }

@@ -120,20 +120,20 @@ func (w *PCPWriter) initializeOffsets() {
 	w.r.valuesoffset = valuesoffset
 
 	for _, indom := range w.r.instanceDomains {
-		indom.SetOffset(indomoffset)
+		indom.setOffset(indomoffset)
 		indom.instanceOffset = instanceoffset
 		indomoffset += InstanceDomainLength
 
 		for _, i := range indom.instances {
-			i.SetOffset(instanceoffset)
+			i.setOffset(instanceoffset)
 			instanceoffset += InstanceLength
 		}
 	}
 
 	for _, metric := range w.r.metrics {
-		metric.desc.SetOffset(metricsoffset)
+		metric.desc.setOffset(metricsoffset)
 		metricsoffset += MetricLength
-		metric.SetOffset(valuesoffset)
+		metric.setOffset(valuesoffset)
 		valuesoffset += ValueLength
 	}
 
@@ -236,7 +236,7 @@ const (
 	DataValueLength = 16
 )
 
-func (w *PCPWriter) writeMetricDesc(desc *MetricDesc, buffer bytebuffer.Buffer) {
+func (w *PCPWriter) writeMetricDesc(desc *pcpMetricDesc, buffer bytebuffer.Buffer) {
 	pos := desc.Offset()
 	buffer.SetPos(pos)
 

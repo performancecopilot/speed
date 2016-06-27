@@ -4,8 +4,7 @@ package speed
 // a PCP compatible value, but don't necessarily need to be implemented
 // generally, by *all* values defined in speed
 type PCPValue interface {
-	Offset() int   // returns the memory offset a value is supposed to be stored at
-	SetOffset(int) // sets the memory offset
+	Offset() int // returns the memory offset a value is supposed to be stored at
 }
 
 // PCPString defines a string that also has a memory offset containing
@@ -21,6 +20,6 @@ func NewPCPString(s string) *PCPString {
 
 func (s *PCPString) Offset() int { return s.offset }
 
-func (s *PCPString) SetOffset(offset int) { s.offset = offset }
+func (s *PCPString) setOffset(offset int) { s.offset = offset }
 
 func (s *PCPString) String() string { return s.val }

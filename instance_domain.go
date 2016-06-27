@@ -99,7 +99,7 @@ func (indom *PCPInstanceDomain) Description() string {
 
 func (indom *PCPInstanceDomain) Offset() int { return indom.offset }
 
-func (indom *PCPInstanceDomain) SetOffset(offset int) { indom.offset = offset }
+func (indom *PCPInstanceDomain) setOffset(offset int) { indom.offset = offset }
 
 func (indom *PCPInstanceDomain) String() string {
 	indom.RLock()
