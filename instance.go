@@ -1,28 +1,28 @@
 package speed
 
-// Instance wraps a PCP compatible Instance
-type Instance struct {
+// pcpInstance wraps a PCP compatible Instance
+type pcpInstance struct {
 	name   string
 	id     uint32
-	indom  InstanceDomain
+	indom  *PCPInstanceDomain
 	offset int
 }
 
-// newInstance generates a new Instance type based on the passed parameters
+// newpcpInstance generates a new Instance type based on the passed parameters
 // the id is passed explicitly as it is assumed that this will be constructed
 // after initializing the InstanceDomain
 // this is not a part of the public API as this is not supposed to be used directly,
 // but instead added using the AddInstance method of InstanceDomain
-func newInstance(id uint32, name string, indom InstanceDomain) *Instance {
-	return &Instance{
+func newpcpInstance(id uint32, name string, indom *PCPInstanceDomain) *pcpInstance {
+	return &pcpInstance{
 		name, id, indom, 0,
 	}
 }
 
-func (i *Instance) String() string {
+func (i *pcpInstance) String() string {
 	return "Instance: " + i.name
 }
 
-func (i *Instance) Offset() int { return i.offset }
+func (i *pcpInstance) Offset() int { return i.offset }
 
-func (i *Instance) SetOffset(offset int) { i.offset = offset }
+func (i *pcpInstance) SetOffset(offset int) { i.offset = offset }
