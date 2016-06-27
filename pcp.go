@@ -22,3 +22,5 @@ func NewPCPString(s string) *PCPString {
 func (s *PCPString) Offset() int { return s.offset }
 
 func (s *PCPString) SetOffset(offset int) { s.offset = offset }
+
+func (s *PCPString) String() string { return s.val }
