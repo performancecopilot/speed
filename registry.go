@@ -195,7 +195,11 @@ func (r *PCPRegistry) AddMetricByString(name string, initialval interface{}, s M
 		return nil, errors.New("The Metric already exists for this registry")
 	}
 
-	m := NewPCPMetric(initialval, name, indom, t, s, u, "", "")
+	m, err := NewPCPMetric(initialval, name, indom, t, s, u, "", "")
+	if err != nil {
+		return nil, err
+	}
+
 	r.AddMetric(m)
 
 	return m, nil
