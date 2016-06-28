@@ -1,8 +1,11 @@
 package speed
 
 import (
+	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/performancecopilot/speed/bytebuffer"
 )
 
 // MetricType is an enumerated type representing all valid types for a metric
@@ -26,6 +29,36 @@ const (
 )
 
 //go:generate stringer -type=MetricType
+
+// IsCompatible checks if the passed value is compatible with the current MetricType
+func (m MetricType) IsCompatible(val interface{}) bool {
+	switch val.(type) {
+	case int32:
+		return m == Int32Type
+	case uint32:
+		return m == Uint32Type
+	case int64:
+		return m == Int64Type
+	case uint64:
+		return m == Uint64Type
+	default:
+		return false
+	}
+}
+
+// WriteVal implements value writer for the current MetricType to a buffer
+func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) {
+	switch m {
+	case Int32Type:
+		b.WriteInt32(val.(int32))
+	case Int64Type:
+		b.WriteInt64(val.(int64))
+	case Uint32Type:
+		b.WriteUint32(val.(uint32))
+	case Uint64Type:
+		b.WriteUint64(val.(uint64))
+	}
+}
 
 // MetricUnit is an enumerated type representing all possible values for a valid PCP unit
 type MetricUnit int32
@@ -157,11 +190,15 @@ type PCPMetric struct {
 }
 
 // NewPCPMetric creates a new instance of PCPMetric
-func NewPCPMetric(val interface{}, name string, indom InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *PCPMetric {
+func NewPCPMetric(val interface{}, name string, indom InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) (*PCPMetric, error) {
+	if !t.IsCompatible(val) {
+		return nil, errors.New("the passed MetricType and values are incompatible")
+	}
+
 	return &PCPMetric{
 		val:  val,
 		desc: newpcpMetricDesc(name, indom, t, s, u, short, long),
-	}
+	}, nil
 }
 
 // Val returns the current Set value of PCPMetric
@@ -173,6 +210,10 @@ func (m *PCPMetric) Val() interface{} {
 
 // Set Sets the current value of PCPMetric
 func (m *PCPMetric) Set(val interface{}) error {
+	if !m.desc.t.IsCompatible(val) {
+		return errors.New("the value is incompatible with this metrics MetricType")
+	}
+
 	if val != m.val {
 		m.Lock()
 		defer m.Unlock()

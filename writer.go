@@ -281,16 +281,7 @@ func (w *PCPWriter) writeMetricVal(m *PCPMetric, buffer bytebuffer.Buffer) {
 	pos := m.Offset()
 	buffer.SetPos(pos)
 
-	switch m.desc.t {
-	case Int32Type:
-		buffer.WriteInt32(m.val.(int32))
-	case Int64Type:
-		buffer.WriteInt64(m.val.(int64))
-	case Uint32Type:
-		buffer.WriteUint32(m.val.(uint32))
-	case Uint64Type:
-		buffer.WriteUint64(m.val.(uint64))
-	}
+	m.desc.t.WriteVal(m.val, buffer)
 
 	buffer.SetPos(pos + DataValueLength)
 	buffer.WriteInt64(int64(m.desc.Offset()))
