@@ -35,6 +35,9 @@ type Registry interface {
 	// adds a Metric object after parsing the passed string for Instances and InstanceDomains
 	AddMetricByString(name string, initialval interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error)
 
+	// updates the passed metric with the passed value
+	UpdateMetric(m Metric, val interface{}) error
+
 	// updates a Metric object by looking it up by name and updating its value
 	UpdateMetricByName(name string, val interface{}) error
 }
@@ -50,6 +53,7 @@ type PCPRegistry struct {
 	indomoffset     int
 	metricsoffset   int
 	valuesoffset    int
+	mapped          bool
 }
 
 // NewPCPRegistry creates a new PCPRegistry object
@@ -69,20 +73,6 @@ func (r *PCPRegistry) HasInstanceDomain(name string) bool {
 	id := getHash(name, PCPInstanceDomainBitLength)
 	_, present := r.instanceDomains[id]
 	return present
-}
-
-// AddInstanceDomain will add a new instance domain to the current registry
-func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
-	r.indomlock.Lock()
-	defer r.indomlock.Unlock()
-
-	if r.HasInstanceDomain(indom.Name()) {
-		return errors.New("InstanceDomain is already defined for the current registry")
-	}
-
-	r.instanceDomains[indom.ID()] = indom.(*PCPInstanceDomain)
-	r.instanceCount += indom.InstanceCount()
-	return nil
 }
 
 // InstanceCount returns the number of instances across all indoms in the registry
@@ -120,6 +110,24 @@ func (r *PCPRegistry) HasMetric(name string) bool {
 	return present
 }
 
+// AddInstanceDomain will add a new instance domain to the current registry
+func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
+	if r.HasInstanceDomain(indom.Name()) {
+		return errors.New("InstanceDomain is already defined for the current registry")
+	}
+
+	r.indomlock.Lock()
+	defer r.indomlock.Unlock()
+
+	if r.mapped {
+		return errors.New("Cannot add an indom when a mapping is active")
+	}
+
+	r.instanceDomains[indom.ID()] = indom.(*PCPInstanceDomain)
+	r.instanceCount += indom.InstanceCount()
+	return nil
+}
+
 // AddMetric will add a new metric to the current registry
 func (r *PCPRegistry) AddMetric(m Metric) error {
 	if r.HasMetric(m.Name()) {
@@ -128,6 +136,10 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 
 	r.metricslock.Lock()
 	defer r.metricslock.Unlock()
+
+	if r.mapped {
+		return errors.New("Cannot add a metric when a mapping is active")
+	}
 
 	r.metrics[m.ID()] = m.(*PCPMetric)
 	return nil
@@ -154,15 +166,15 @@ const IdentifierPat = "[\\p{L}\\p{N}]+"
 
 const p = "\\A((" + IdentifierPat + ")(\\." + IdentifierPat + ")*?)(\\[(" + IdentifierPat + ")\\])?((\\." + IdentifierPat + ")*)\\z"
 
-// IdentifierRegex gets the *regexp.Regexp object representing a valid metric identifier
-var IdentifierRegex, _ = regexp.Compile(p)
+// identifierRegex gets the *regexp.Regexp object representing a valid metric identifier
+var identifierRegex, _ = regexp.Compile(p)
 
 func parseString(name string) (iname string, indomname string, mname string, err error) {
-	if !IdentifierRegex.MatchString(name) {
+	if !identifierRegex.MatchString(name) {
 		return "", "", "", errors.New("I don't know this")
 	}
 
-	matches := IdentifierRegex.FindStringSubmatch(name)
+	matches := identifierRegex.FindStringSubmatch(name)
 	iname, indomname, mname, err = matches[5], matches[1], matches[1]+matches[6], nil
 	return
 }
@@ -189,11 +201,20 @@ func (r *PCPRegistry) AddMetricByString(name string, initialval interface{}, s M
 	return m, nil
 }
 
-// UpdateMetricByName safely updates the value of a metric
-func (r *PCPRegistry) UpdateMetricByName(name string, val interface{}) error {
+// UpdateMetric updates the passed metric's value
+func (r *PCPRegistry) UpdateMetric(m Metric, val interface{}) error {
 	r.metricslock.Lock()
 	defer r.metricslock.Unlock()
 
+	if r.mapped {
+		return errors.New("Cannot update metric when a mapping is active")
+	}
+
+	return m.Set(val)
+}
+
+// UpdateMetricByName safely updates the value of a metric
+func (r *PCPRegistry) UpdateMetricByName(name string, val interface{}) error {
 	if !r.HasMetric(name) {
 		return errors.New("The Metric doesn't exist for this registry")
 	}
@@ -201,5 +222,5 @@ func (r *PCPRegistry) UpdateMetricByName(name string, val interface{}) error {
 	h := getHash(name, PCPMetricItemBitLength)
 	m := r.metrics[h]
 
-	return m.Set(val)
+	return r.UpdateMetric(m, val)
 }
