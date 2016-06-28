@@ -6,6 +6,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/performancecopilot/speed/bytebuffer"
@@ -25,8 +26,27 @@ const (
 // Writer defines the interface of a MMV file writer's properties
 type Writer interface {
 	io.Writer
-	Registry() Registry // a writer must contain a registry of metrics and instance domains
-	Start() error       // writes an mmv file
+
+	// a writer must contain a registry of metrics and instance domains
+	Registry() Registry
+
+	// writes an mmv file
+	Start() error
+
+	// stops writing and cleans up
+	Stop() error
+
+	// adds a metric to be written
+	Register(Metric)
+
+	// adds an instance domain to be written
+	RegisterIndom(InstanceDomain)
+
+	// adds metric and instance domain from a string
+	RegisterString(s string)
+
+	// update a metric
+	Update(Metric, interface{})
 }
 
 func mmvFileLocation(name string) (string, error) {
@@ -63,6 +83,7 @@ const (
 
 // PCPWriter implements a writer that can write PCP compatible MMV files
 type PCPWriter struct {
+	sync.Mutex
 	loc       string       // absolute location of the mmv file
 	clusterID uint32       // cluster identifier for the writer
 	flag      MMVFlag      // write flag
@@ -313,6 +334,9 @@ func (w *PCPWriter) Write(data []byte) (int, error) {
 
 // Start dumps existing registry data
 func (w *PCPWriter) Start() {
+	w.Lock()
+	defer w.Unlock()
+
 	l := w.Length()
 
 	w.initializeOffsets()
@@ -320,4 +344,27 @@ func (w *PCPWriter) Start() {
 	w.fillData(buffer)
 
 	w.Write(buffer.Bytes())
+	w.r.mapped = true
 }
+
+// Stop removes existing mapping and cleans up
+func (w *PCPWriter) Stop() {
+	w.Lock()
+	defer w.Unlock()
+
+	w.r.mapped = false
+}
+
+// Register is simply a shorthand for Registry().AddMetric
+func (w *PCPWriter) Register(m Metric) { w.Registry().AddMetric(m) }
+
+// RegisterIndom is simply a shorthand for Registry().AddInstanceDomain
+func (w *PCPWriter) RegisterIndom(indom InstanceDomain) { w.Registry().AddInstanceDomain(indom) }
+
+// RegisterString is simply a shorthand for Registry().AddMetricByString
+func (w *PCPWriter) RegisterString(str string, initialval interface{}, s MetricSemantics, t MetricType, u MetricUnit) {
+	w.Registry().AddMetricByString(str, initialval, s, t, u)
+}
+
+// Update is simply a shorthand for Registry().UpdateMetric
+func (w *PCPWriter) Update(m Metric, val interface{}) { w.Registry().UpdateMetric(m, val) }
