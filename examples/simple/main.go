@@ -3,8 +3,8 @@ package main
 import "github.com/performancecopilot/speed"
 
 func main() {
-	metric := speed.NewPCPMetric(
-		int32(42),
+	metric, err := speed.NewPCPMetric(
+		42,
 		"simple.counter",
 		nil,
 		speed.Int32Type,
@@ -13,6 +13,9 @@ func main() {
 		"",
 		"",
 	)
+	if err != nil {
+		panic(err)
+	}
 
 	writer, err := speed.NewPCPWriter("simple", speed.ProcessFlag)
 	if err != nil {
