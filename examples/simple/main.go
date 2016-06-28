@@ -19,7 +19,9 @@ func main() {
 		panic(err)
 	}
 
-	writer.Registry().AddMetric(metric)
+	writer.Register(metric)
 
 	writer.Start()
+
+	writer.Stop()
 }
