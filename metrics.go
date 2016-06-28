@@ -3,6 +3,7 @@ package speed
 import (
 	"errors"
 	"fmt"
+	"math"
 	"sync"
 
 	"github.com/performancecopilot/speed/bytebuffer"
@@ -33,6 +34,12 @@ const (
 // IsCompatible checks if the passed value is compatible with the current MetricType
 func (m MetricType) IsCompatible(val interface{}) bool {
 	switch val.(type) {
+	case int:
+		v := val.(int)
+		if v > math.MaxInt32 {
+			return m == Int64Type
+		}
+		return m == Int32Type || m == Int64Type
 	case int32:
 		return m == Int32Type
 	case uint32:
@@ -50,9 +57,19 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) {
 	switch m {
 	case Int32Type:
-		b.WriteInt32(val.(int32))
+		v, ok := val.(int32)
+		if ok {
+			b.WriteInt32(v)
+		} else {
+			b.WriteInt(val.(int))
+		}
 	case Int64Type:
-		b.WriteInt64(val.(int64))
+		v, ok := val.(int64)
+		if ok {
+			b.WriteInt64(v)
+		} else {
+			b.WriteInt64(int64(val.(int)))
+		}
 	case Uint32Type:
 		b.WriteUint32(val.(uint32))
 	case Uint64Type:
