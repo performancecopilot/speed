@@ -7,14 +7,14 @@ import (
 	"regexp"
 )
 
-// RootPath stores path to the pcp root installation
-var RootPath string
+// rootPath stores path to the pcp root installation
+var rootPath string
 
-// ConfPath stores path to pcp.conf
-var ConfPath string
+// confPath stores path to pcp.conf
+var confPath string
 
-// Config stores the configuration as defined in current PCP environment
-var Config map[string]string
+// config stores the configuration as defined in current PCP environment
+var config map[string]string
 
 // pat stores a valid key-value pattern line
 var pat = "([A-Z0-9_]+)=(.*)"
@@ -23,32 +23,32 @@ var pat = "([A-Z0-9_]+)=(.*)"
 func initConfig() error {
 	re, _ := regexp.Compile(pat)
 
-	rootPath, ok := os.LookupEnv("PCP_DIR")
+	r, ok := os.LookupEnv("PCP_DIR")
 	if !ok {
-		rootPath = "/"
+		r = "/"
 	}
-	RootPath = rootPath
+	rootPath = r
 
-	confPath, ok := os.LookupEnv("PCP_CONF")
+	c, ok := os.LookupEnv("PCP_CONF")
 	if !ok {
-		confPath = path.Join(RootPath, "etc", "pcp.conf")
+		c = path.Join(rootPath, "etc", "pcp.conf")
 	}
-	ConfPath = confPath
+	confPath = c
 
-	f, err := os.Open(ConfPath)
+	f, err := os.Open(confPath)
 	if err != nil {
 		return err
 	}
 
 	// if we reach at this point, it means we have a valid config
 	// that can be read, so we can make the map non-nil
-	Config = make(map[string]string)
+	config = make(map[string]string)
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		t := scanner.Text()
 		if re.MatchString(t) {
 			matches := re.FindStringSubmatch(t)
-			Config[matches[1]] = matches[2]
+			config[matches[1]] = matches[2]
 		}
 	}
 

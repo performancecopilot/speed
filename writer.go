@@ -34,10 +34,10 @@ func mmvFileLocation(name string) (string, error) {
 		return "", errors.New("name cannot have path separator")
 	}
 
-	tdir, present := Config["PCP_TMP_DIR"]
+	tdir, present := config["PCP_TMP_DIR"]
 	var loc string
 	if present {
-		loc = path.Join(RootPath, tdir)
+		loc = path.Join(rootPath, tdir)
 	} else {
 		loc = os.TempDir()
 	}
