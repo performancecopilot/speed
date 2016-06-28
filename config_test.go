@@ -6,31 +6,31 @@ import (
 )
 
 func TestRootPath(t *testing.T) {
-	if RootPath == "" {
+	if rootPath == "" {
 		t.Errorf("RootPath is invalid")
 		return
 	}
 
-	_, err := os.Stat(RootPath)
+	_, err := os.Stat(rootPath)
 	if err != nil {
 		t.Errorf("RootPath err: %s", err)
 	}
 }
 
 func TestConfPath(t *testing.T) {
-	if ConfPath == "" {
+	if confPath == "" {
 		t.Errorf("ConfPath is invalid")
 		return
 	}
 
-	fi, err := os.Stat(ConfPath)
+	fi, err := os.Stat(confPath)
 	if err != nil {
 		t.Errorf("ConfPath err: %s", err)
 		return
 	}
 
 	if !fi.Mode().IsRegular() {
-		t.Errorf("%s should be a regular file", ConfPath)
+		t.Errorf("%s should be a regular file", confPath)
 		return
 	}
 }
@@ -72,13 +72,13 @@ var keysToTest = []string{
 }
 
 func TestConfig(t *testing.T) {
-	if Config == nil {
+	if config == nil {
 		t.Errorf("Config was not initialized")
 		return
 	}
 
 	for _, key := range keysToTest {
-		_, ok := Config[key]
+		_, ok := config[key]
 		if !ok {
 			t.Errorf("key %s not present in Config", key)
 		}
