@@ -111,7 +111,7 @@ type SpaceUnit uint32
 
 // Possible values for SpaceUnit
 const (
-	ByteUnit SpaceUnit = iota
+	ByteUnit SpaceUnit = 1<<28 | iota<<16
 	KilobyteUnit
 	MegabyteUnit
 	GigabyteUnit
@@ -123,19 +123,18 @@ const (
 //go:generate stringer -type=SpaceUnit
 
 // PMAPI returns the PMAPI representation for a SpaceUnit
+// for space units bits 0-3 are 1 and bits 13-16 are scale
 func (s SpaceUnit) PMAPI() uint32 {
-	// for space units bits 0-3 are 1 and bits 13-16 are scale
-	ans := uint32(1 << 28)
-	ans |= uint32(s) << 16
-	return ans
+	return uint32(s)
 }
 
 // TimeUnit is an enumerated type representing all possible units for representing time
 type TimeUnit uint32
 
 // Possible Values for TimeUnit
+// for time units bits 4-7 are 1 and bits 17-20 are scale
 const (
-	NanosecondUnit TimeUnit = iota
+	NanosecondUnit TimeUnit = 1<<24 | iota<<12
 	MicrosecondUnit
 	MillisecondUnit
 	SecondUnit
@@ -147,26 +146,21 @@ const (
 
 // PMAPI returns the PMAPI representation for a TimeUnit
 func (t TimeUnit) PMAPI() uint32 {
-	// for time units bits 4-7 are 1 and bits 17-20 are scale
-	ans := uint32(1 << 24)
-	ans |= uint32(t) << 12
-	return ans
+	return uint32(t)
 }
 
 // CountUnit is a type representing a counted quantity
 type CountUnit uint32
 
 // OneUnit represents the only CountUnit
-const OneUnit CountUnit = iota
+// for count units bits 8-11 are 1 and bits 21-24 are scale
+const OneUnit CountUnit = 1<<20 | iota<<8
 
 //go:generate stringer -type=CountUnit
 
 // PMAPI returns the PMAPI representation for a CountUnit
 func (c CountUnit) PMAPI() uint32 {
-	// for time units bits 4-7 are 1 and bits 17-20 are scale
-	ans := uint32(1 << 20)
-	ans |= uint32(c) << 8
-	return ans
+	return uint32(c)
 }
 
 // MetricSemantics represents an enumerated type representing the possible
