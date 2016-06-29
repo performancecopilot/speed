@@ -23,6 +23,12 @@ const (
 	StringBlockLength    = 256
 )
 
+// MaxMetricNameLength is the maximum length for a metric name
+const MaxMetricNameLength = 63
+
+// MaxDataValueSize is the maximum byte length for a stored metric value, unless it is a string
+const MaxDataValueSize = 16
+
 // Writer defines the interface of a MMV file writer's properties
 type Writer interface {
 	io.Writer
@@ -252,18 +258,13 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer
 	}
 }
 
-const (
-	MetricNameLimit = 63
-	DataValueLength = 16
-)
-
 func (w *PCPWriter) writeMetricDesc(desc *pcpMetricDesc, buffer bytebuffer.Buffer) {
 	pos := desc.Offset()
 	buffer.SetPos(pos)
 
 	buffer.WriteString(desc.name)
 	buffer.Write([]byte{0})
-	buffer.SetPos(pos + MetricNameLimit + 1)
+	buffer.SetPos(pos + MaxMetricNameLength + 1)
 	buffer.WriteUint32(desc.id)
 	buffer.WriteInt32(int32(desc.t))
 	buffer.WriteInt32(int32(desc.sem))
@@ -283,7 +284,7 @@ func (w *PCPWriter) writeMetricVal(m *PCPMetric, buffer bytebuffer.Buffer) {
 
 	m.desc.t.WriteVal(m.val, buffer)
 
-	buffer.SetPos(pos + DataValueLength)
+	buffer.SetPos(pos + MaxDataValueSize)
 	buffer.WriteInt64(int64(m.desc.Offset()))
 	if m.desc.indom != nil {
 		buffer.WriteInt64(int64(m.desc.indom.(*PCPInstanceDomain).instanceOffset))
