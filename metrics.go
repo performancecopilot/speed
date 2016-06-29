@@ -99,11 +99,15 @@ func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) {
 	}
 }
 
-// MetricUnit is an enumerated type representing all possible values for a valid PCP unit
-type MetricUnit int32
+// MetricUnit defines the interface for a unit type for speed
+type MetricUnit interface {
+	// return 32 bit PMAPI representation for the unit
+	// see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/pmapi.h#L61-L101
+	PMAPI() uint32
+}
 
 // SpaceUnit is an enumerated type representing all units for space
-type SpaceUnit MetricUnit
+type SpaceUnit uint32
 
 // Possible values for SpaceUnit
 const (
@@ -118,8 +122,16 @@ const (
 
 //go:generate stringer -type=SpaceUnit
 
+// PMAPI returns the PMAPI representation for a SpaceUnit
+func (s SpaceUnit) PMAPI() uint32 {
+	// for space units bits 0-3 are 1 and bits 13-16 are scale
+	ans := uint32(1 << 28)
+	ans |= uint32(s) << 16
+	return ans
+}
+
 // TimeUnit is an enumerated type representing all possible units for representing time
-type TimeUnit MetricUnit
+type TimeUnit uint32
 
 // Possible Values for TimeUnit
 const (
@@ -133,13 +145,29 @@ const (
 
 //go:generate stringer -type=TimeUnit
 
+// PMAPI returns the PMAPI representation for a TimeUnit
+func (t TimeUnit) PMAPI() uint32 {
+	// for time units bits 4-7 are 1 and bits 17-20 are scale
+	ans := uint32(1 << 24)
+	ans |= uint32(t) << 12
+	return ans
+}
+
 // CountUnit is a type representing a counted quantity
-type CountUnit MetricUnit
+type CountUnit uint32
 
 // OneUnit represents the only CountUnit
 const OneUnit CountUnit = iota
 
 //go:generate stringer -type=CountUnit
+
+// PMAPI returns the PMAPI representation for a CountUnit
+func (c CountUnit) PMAPI() uint32 {
+	// for time units bits 4-7 are 1 and bits 17-20 are scale
+	ans := uint32(1 << 20)
+	ans |= uint32(c) << 8
+	return ans
+}
 
 // MetricSemantics represents an enumerated type representing the possible
 // values for the semantics of a metric

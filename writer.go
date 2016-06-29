@@ -268,7 +268,7 @@ func (w *PCPWriter) writeMetricDesc(desc *pcpMetricDesc, buffer bytebuffer.Buffe
 	buffer.WriteUint32(desc.id)
 	buffer.WriteInt32(int32(desc.t))
 	buffer.WriteInt32(int32(desc.sem))
-	buffer.WriteInt32(int32(desc.u)) // TODO: fix this
+	buffer.WriteUint32(desc.u.PMAPI())
 	if desc.indom != nil {
 		buffer.WriteUint32(desc.indom.ID())
 	} else {

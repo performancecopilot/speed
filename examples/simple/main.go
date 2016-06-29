@@ -9,7 +9,7 @@ func main() {
 		nil,
 		speed.Int32Type,
 		speed.CounterSemantics,
-		speed.MetricUnit(speed.OneUnit),
+		speed.OneUnit,
 		"",
 		"",
 	)
