@@ -132,7 +132,8 @@ func (w *PCPWriter) Length() int {
 		(w.tocCount() * TocLength) +
 		(w.Registry().InstanceCount() * InstanceLength) +
 		(w.Registry().InstanceDomainCount() * InstanceDomainLength) +
-		(w.Registry().MetricCount() * (MetricLength + ValueLength))
+		(w.Registry().MetricCount() * (MetricLength + ValueLength)) +
+		(w.Registry().StringCount() * StringBlockLength)
 }
 
 func (w *PCPWriter) initializeOffsets() {
@@ -140,11 +141,13 @@ func (w *PCPWriter) initializeOffsets() {
 	instanceoffset := indomoffset + InstanceDomainLength*w.r.InstanceDomainCount()
 	metricsoffset := instanceoffset + InstanceLength*w.r.InstanceCount()
 	valuesoffset := metricsoffset + MetricLength*w.r.MetricCount()
+	stringsoffset := valuesoffset + ValueLength*w.r.MetricCount()
 
 	w.r.indomoffset = indomoffset
 	w.r.instanceoffset = instanceoffset
 	w.r.metricsoffset = metricsoffset
 	w.r.valuesoffset = valuesoffset
+	w.r.stringsoffset = stringsoffset
 
 	for _, indom := range w.r.instanceDomains {
 		indom.setOffset(indomoffset)
@@ -155,6 +158,16 @@ func (w *PCPWriter) initializeOffsets() {
 			i.setOffset(instanceoffset)
 			instanceoffset += InstanceLength
 		}
+
+		if indom.shortHelpText.val != "" {
+			indom.shortHelpText.setOffset(stringsoffset)
+			stringsoffset += StringBlockLength
+		}
+
+		if indom.longHelpText.val != "" {
+			indom.longHelpText.setOffset(stringsoffset)
+			stringsoffset += StringBlockLength
+		}
 	}
 
 	for _, metric := range w.r.metrics {
@@ -162,9 +175,17 @@ func (w *PCPWriter) initializeOffsets() {
 		metricsoffset += MetricLength
 		metric.setOffset(valuesoffset)
 		valuesoffset += ValueLength
-	}
 
-	// TODO: string offsets
+		if metric.desc.shortDescription.val != "" {
+			metric.desc.shortDescription.setOffset(stringsoffset)
+			stringsoffset += StringBlockLength
+		}
+
+		if metric.desc.longDescription.val != "" {
+			metric.desc.longDescription.setOffset(stringsoffset)
+			stringsoffset += StringBlockLength
+		}
+	}
 }
 
 func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) (gen2offset int, generation int64) {
@@ -255,6 +276,20 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer
 			buffer.WriteUint32(i.id)
 			buffer.WriteString(i.name)
 		}
+
+		so, lo := indom.shortHelpText.offset, indom.longHelpText.offset
+		buffer.WriteInt64(int64(so))
+		buffer.WriteInt64(int64(lo))
+
+		if so != 0 {
+			buffer.SetPos(so)
+			buffer.WriteString(indom.shortHelpText.val)
+		}
+
+		if lo != 0 {
+			buffer.SetPos(lo)
+			buffer.WriteString(indom.longHelpText.val)
+		}
 	}
 }
 
@@ -275,7 +310,20 @@ func (w *PCPWriter) writeMetricDesc(desc *pcpMetricDesc, buffer bytebuffer.Buffe
 		buffer.WriteInt32(-1)
 	}
 	buffer.WriteInt(0)
-	// TODO: write string descriptions
+
+	so, lo := desc.shortDescription.offset, desc.longDescription.offset
+	buffer.WriteInt64(int64(so))
+	buffer.WriteInt64(int64(lo))
+
+	if so != 0 {
+		buffer.SetPos(so)
+		buffer.WriteString(desc.shortDescription.val)
+	}
+
+	if lo != 0 {
+		buffer.SetPos(lo)
+		buffer.WriteString(desc.longDescription.val)
+	}
 }
 
 func (w *PCPWriter) writeMetricVal(m *PCPMetric, buffer bytebuffer.Buffer) {
