@@ -41,9 +41,9 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 			return m == Int32Type || m == Int64Type
 		case v <= math.MaxInt32:
 			return m == Int32Type || m == Int64Type || m == Uint32Type || m == Uint64Type
-		case v <= math.MaxUint32:
+		case uint32(v) <= math.MaxUint32:
 			return m == Int64Type || m == Uint32Type || m == Uint64Type
-		case v <= math.MaxInt64:
+		case int64(v) <= math.MaxInt64:
 			return m == Int64Type || m == Uint64Type
 		default:
 			return false
