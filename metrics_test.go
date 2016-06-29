@@ -25,8 +25,8 @@ func TestIsCompatible(t *testing.T) {
 		{Uint64Type, uint64(math.MaxUint32), true},
 		{Uint32Type, uint(math.MaxUint32), true},
 		{Uint64Type, uint(math.MaxUint64), true},
-		// {Uint32Type, math.MaxUint32, true},
-		// {Uint64Type, uint64(math.MaxUint64), true},
+		{Uint32Type, math.MaxUint32, true},
+		{Uint64Type, uint64(math.MaxUint64), true},
 	}
 
 	for _, c := range cases {

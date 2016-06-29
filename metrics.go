@@ -36,10 +36,18 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 	switch val.(type) {
 	case int:
 		v := val.(int)
-		if v > math.MaxInt32 {
-			return m == Int64Type
+		switch {
+		case v < 0:
+			return m == Int32Type || m == Int64Type
+		case v <= math.MaxInt32:
+			return m == Int32Type || m == Int64Type || m == Uint32Type || m == Uint64Type
+		case v <= math.MaxUint32:
+			return m == Int64Type || m == Uint32Type || m == Uint64Type
+		case v <= math.MaxInt64:
+			return m == Int64Type || m == Uint64Type
+		default:
+			return false
 		}
-		return m == Int32Type || m == Int64Type
 	case int32:
 		return m == Int32Type
 	case int64:
@@ -61,35 +69,33 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 
 // WriteVal implements value writer for the current MetricType to a buffer
 func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) {
-	switch m {
-	case Int32Type:
-		v, ok := val.(int32)
-		if ok {
-			b.WriteInt32(v)
-		} else {
-			b.WriteInt(val.(int))
-		}
-	case Int64Type:
-		v, ok := val.(int64)
-		if ok {
-			b.WriteInt64(v)
-		} else {
+	switch val.(type) {
+	case int:
+		switch m {
+		case Int32Type:
+			b.WriteInt32(int32(val.(int)))
+		case Int64Type:
 			b.WriteInt64(int64(val.(int)))
+		case Uint32Type:
+			b.WriteUint32(uint32(val.(int)))
+		case Uint64Type:
+			b.WriteUint64(uint64(val.(int)))
 		}
-	case Uint32Type:
-		v, ok := val.(uint32)
-		if ok {
-			b.WriteUint32(v)
-		} else {
+	case int32:
+		b.WriteInt32(val.(int32))
+	case int64:
+		b.WriteInt64(val.(int64))
+	case uint:
+		switch m {
+		case Uint32Type:
 			b.WriteUint32(uint32(val.(uint)))
-		}
-	case Uint64Type:
-		v, ok := val.(uint64)
-		if ok {
-			b.WriteUint64(v)
-		} else {
+		case Uint64Type:
 			b.WriteUint64(uint64(val.(uint)))
 		}
+	case uint32:
+		b.WriteUint32(val.(uint32))
+	case uint64:
+		b.WriteUint64(val.(uint64))
 	}
 }
 
