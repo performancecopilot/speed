@@ -10,8 +10,8 @@ func main() {
 		speed.Int32Type,
 		speed.CounterSemantics,
 		speed.OneUnit,
-		"",
-		"",
+		"A Simple Metric",
+		"This is a simple counter metric to demonstrate the speed API",
 	)
 	if err != nil {
 		panic(err)
