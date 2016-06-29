@@ -42,10 +42,16 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 		return m == Int32Type || m == Int64Type
 	case int32:
 		return m == Int32Type
-	case uint32:
-		return m == Uint32Type
 	case int64:
 		return m == Int64Type
+	case uint:
+		v := val.(uint)
+		if v > math.MaxUint32 {
+			return m == Uint64Type
+		}
+		return m == Uint32Type || m == Uint64Type
+	case uint32:
+		return m == Uint32Type
 	case uint64:
 		return m == Uint64Type
 	default:
@@ -71,9 +77,19 @@ func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) {
 			b.WriteInt64(int64(val.(int)))
 		}
 	case Uint32Type:
-		b.WriteUint32(val.(uint32))
+		v, ok := val.(uint32)
+		if ok {
+			b.WriteUint32(v)
+		} else {
+			b.WriteUint32(uint32(val.(uint)))
+		}
 	case Uint64Type:
-		b.WriteUint64(val.(uint64))
+		v, ok := val.(uint64)
+		if ok {
+			b.WriteUint64(v)
+		} else {
+			b.WriteUint64(uint64(val.(uint)))
+		}
 	}
 }
 
