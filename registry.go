@@ -23,6 +23,9 @@ type Registry interface {
 	// returns the number of instances across all instance domains in the current registry
 	InstanceCount() int
 
+	// returns the number of non null strings initialized in the current registry
+	StringCount() int
+
 	// adds a InstanceDomain object to the writer
 	AddInstanceDomain(InstanceDomain) error
 
@@ -53,6 +56,8 @@ type PCPRegistry struct {
 	indomoffset     int
 	metricsoffset   int
 	valuesoffset    int
+	stringsoffset   int
+	stringcount     int // the number of strings to be written
 	mapped          bool
 }
 
@@ -99,6 +104,8 @@ func (r *PCPRegistry) MetricCount() int {
 	return len(r.metrics)
 }
 
+func (r *PCPRegistry) StringCount() int { return r.stringcount }
+
 // HasMetric checks if a metric of specified name already exists
 // in registry or not
 func (r *PCPRegistry) HasMetric(name string) bool {
@@ -125,6 +132,15 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 
 	r.instanceDomains[indom.ID()] = indom.(*PCPInstanceDomain)
 	r.instanceCount += indom.InstanceCount()
+
+	if indom.(*PCPInstanceDomain).shortHelpText.val != "" {
+		r.stringcount++
+	}
+
+	if indom.(*PCPInstanceDomain).longHelpText.val != "" {
+		r.stringcount++
+	}
+
 	return nil
 }
 
@@ -142,6 +158,15 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 	}
 
 	r.metrics[m.ID()] = m.(*PCPMetric)
+
+	if m.(*PCPMetric).desc.shortDescription.val != "" {
+		r.stringcount++
+	}
+
+	if m.(*PCPMetric).desc.longDescription.val != "" {
+		r.stringcount++
+	}
+
 	return nil
 }
 
