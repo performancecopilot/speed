@@ -298,6 +298,9 @@ func (m *PCPMetric) Unit() MetricUnit { return m.desc.u }
 // Type returns the type for PCPMetric
 func (m *PCPMetric) Type() MetricType { return m.desc.t }
 
+// Indom returns the instance domain for PCPMetric
+func (m *PCPMetric) Indom() InstanceDomain { return m.desc.indom }
+
 // Description returns the description for PCPMetric
 func (m *PCPMetric) Description() string {
 	sd := m.desc.shortDescription
