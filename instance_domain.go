@@ -7,12 +7,13 @@ import (
 
 // InstanceDomain defines the interface for an instance domain
 type InstanceDomain interface {
-	ID() uint32                    // unique identifier for the instance domain
-	Name() string                  // name of the instance domain
-	Description() string           // description for the instance domain
-	AddInstance(name string) error // adds an instance to the indom
-	HasInstance(name string) bool  // checks if an instance is in the indom
-	InstanceCount() int            // returns the number of instances in the indom
+	ID() uint32                        // unique identifier for the instance domain
+	Name() string                      // name of the instance domain
+	Description() string               // description for the instance domain
+	AddInstance(name string) error     // adds an instance to the indom
+	AddInstances(names []string) error // adds multiple instances to the indom
+	HasInstance(name string) bool      // checks if an instance is in the indom
+	InstanceCount() int                // returns the number of instances in the indom
 }
 
 // PCPInstanceDomainBitLength is the maximum bit length of a PCP Instance Domain
@@ -71,6 +72,17 @@ func (indom *PCPInstanceDomain) AddInstance(name string) error {
 	ins := newpcpInstance(h, name, indom)
 	indom.instances[h] = ins
 
+	return nil
+}
+
+// AddInstances adds new instances to the current PCPInstanceDomain
+func (indom *PCPInstanceDomain) AddInstances(names []string) error {
+	for _, name := range names {
+		err := indom.AddInstance(name)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
