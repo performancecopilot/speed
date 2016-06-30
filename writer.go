@@ -274,15 +274,6 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer
 		buffer.WriteUint32(indom.ID())
 		buffer.WriteInt(indom.InstanceCount())
 		buffer.WriteInt64(int64(indom.instanceOffset))
-		// TODO: write indom string descriptions offsets
-
-		for _, i := range indom.instances {
-			buffer.SetPos(i.Offset())
-			buffer.WriteInt64(int64(indom.Offset()))
-			buffer.WriteInt(0)
-			buffer.WriteUint32(i.id)
-			buffer.WriteString(i.name)
-		}
 
 		so, lo := indom.shortHelpText.offset, indom.longHelpText.offset
 		buffer.WriteInt64(int64(so))
@@ -296,6 +287,14 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer
 		if lo != 0 {
 			buffer.SetPos(lo)
 			buffer.WriteString(indom.longHelpText.val)
+		}
+
+		for _, i := range indom.instances {
+			buffer.SetPos(i.Offset())
+			buffer.WriteInt64(int64(indom.Offset()))
+			buffer.WriteInt(0)
+			buffer.WriteUint32(i.id)
+			buffer.WriteString(i.name)
 		}
 	}
 }
