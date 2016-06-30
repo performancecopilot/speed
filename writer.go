@@ -219,46 +219,49 @@ func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) (gen2offset int, 
 	return
 }
 
+func (w *PCPWriter) writeSingleToc(pos, identifier, count, offset int, buffer bytebuffer.Buffer) {
+	buffer.SetPos(pos)
+	buffer.WriteInt(identifier)
+	buffer.WriteInt(count)
+	buffer.WriteUint64(uint64(offset))
+}
+
 func (w *PCPWriter) writeTocBlock(buffer bytebuffer.Buffer) {
 	tocpos := HeaderLength
 
 	// instance domains toc
 	if w.Registry().InstanceDomainCount() > 0 {
-		buffer.SetPos(tocpos)
-		buffer.WriteInt(1) // Instance Domain identifier
-		buffer.WriteInt(w.Registry().InstanceDomainCount())
-		buffer.WriteUint64(uint64(w.r.indomoffset))
+		// 1 is the identifier for instance domains
+		w.writeSingleToc(tocpos, 1, w.r.InstanceDomainCount(), w.r.indomoffset, buffer)
 		tocpos += TocLength
 	}
 
 	// instances toc
 	if w.Registry().InstanceCount() > 0 {
-		buffer.SetPos(tocpos)
-		buffer.WriteInt(2) // Instance identifier
-		buffer.WriteInt(w.Registry().InstanceCount())
-		buffer.WriteUint64(uint64(w.r.instanceoffset))
+		// 2 is the identifier for instances
+		w.writeSingleToc(tocpos, 2, w.r.InstanceCount(), w.r.instanceoffset, buffer)
 		tocpos += TocLength
 	}
 
+	// metrics and values toc
 	metricsoffset, valuesoffset := w.r.metricsoffset, w.r.valuesoffset
 	if w.Registry().MetricCount() == 0 {
 		metricsoffset, valuesoffset = 0, 0
 	}
 
-	// metrics and values toc
-	buffer.SetPos(tocpos)
-	buffer.WriteInt(3) // Metrics identifier
-	buffer.WriteInt(w.Registry().MetricCount())
-	buffer.WriteUint64(uint64(metricsoffset))
+	// 3 is the identifier for metrics
+	w.writeSingleToc(tocpos, 3, w.r.MetricCount(), metricsoffset, buffer)
 	tocpos += TocLength
 
-	buffer.SetPos(tocpos)
-	buffer.WriteInt(4) // Values identifier
-	buffer.WriteInt(w.Registry().MetricCount())
-	buffer.WriteUint64(uint64(valuesoffset))
+	// 4 is the identifier for values
+	w.writeSingleToc(tocpos, 4, w.r.MetricCount(), valuesoffset, buffer)
 	tocpos += TocLength
 
-	// TODO: strings toc
+	// strings toc
+	if w.Registry().StringCount() > 0 {
+		// 5 is the identifier for strings
+		w.writeSingleToc(tocpos, 5, w.r.StringCount(), w.r.stringsoffset, buffer)
+	}
 }
 
 func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer) {
