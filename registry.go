@@ -157,13 +157,19 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 		return errors.New("Cannot add a metric when a mapping is active")
 	}
 
-	r.metrics[m.ID()] = m.(*PCPMetric)
+	pcpm := m.(*PCPMetric)
 
-	if m.(*PCPMetric).desc.shortDescription.val != "" {
+	r.metrics[m.ID()] = pcpm
+
+	if pcpm.Indom() != nil && !r.HasInstanceDomain(pcpm.Indom().Name()) {
+		r.AddInstanceDomain(pcpm.Indom())
+	}
+
+	if pcpm.desc.shortDescription.val != "" {
 		r.stringcount++
 	}
 
-	if m.(*PCPMetric).desc.longDescription.val != "" {
+	if pcpm.desc.longDescription.val != "" {
 		r.stringcount++
 	}
 
