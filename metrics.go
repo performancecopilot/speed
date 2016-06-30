@@ -252,6 +252,10 @@ type PCPMetric struct {
 
 // NewPCPMetric creates a new instance of PCPMetric
 func NewPCPMetric(val interface{}, name string, indom InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) (*PCPMetric, error) {
+	if name == "" {
+		return nil, errors.New("Metric name cannot be empty")
+	}
+
 	if !t.IsCompatible(val) {
 		return nil, errors.New("the passed MetricType and values are incompatible")
 	}

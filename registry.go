@@ -182,7 +182,10 @@ func (r *PCPRegistry) AddInstanceDomainByName(name string, instances []string) (
 		return nil, errors.New("The InstanceDomain already exists for this registry")
 	}
 
-	indom := NewPCPInstanceDomain(name, "", "")
+	indom, err := NewPCPInstanceDomain(name, "", "")
+	if err != nil {
+		return nil, err
+	}
 
 	for _, i := range instances {
 		indom.AddInstance(i)

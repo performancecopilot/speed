@@ -36,14 +36,18 @@ type PCPInstanceDomain struct {
 // NOTE: this is different from parfait's idea of generating ids for InstanceDomains
 // We simply generate a unique 32 bit hash for an instance domain name, and if it has not
 // already been created, we create it, otherwise we return the already created version
-func NewPCPInstanceDomain(name, shortDescription, longDescription string) *PCPInstanceDomain {
+func NewPCPInstanceDomain(name, shortDescription, longDescription string) (*PCPInstanceDomain, error) {
+	if name == "" {
+		return nil, errors.New("Instance Domain name cannot be empty")
+	}
+
 	return &PCPInstanceDomain{
 		id:            getHash(name, PCPInstanceDomainBitLength),
 		name:          name,
 		instances:     make(map[uint32]*pcpInstance),
 		shortHelpText: NewPCPString(shortDescription),
 		longHelpText:  NewPCPString(longDescription),
-	}
+	}, nil
 }
 
 func (indom *PCPInstanceDomain) HasInstance(name string) bool {
