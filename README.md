@@ -32,3 +32,19 @@ make
 ```
 
 to install dependencies and build the package
+
+### Getting the examples
+
+All examples are executable go programs. Simply doing
+
+```sh
+go get github.com/performancecopilot/speed/examples/<example name>
+```
+
+will get the example and add an executable to `$GOPATH/bin`. If it is on your path, simply doing
+
+```sh
+<example name>
+```
+
+will run the binary, running the example
