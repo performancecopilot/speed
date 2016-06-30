@@ -123,6 +123,10 @@ func (w *PCPWriter) tocCount() int {
 		ans += 2
 	}
 
+	if w.Registry().StringCount() > 0 {
+		ans++
+	}
+
 	return ans
 }
 
