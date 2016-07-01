@@ -4,6 +4,8 @@
 
 Golang implementation of the Performance Co-Pilot (PCP) instrumentation API
 
+> A **Google Summer of Code 2016** project!
+
 ## Install
 
 ### Prerequisites
@@ -48,6 +50,3 @@ will get the example and add an executable to `$GOPATH/bin`. If it is on your pa
 ```
 
 will run the binary, running the example
-
-
-> A **Google Summer of Code 2016** project!

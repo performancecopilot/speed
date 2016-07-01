@@ -7,17 +7,17 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="500"
-   height="350"
+   width="400"
+   height="280"
    viewBox="-10.4 -23.1 500 350"
    enable-background="new -10.4 -23.1 512 512"
    id="svg2"
    version="1.1"
    inkscape:version="0.91 r13725"
    sodipodi:docname="speed.svg"
-   inkscape:export-filename="/home/nathans/icons/speed.png"
-   inkscape:export-xdpi="72"
-   inkscape:export-ydpi="72">
+   inkscape:export-filename="/source/git/speed/images/speed.png"
+   inkscape:export-xdpi="45"
+   inkscape:export-ydpi="45">
   <metadata
      id="metadata30">
     <rdf:RDF>
@@ -515,7 +515,7 @@
      id="namedview26"
      showgrid="false"
      inkscape:zoom="1.3037281"
-     inkscape:cx="235.91571"
+     inkscape:cx="260.16548"
      inkscape:cy="251.66102"
      inkscape:window-x="569"
      inkscape:window-y="68"
