@@ -1,8 +1,10 @@
-# speed [![GoDoc](https://godoc.org/github.com/performancecopilot/speed?status.svg)](https://godoc.org/github.com/performancecopilot/speed) [![Go Report Card](https://goreportcard.com/badge/github.com/performancecopilot/speed)](https://goreportcard.com/report/github.com/performancecopilot/speed)
+[![GoDoc](https://godoc.org/github.com/performancecopilot/speed?status.svg)](https://godoc.org/github.com/performancecopilot/speed) [![Go Report Card](https://goreportcard.com/badge/github.com/performancecopilot/speed)](https://goreportcard.com/report/github.com/performancecopilot/speed)
 
-> Google Summer of Code 2016
+![Speed](images/speed.png)
 
-An implementation of the PCP instrumentation API in golang
+Golang implementation of the Performance Co-Pilot (PCP) instrumentation API
+
+> A **Google Summer of Code 2016** project!
 
 ## Install
 
@@ -14,7 +16,7 @@ Set up a go environment on your computer. For more information about these steps
 
 - set up `$GOPATH` to the root folder where you want to keep your go code
 
-- add `$GOPATH/bin` to your `$PATH` by adding `export PATH=$GOPATH/bin:$PATH` to your shell configuration file, preferably to your `.bashrc`
+- add `$GOPATH/bin` to your `$PATH` by adding `export PATH=$GOPATH/bin:$PATH` to your shell configuration file, such as to your `.bashrc`, if using a Bourne shell variant.
 
 ### Getting the library
 
