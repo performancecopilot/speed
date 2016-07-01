@@ -154,39 +154,39 @@ func (w *PCPWriter) initializeOffsets() {
 	w.r.stringsoffset = stringsoffset
 
 	for _, indom := range w.r.instanceDomains {
-		indom.setOffset(indomoffset)
+		indom.offset = indomoffset
 		indom.instanceOffset = instanceoffset
 		indomoffset += InstanceDomainLength
 
 		for _, i := range indom.instances {
-			i.setOffset(instanceoffset)
+			i.offset = instanceoffset
 			instanceoffset += InstanceLength
 		}
 
 		if indom.shortHelpText.val != "" {
-			indom.shortHelpText.setOffset(stringsoffset)
+			indom.shortHelpText.offset = stringsoffset
 			stringsoffset += StringBlockLength
 		}
 
 		if indom.longHelpText.val != "" {
-			indom.longHelpText.setOffset(stringsoffset)
+			indom.longHelpText.offset = stringsoffset
 			stringsoffset += StringBlockLength
 		}
 	}
 
 	for _, metric := range w.r.metrics {
-		metric.desc.setOffset(metricsoffset)
+		metric.desc.offset = metricsoffset
 		metricsoffset += MetricLength
-		metric.setOffset(valuesoffset)
+		metric.offset = valuesoffset
 		valuesoffset += ValueLength
 
 		if metric.desc.shortDescription.val != "" {
-			metric.desc.shortDescription.setOffset(stringsoffset)
+			metric.desc.shortDescription.offset = stringsoffset
 			stringsoffset += StringBlockLength
 		}
 
 		if metric.desc.longDescription.val != "" {
-			metric.desc.longDescription.setOffset(stringsoffset)
+			metric.desc.longDescription.offset = stringsoffset
 			stringsoffset += StringBlockLength
 		}
 	}
@@ -270,7 +270,7 @@ func (w *PCPWriter) writeTocBlock(buffer bytebuffer.Buffer) {
 
 func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer) {
 	for _, indom := range w.r.instanceDomains {
-		buffer.SetPos(indom.Offset())
+		buffer.SetPos(indom.offset)
 		buffer.WriteUint32(indom.ID())
 		buffer.WriteInt(indom.InstanceCount())
 		buffer.WriteInt64(int64(indom.instanceOffset))
@@ -290,8 +290,8 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer
 		}
 
 		for _, i := range indom.instances {
-			buffer.SetPos(i.Offset())
-			buffer.WriteInt64(int64(indom.Offset()))
+			buffer.SetPos(i.offset)
+			buffer.WriteInt64(int64(indom.offset))
 			buffer.WriteInt(0)
 			buffer.WriteUint32(i.id)
 			buffer.WriteString(i.name)
@@ -300,7 +300,7 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer
 }
 
 func (w *PCPWriter) writeMetricDesc(desc *pcpMetricDesc, buffer bytebuffer.Buffer) {
-	pos := desc.Offset()
+	pos := desc.offset
 	buffer.SetPos(pos)
 
 	buffer.WriteString(desc.name)
@@ -333,13 +333,13 @@ func (w *PCPWriter) writeMetricDesc(desc *pcpMetricDesc, buffer bytebuffer.Buffe
 }
 
 func (w *PCPWriter) writeMetricVal(m *PCPMetric, buffer bytebuffer.Buffer) {
-	pos := m.Offset()
+	pos := m.offset
 	buffer.SetPos(pos)
 
 	m.desc.t.WriteVal(m.val, buffer)
 
 	buffer.SetPos(pos + MaxDataValueSize)
-	buffer.WriteInt64(int64(m.desc.Offset()))
+	buffer.WriteInt64(int64(m.desc.offset))
 	if m.desc.indom != nil {
 		buffer.WriteInt64(int64(m.desc.indom.(*PCPInstanceDomain).instanceOffset))
 	} else {

@@ -235,12 +235,6 @@ func newpcpMetricDesc(n string, i InstanceDomain, t MetricType, s MetricSemantic
 	}
 }
 
-// Offset returns the memory offset the metric description will be written at
-func (md *pcpMetricDesc) Offset() int { return md.offset }
-
-// setOffset Sets the memory offset the metric description will be written at
-func (md *pcpMetricDesc) setOffset(offset int) { md.offset = offset }
-
 // PCPMetric defines a PCP compatible metric type that can be constructed by specifying values
 // for type, semantics and unit
 type PCPMetric struct {
@@ -314,12 +308,6 @@ func (m *PCPMetric) Description() string {
 	}
 	return sd.val
 }
-
-// Offset returns the memory offset the metric value will be written at
-func (m *PCPMetric) Offset() int { return m.offset }
-
-// setOffset Sets the memory offset the metric value will be written at
-func (m *PCPMetric) setOffset(offset int) { m.offset = offset }
 
 func (m *PCPMetric) String() string {
 	return fmt.Sprintf("Val: %v\n%v", m.val, m.Description())

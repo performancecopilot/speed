@@ -113,10 +113,6 @@ func (indom *PCPInstanceDomain) Description() string {
 	return s
 }
 
-func (indom *PCPInstanceDomain) Offset() int { return indom.offset }
-
-func (indom *PCPInstanceDomain) setOffset(offset int) { indom.offset = offset }
-
 func (indom *PCPInstanceDomain) String() string {
 	indom.RLock()
 	defer indom.RUnlock()

@@ -22,7 +22,3 @@ func newpcpInstance(id uint32, name string, indom *PCPInstanceDomain) *pcpInstan
 func (i *pcpInstance) String() string {
 	return "Instance: " + i.name
 }
-
-func (i *pcpInstance) Offset() int { return i.offset }
-
-func (i *pcpInstance) setOffset(offset int) { i.offset = offset }
