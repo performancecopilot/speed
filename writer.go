@@ -28,6 +28,9 @@ const MaxMetricNameLength = 63
 // MaxDataValueSize is the maximum byte length for a stored metric value, unless it is a string
 const MaxDataValueSize = 16
 
+// EraseFileOnStop if set to true, will also delete the memory mapped file
+var EraseFileOnStop = false
+
 // Writer defines the interface of a MMV file writer's properties
 type Writer interface {
 	// a writer must contain a registry of metrics and instance domains
@@ -395,6 +398,12 @@ func (w *PCPWriter) Stop() error {
 	defer w.Unlock()
 
 	w.r.mapped = false
+
+	err := w.buffer.(*bytebuffer.MemoryMappedBuffer).Unmap(EraseFileOnStop)
+	w.buffer = nil
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
