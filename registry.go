@@ -47,37 +47,33 @@ type Registry interface {
 
 // PCPRegistry implements a registry for PCP as the client
 type PCPRegistry struct {
-	instanceDomains map[uint32]*PCPInstanceDomain // a cache for instanceDomains
-	metrics         map[uint32]*PCPMetric         // a cache for metrics
-	instanceCount   int
-	indomlock       sync.RWMutex
-	metricslock     sync.RWMutex
-	instanceoffset  int
-	indomoffset     int
-	metricsoffset   int
-	valuesoffset    int
-	stringsoffset   int
-	stringcount     int // the number of strings to be written
-	mapped          bool
+	instanceDomains map[string]*PCPInstanceDomain // a cache for instanceDomains
+	metrics         map[string]*PCPMetric         // a cache for metrics
+
+	// locks
+	indomlock   sync.RWMutex
+	metricslock sync.RWMutex
+
+	// offsets
+	instanceoffset int
+	indomoffset    int
+	metricsoffset  int
+	valuesoffset   int
+	stringsoffset  int
+
+	// counts
+	instanceCount int
+	stringcount   int
+
+	mapped bool
 }
 
 // NewPCPRegistry creates a new PCPRegistry object
 func NewPCPRegistry() *PCPRegistry {
 	return &PCPRegistry{
-		instanceDomains: make(map[uint32]*PCPInstanceDomain),
-		metrics:         make(map[uint32]*PCPMetric),
+		instanceDomains: make(map[string]*PCPInstanceDomain),
+		metrics:         make(map[string]*PCPMetric),
 	}
-}
-
-// HasInstanceDomain checks if an instance domain of specified name already exists
-// in registry or not
-func (r *PCPRegistry) HasInstanceDomain(name string) bool {
-	r.indomlock.RLock()
-	defer r.indomlock.RUnlock()
-
-	id := getHash(name, PCPInstanceDomainBitLength)
-	_, present := r.instanceDomains[id]
-	return present
 }
 
 // InstanceCount returns the number of instances across all indoms in the registry
@@ -104,16 +100,24 @@ func (r *PCPRegistry) MetricCount() int {
 	return len(r.metrics)
 }
 
+// StringCount returns the number of strings in the registry
 func (r *PCPRegistry) StringCount() int { return r.stringcount }
 
-// HasMetric checks if a metric of specified name already exists
-// in registry or not
+// HasInstanceDomain returns true if the registry already has an indom of the specified name
+func (r *PCPRegistry) HasInstanceDomain(name string) bool {
+	r.indomlock.RLock()
+	defer r.indomlock.RUnlock()
+
+	_, present := r.instanceDomains[name]
+	return present
+}
+
+// HasMetric returns true if the registry already has a metric of the specified name
 func (r *PCPRegistry) HasMetric(name string) bool {
 	r.metricslock.RLock()
 	defer r.metricslock.RUnlock()
 
-	id := getHash(name, PCPMetricItemBitLength)
-	_, present := r.metrics[id]
+	_, present := r.metrics[name]
 	return present
 }
 
@@ -130,14 +134,14 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 		return errors.New("Cannot add an indom when a mapping is active")
 	}
 
-	r.instanceDomains[indom.ID()] = indom.(*PCPInstanceDomain)
+	r.instanceDomains[indom.Name()] = indom.(*PCPInstanceDomain)
 	r.instanceCount += indom.InstanceCount()
 
-	if indom.(*PCPInstanceDomain).shortHelpText.val != "" {
+	if indom.(*PCPInstanceDomain).shortDescription.val != "" {
 		r.stringcount++
 	}
 
-	if indom.(*PCPInstanceDomain).longHelpText.val != "" {
+	if indom.(*PCPInstanceDomain).longDescription.val != "" {
 		r.stringcount++
 	}
 
@@ -159,10 +163,13 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 
 	pcpm := m.(*PCPMetric)
 
-	r.metrics[m.ID()] = pcpm
+	r.metrics[m.Name()] = pcpm
 
-	if pcpm.Indom() != nil && !r.HasInstanceDomain(pcpm.Indom().Name()) {
-		r.AddInstanceDomain(pcpm.Indom())
+	if pcpm.Indom() != nil {
+		err := r.AddInstanceDomain(pcpm.Indom())
+		if err != nil {
+			return err
+		}
 	}
 
 	if pcpm.desc.shortDescription.val != "" {
@@ -188,10 +195,17 @@ func (r *PCPRegistry) AddInstanceDomainByName(name string, instances []string) (
 	}
 
 	for _, i := range instances {
-		indom.AddInstance(i)
+		err = indom.AddInstance(i)
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	r.AddInstanceDomain(indom)
+	err = r.AddInstanceDomain(indom)
+	if err != nil {
+		return nil, err
+	}
+
 	return indom, nil
 }
 
@@ -214,13 +228,8 @@ func parseString(name string) (iname string, indomname string, mname string, err
 }
 
 // AddMetricByString provides parfait style metric creation
-func (r *PCPRegistry) AddMetricByString(name string, initialval interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
+func (r *PCPRegistry) AddMetricByString(name string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
 	iname, indomname, mname, err := parseString(name)
-	if err != nil {
-		return nil, err
-	}
-
-	indom, err := r.AddInstanceDomainByName(indomname, []string{iname})
 	if err != nil {
 		return nil, err
 	}
@@ -229,21 +238,29 @@ func (r *PCPRegistry) AddMetricByString(name string, initialval interface{}, s M
 		return nil, errors.New("The Metric already exists for this registry")
 	}
 
-	m, err := NewPCPMetric(initialval, name, indom, t, s, u, "", "")
+	indom, err := r.AddInstanceDomainByName(indomname, []string{iname})
 	if err != nil {
 		return nil, err
 	}
 
-	r.AddMetric(m)
+	m, err := NewPCPMetric(val, name, indom, t, s, u, "", "")
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.AddMetric(m)
+	if err != nil {
+		return nil, err
+	}
 
 	return m, nil
 }
 
 // UpdateMetric updates the passed metric's value
 func (r *PCPRegistry) UpdateMetric(m Metric, val interface{}) error {
-	r.metricslock.Lock()
-	defer r.metricslock.Unlock()
-
+	// NOTE: this deliberately doesn't use the metricslock as metric
+	// updates are synchronized by their own RWLock instances
+	// also, mapped is synchronized by the writer's lock
 	if r.mapped {
 		return errors.New("Cannot update metric when a mapping is active")
 	}
@@ -257,8 +274,5 @@ func (r *PCPRegistry) UpdateMetricByName(name string, val interface{}) error {
 		return errors.New("The Metric doesn't exist for this registry")
 	}
 
-	h := getHash(name, PCPMetricItemBitLength)
-	m := r.metrics[h]
-
-	return r.UpdateMetric(m, val)
+	return r.UpdateMetric(r.metrics[name], val)
 }
