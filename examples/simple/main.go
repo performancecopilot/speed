@@ -1,6 +1,11 @@
 package main
 
-import "github.com/performancecopilot/speed"
+import (
+	"fmt"
+	"os"
+
+	"github.com/performancecopilot/speed"
+)
 
 func main() {
 	metric, err := speed.NewPCPMetric(
@@ -25,6 +30,9 @@ func main() {
 	writer.Register(metric)
 
 	writer.Start()
+
+	fmt.Println("The metric is currently mapped as mmv.simple.simple.counter, to stop the mapping, press enter")
+	os.Stdin.Read(make([]byte, 1))
 
 	writer.Stop()
 }
