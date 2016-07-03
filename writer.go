@@ -2,7 +2,6 @@ package speed
 
 import (
 	"errors"
-	"io"
 	"os"
 	"path"
 	"strings"
@@ -31,8 +30,6 @@ const MaxDataValueSize = 16
 
 // Writer defines the interface of a MMV file writer's properties
 type Writer interface {
-	io.Writer
-
 	// a writer must contain a registry of metrics and instance domains
 	Registry() Registry
 
@@ -369,28 +366,25 @@ func (w *PCPWriter) fillData(buffer bytebuffer.Buffer) error {
 	return nil
 }
 
-func (w *PCPWriter) Write(data []byte) (int, error) {
-	f, err := os.Create(w.loc)
-	if err != nil {
-		panic(err)
-	}
-
-	return f.Write(data)
-}
-
 // Start dumps existing registry data
-func (w *PCPWriter) Start() {
+func (w *PCPWriter) Start() error {
 	w.Lock()
 	defer w.Unlock()
 
 	l := w.Length()
 
 	w.initializeOffsets()
-	buffer := bytebuffer.NewByteBuffer(l)
+
+	buffer, err := bytebuffer.NewMemoryMappedBuffer(w.loc, l)
+	if err != nil {
+		return err
+	}
+
 	w.fillData(buffer)
 
-	w.Write(buffer.Bytes())
 	w.r.mapped = true
+
+	return nil
 }
 
 // Stop removes existing mapping and cleans up
