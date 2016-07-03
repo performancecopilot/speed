@@ -7,7 +7,12 @@ func TestWriteInt32(t *testing.T) {
 
 	for _, val := range cases {
 		b := NewByteBuffer(4)
-		b.WriteInt32(val)
+
+		err := b.WriteInt32(val)
+		if err != nil {
+			t.Error(err)
+		}
+
 		if b.Pos() != 4 {
 			t.Error("Not Writing 4 bytes for int32")
 		}
@@ -32,7 +37,11 @@ func TestWriteString(t *testing.T) {
 	for _, val := range cases {
 		b := NewByteBuffer(len(val))
 
-		b.WriteString(val)
+		err := b.WriteString(val)
+		if err != nil {
+			t.Error(err)
+		}
+
 		if b.Pos() != len(val) {
 			t.Errorf("Expected to write %v bytes, writing %v bytes", len(val), b.Pos())
 		}
