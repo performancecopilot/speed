@@ -73,7 +73,10 @@ func (b *ByteBuffer) WriteVal(val interface{}) error {
 }
 
 // WriteString writes a string to the buffer
-func (b *ByteBuffer) WriteString(val string) error { return b.WriteVal(val) }
+func (b *ByteBuffer) WriteString(val string) error {
+	_, err := b.Write([]byte(val))
+	return err
+}
 
 // WriteInt32 writes an int32 to the buffer
 func (b *ByteBuffer) WriteInt32(val int32) error { return b.WriteVal(val) }
