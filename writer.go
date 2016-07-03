@@ -42,6 +42,9 @@ type Writer interface {
 	// stops writing and cleans up
 	Stop() error
 
+	// returns the number of bytes that will be written by the current writer
+	Length() int
+
 	// adds a metric to be written
 	Register(Metric) error
 
@@ -165,13 +168,13 @@ func (w *PCPWriter) initializeOffsets() {
 			instanceoffset += InstanceLength
 		}
 
-		if indom.shortHelpText.val != "" {
-			indom.shortHelpText.offset = stringsoffset
+		if indom.shortDescription.val != "" {
+			indom.shortDescription.offset = stringsoffset
 			stringsoffset += StringBlockLength
 		}
 
-		if indom.longHelpText.val != "" {
-			indom.longHelpText.offset = stringsoffset
+		if indom.longDescription.val != "" {
+			indom.longDescription.offset = stringsoffset
 			stringsoffset += StringBlockLength
 		}
 	}
@@ -277,18 +280,18 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock() {
 		w.buffer.WriteInt32(int32(indom.InstanceCount()))
 		w.buffer.WriteInt64(int64(indom.instanceOffset))
 
-		so, lo := indom.shortHelpText.offset, indom.longHelpText.offset
+		so, lo := indom.shortDescription.offset, indom.longDescription.offset
 		w.buffer.WriteInt64(int64(so))
 		w.buffer.WriteInt64(int64(lo))
 
 		if so != 0 {
 			w.buffer.SetPos(so)
-			w.buffer.WriteString(indom.shortHelpText.val)
+			w.buffer.WriteString(indom.shortDescription.val)
 		}
 
 		if lo != 0 {
 			w.buffer.SetPos(lo)
-			w.buffer.WriteString(indom.longHelpText.val)
+			w.buffer.WriteString(indom.longDescription.val)
 		}
 
 		for _, i := range indom.instances {
