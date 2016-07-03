@@ -189,7 +189,7 @@ func (w *PCPWriter) initializeOffsets() {
 	}
 }
 
-func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) (gen2offset int, generation int64) {
+func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) (generation2offset int, generation int64) {
 	// tag
 	buffer.WriteString("MMV")
 	buffer.SetPos(buffer.Pos() + 1) // extra null byte is needed and \0 isn't a valid escape character in go
@@ -201,18 +201,18 @@ func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) (gen2offset int, 
 	generation = time.Now().Unix()
 	buffer.WriteInt64(generation)
 
-	gen2offset = buffer.Pos()
+	generation2offset = buffer.Pos()
 
 	buffer.WriteInt64(0)
 
 	// tocCount
-	buffer.WriteInt(w.tocCount())
+	buffer.WriteInt32(int32(w.tocCount()))
 
 	// flag mask
-	buffer.WriteInt(int(w.flag))
+	buffer.WriteInt32(int32(w.flag))
 
 	// process identifier
-	buffer.WriteInt(os.Getpid())
+	buffer.WriteInt32(int32(os.Getpid()))
 
 	// cluster identifier
 	buffer.WriteUint32(w.clusterID)
@@ -222,8 +222,8 @@ func (w *PCPWriter) writeHeaderBlock(buffer bytebuffer.Buffer) (gen2offset int, 
 
 func (w *PCPWriter) writeSingleToc(pos, identifier, count, offset int, buffer bytebuffer.Buffer) {
 	buffer.SetPos(pos)
-	buffer.WriteInt(identifier)
-	buffer.WriteInt(count)
+	buffer.WriteInt32(int32(identifier))
+	buffer.WriteInt32(int32(count))
 	buffer.WriteUint64(uint64(offset))
 }
 
@@ -269,7 +269,7 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer
 	for _, indom := range w.r.instanceDomains {
 		buffer.SetPos(indom.offset)
 		buffer.WriteUint32(indom.ID())
-		buffer.WriteInt(indom.InstanceCount())
+		buffer.WriteInt32(int32(indom.InstanceCount()))
 		buffer.WriteInt64(int64(indom.instanceOffset))
 
 		so, lo := indom.shortHelpText.offset, indom.longHelpText.offset
@@ -289,7 +289,7 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock(buffer bytebuffer.Buffer
 		for _, i := range indom.instances {
 			buffer.SetPos(i.offset)
 			buffer.WriteInt64(int64(indom.offset))
-			buffer.WriteInt(0)
+			buffer.WriteInt32(0)
 			buffer.WriteUint32(i.id)
 			buffer.WriteString(i.name)
 		}
@@ -312,7 +312,7 @@ func (w *PCPWriter) writeMetricDesc(desc *pcpMetricDesc, buffer bytebuffer.Buffe
 	} else {
 		buffer.WriteInt32(-1)
 	}
-	buffer.WriteInt(0)
+	buffer.WriteInt32(0)
 
 	so, lo := desc.shortDescription.offset, desc.longDescription.offset
 	buffer.WriteInt64(int64(so))
@@ -351,16 +351,15 @@ func (w *PCPWriter) writeMetricsAndValuesBlock(buffer bytebuffer.Buffer) {
 	}
 }
 
-// fillData will fill a byte slice with the mmv file
+// fillData will fill the Buffer with the mmv file
 // data as long as something doesn't go wrong
 func (w *PCPWriter) fillData(buffer bytebuffer.Buffer) error {
-	gen2offset, generation := w.writeHeaderBlock(buffer)
+	generation2offset, generation := w.writeHeaderBlock(buffer)
 	w.writeTocBlock(buffer)
 	w.writeInstanceAndInstanceDomainBlock(buffer)
 	w.writeMetricsAndValuesBlock(buffer)
-	// TODO: write strings block
 
-	buffer.SetPos(gen2offset)
+	buffer.SetPos(generation2offset)
 	buffer.WriteUint64(uint64(generation))
 
 	return nil
