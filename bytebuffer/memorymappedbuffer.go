@@ -1,6 +1,7 @@
 package bytebuffer
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 )
@@ -26,11 +27,15 @@ func NewMemoryMappedBuffer(loc string, size int) (*MemoryMappedBuffer, error) {
 		return nil, err
 	}
 
-	f.Write(make([]byte, size))
+	l, err := f.Write(make([]byte, size))
+	if err != nil {
+		return nil, err
+	}
+	if l < size {
+		return nil, fmt.Errorf("Could not initialize %d bytes", size)
+	}
 
-	fd := int(f.Fd())
-
-	b, err := syscall.Mmap(fd, 0, size, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+	b, err := syscall.Mmap(int(f.Fd()), 0, size, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
 	if err != nil {
 		return nil, err
 	}
@@ -44,9 +49,15 @@ func NewMemoryMappedBuffer(loc string, size int) (*MemoryMappedBuffer, error) {
 
 // Unmap will manually delete the memory mapping of a mapped buffer
 func (b *MemoryMappedBuffer) Unmap(removefile bool) error {
-	if removefile {
-		os.Remove(b.loc)
+	if err := syscall.Munmap(b.buffer); err != nil {
+		return err
 	}
 
-	return syscall.Munmap(b.buffer)
+	if removefile {
+		if err := os.Remove(b.loc); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
