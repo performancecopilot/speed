@@ -24,12 +24,12 @@ const PCPInstanceDomainBitLength = 22
 // PCPInstanceDomain wraps a PCP compatible instance domain
 type PCPInstanceDomain struct {
 	sync.RWMutex
-	id                          uint32
-	name                        string
-	instances                   map[uint32]*pcpInstance // the instances for this InstanceDomain stored as a map
-	offset                      int
-	instanceOffset              int
-	shortHelpText, longHelpText *PCPString
+	id                                uint32
+	name                              string
+	instances                         map[string]*pcpInstance
+	offset                            int
+	instanceOffset                    int
+	shortDescription, longDescription *PCPString
 }
 
 // NewPCPInstanceDomain creates a new instance domain or returns an already created one for the passed name
@@ -42,20 +42,20 @@ func NewPCPInstanceDomain(name, shortDescription, longDescription string) (*PCPI
 	}
 
 	return &PCPInstanceDomain{
-		id:            getHash(name, PCPInstanceDomainBitLength),
-		name:          name,
-		instances:     make(map[uint32]*pcpInstance),
-		shortHelpText: NewPCPString(shortDescription),
-		longHelpText:  NewPCPString(longDescription),
+		id:               getHash(name, PCPInstanceDomainBitLength),
+		name:             name,
+		instances:        make(map[string]*pcpInstance),
+		shortDescription: NewPCPString(shortDescription),
+		longDescription:  NewPCPString(longDescription),
 	}, nil
 }
 
+// HasInstance returns true if an instance of the specified name is in the Indom
 func (indom *PCPInstanceDomain) HasInstance(name string) bool {
 	indom.RLock()
 	defer indom.RUnlock()
 
-	h := getHash(name, 0)
-	_, present := indom.instances[h]
+	_, present := indom.instances[name]
 	return present
 }
 
@@ -64,17 +64,12 @@ func (indom *PCPInstanceDomain) AddInstance(name string) error {
 	indom.Lock()
 	defer indom.Unlock()
 
-	h := getHash(name, 0)
-
-	// not using HasInstance here to prevent the cost of
-	// hashing twice
-	_, present := indom.instances[h]
-	if present {
+	if indom.HasInstance(name) {
 		return errors.New("Instance with same name already created for the InstanceDomain")
 	}
 
-	ins := newpcpInstance(h, name, indom)
-	indom.instances[h] = ins
+	ins := newpcpInstance(getHash(name, 0), name, indom)
+	indom.instances[name] = ins
 
 	return nil
 }
@@ -106,7 +101,7 @@ func (indom *PCPInstanceDomain) InstanceCount() int {
 
 // Description returns the description for PCPInstanceDomain
 func (indom *PCPInstanceDomain) Description() string {
-	s, l := indom.shortHelpText.val, indom.longHelpText.val
+	s, l := indom.shortDescription.val, indom.longDescription.val
 	if l != "" {
 		return s + "\n\n" + l
 	}
