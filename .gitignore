@@ -3,7 +3,7 @@
 *.swp
 
 # coverage
-c.out
+*.coverage
 
 # stringer
 *_string.go
