@@ -40,16 +40,16 @@ type Writer interface {
 	Stop() error
 
 	// adds a metric to be written
-	Register(Metric)
+	Register(Metric) error
 
 	// adds an instance domain to be written
-	RegisterIndom(InstanceDomain)
+	RegisterIndom(InstanceDomain) error
 
 	// adds metric and instance domain from a string
-	RegisterString(s string)
+	RegisterString(s string) error
 
 	// update a metric
-	Update(Metric, interface{})
+	Update(Metric, interface{}) error
 }
 
 func mmvFileLocation(name string) (string, error) {
@@ -387,23 +387,28 @@ func (w *PCPWriter) Start() error {
 }
 
 // Stop removes existing mapping and cleans up
-func (w *PCPWriter) Stop() {
+func (w *PCPWriter) Stop() error {
 	w.Lock()
 	defer w.Unlock()
 
 	w.r.mapped = false
+
+	return nil
 }
 
 // Register is simply a shorthand for Registry().AddMetric
-func (w *PCPWriter) Register(m Metric) { w.Registry().AddMetric(m) }
+func (w *PCPWriter) Register(m Metric) error { return w.Registry().AddMetric(m) }
 
 // RegisterIndom is simply a shorthand for Registry().AddInstanceDomain
-func (w *PCPWriter) RegisterIndom(indom InstanceDomain) { w.Registry().AddInstanceDomain(indom) }
+func (w *PCPWriter) RegisterIndom(indom InstanceDomain) error {
+	return w.Registry().AddInstanceDomain(indom)
+}
 
 // RegisterString is simply a shorthand for Registry().AddMetricByString
-func (w *PCPWriter) RegisterString(str string, initialval interface{}, s MetricSemantics, t MetricType, u MetricUnit) {
-	w.Registry().AddMetricByString(str, initialval, s, t, u)
+func (w *PCPWriter) RegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) error {
+	_, err := w.Registry().AddMetricByString(str, val, s, t, u)
+	return err
 }
 
 // Update is simply a shorthand for Registry().UpdateMetric
-func (w *PCPWriter) Update(m Metric, val interface{}) { w.Registry().UpdateMetric(m, val) }
+func (w *PCPWriter) Update(m Metric, val interface{}) error { return w.Registry().UpdateMetric(m, val) }
