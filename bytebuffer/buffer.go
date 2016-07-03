@@ -17,16 +17,22 @@
 // to move around and write anywhere you want
 package bytebuffer
 
+import "io"
+
+// Buffer defines an abstraction for an object that allows writing of binary
+// values anywhere within a fixed range
 type Buffer interface {
+	io.Writer
 	Bytes() []byte
 	Pos() int
-	SetPos(int)
+	SetPos(int) error
 	Len() int
-	Write([]byte)
-	WriteString(string)
-	WriteInt(int)
-	WriteInt32(int32)
-	WriteInt64(int64)
-	WriteUint32(uint32)
-	WriteUint64(uint64)
+	WriteVal(val interface{}) error
+	WriteString(string) error
+	WriteInt32(int32) error
+	WriteInt64(int64) error
+	WriteUint32(uint32) error
+	WriteUint64(uint64) error
+	WriteFloat32(float32) error
+	WriteFloat64(float64) error
 }
