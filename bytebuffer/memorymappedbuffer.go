@@ -22,7 +22,7 @@ func NewMemoryMappedBuffer(loc string, size int) (*MemoryMappedBuffer, error) {
 		}
 	}
 
-	f, err := os.OpenFile(loc, syscall.O_CREAT|syscall.O_RDWR|syscall.O_EXCL, 0666)
+	f, err := os.OpenFile(loc, syscall.O_CREAT|syscall.O_RDWR|syscall.O_EXCL, 0644)
 	if err != nil {
 		return nil, err
 	}
