@@ -8,10 +8,9 @@ import (
 )
 
 func main() {
-	metric, err := speed.NewPCPMetric(
+	metric, err := speed.NewPCPSingletonMetric(
 		42,
 		"simple.counter",
-		nil,
 		speed.Int32Type,
 		speed.CounterSemantics,
 		speed.OneUnit,
@@ -27,9 +26,15 @@ func main() {
 		panic(err)
 	}
 
-	writer.Register(metric)
+	err = writer.Register(metric)
+	if err != nil {
+		panic(err)
+	}
 
-	writer.Start()
+	err = writer.Start()
+	if err != nil {
+		panic(err)
+	}
 
 	fmt.Println("The metric is currently mapped as mmv.simple.simple.counter, to stop the mapping, press enter")
 	os.Stdin.Read(make([]byte, 1))
