@@ -99,6 +99,8 @@ func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) {
 	}
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
 // MetricUnit defines the interface for a unit type for speed
 type MetricUnit interface {
 	// return 32 bit PMAPI representation for the unit
@@ -163,6 +165,8 @@ func (c CountUnit) PMAPI() uint32 {
 	return uint32(c)
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
 // MetricSemantics represents an enumerated type representing the possible
 // values for the semantics of a metric
 type MetricSemantics int32
@@ -177,15 +181,11 @@ const (
 
 //go:generate stringer -type=MetricSemantics
 
+///////////////////////////////////////////////////////////////////////////////
+
 // Metric defines the general interface a type needs to implement to qualify
 // as a valid PCP metric
 type Metric interface {
-	// gets the value of the metric
-	Val() interface{}
-
-	// Sets the value of the metric to a value, optionally returns an error on failure
-	Set(interface{}) error
-
 	// gets the unique id generated for this metric
 	ID() uint32
 
@@ -205,6 +205,49 @@ type Metric interface {
 	Description() string
 }
 
+///////////////////////////////////////////////////////////////////////////////
+
+// SingletonMetric defines the interface for a metric that stores only one value
+type SingletonMetric interface {
+	Metric
+
+	// gets the value of the metric
+	Val() interface{}
+
+	// Sets the value of the metric to a value, optionally returns an error on failure
+	Set(interface{}) error
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// InstanceDomainMetric defines the interface for a metric that stores multiple values
+// in instances and instance domains
+type InstanceDomainMetric interface {
+	Metric
+
+	// gets the value of a particular instance
+	ValInstance(string) interface{}
+
+	// sets the value of a particular instance
+	SetInstance(string, interface{})
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPMetric defines the interface for a metric that is compatible with PCP
+type PCPMetric interface {
+	Metric
+
+	// a PCPMetric will always have an instance domain, even if it is nil
+	Indom() *PCPInstanceDomain
+
+	ShortDescription() *PCPString
+
+	LongDescription() *PCPString
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 // PCPMetricItemBitLength is the maximum bit size of a PCP Metric id
 //
 // see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
@@ -218,58 +261,91 @@ const PCPMetricItemBitLength = 10
 type pcpMetricDesc struct {
 	id                                uint32          // unique metric id
 	name                              string          // the name
-	indom                             InstanceDomain  // the instance domain
 	t                                 MetricType      // the type of a metric
 	sem                               MetricSemantics // the semantics
 	u                                 MetricUnit      // the unit
-	offset                            int             // memory storage offset for the metric description
+	descoffset                        int             // memory storage offset for the metric description
 	shortDescription, longDescription *PCPString
 }
 
 // newpcpMetricDesc creates a new Metric Description wrapper type
-func newpcpMetricDesc(n string, i InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) *pcpMetricDesc {
+func newpcpMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) *pcpMetricDesc {
 	return &pcpMetricDesc{
 		getHash(n, PCPMetricItemBitLength),
-		n, i, t, s, u, 0,
-		NewPCPString(short), NewPCPString(long),
+		n, t, s, u, 0,
+		NewPCPString(shortdesc), NewPCPString(longdesc),
 	}
 }
 
-// PCPMetric defines a PCP compatible metric type that can be constructed by specifying values
-// for type, semantics and unit
-type PCPMetric struct {
-	sync.RWMutex
-	val    interface{}    // all bets are off, store whatever you want
-	desc   *pcpMetricDesc // the metadata associated with this metric
-	offset int            // memory storage offset for the metric value
+// ID returns the generated id for PCPMetric
+func (md *pcpMetricDesc) ID() uint32 { return md.id }
+
+// Name returns the generated id for PCPMetric
+func (md *pcpMetricDesc) Name() string { return md.name }
+
+// Semantics returns the current stored value for PCPMetric
+func (md *pcpMetricDesc) Semantics() MetricSemantics { return md.sem }
+
+// Unit returns the unit for PCPMetric
+func (md *pcpMetricDesc) Unit() MetricUnit { return md.u }
+
+// Type returns the type for PCPMetric
+func (md *pcpMetricDesc) Type() MetricType { return md.t }
+
+// ShortDescription returns the shortdesc value
+func (md *pcpMetricDesc) ShortDescription() *PCPString { return md.shortDescription }
+
+// LongDescription returns the longdesc value
+func (md *pcpMetricDesc) LongDescription() *PCPString { return md.longDescription }
+
+// Description returns the description for PCPMetric
+func (md *pcpMetricDesc) Description() string {
+	sd := md.shortDescription
+	ld := md.longDescription
+	if len(ld.val) > 0 {
+		return sd.val + "\n\n" + ld.val
+	}
+	return sd.val
 }
 
-// NewPCPMetric creates a new instance of PCPMetric
-func NewPCPMetric(val interface{}, name string, indom InstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, short, long string) (*PCPMetric, error) {
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPSingletonMetric defines a singleton metric with no instance domain
+// only a value and a valueoffset
+type PCPSingletonMetric struct {
+	sync.RWMutex
+	*pcpMetricDesc
+	val         interface{}
+	valueoffset int
+}
+
+// NewPCPSingletonMetric creates a new instance of PCPMetric
+func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) (*PCPSingletonMetric, error) {
 	if name == "" {
 		return nil, errors.New("Metric name cannot be empty")
 	}
 
 	if !t.IsCompatible(val) {
-		return nil, errors.New("the passed MetricType and values are incompatible")
+		return nil, fmt.Errorf("type %v is not compatible with value %v", t, val)
 	}
 
-	return &PCPMetric{
-		val:  val,
-		desc: newpcpMetricDesc(name, indom, t, s, u, short, long),
+	return &PCPSingletonMetric{
+		sync.RWMutex{},
+		newpcpMetricDesc(name, t, s, u, shortdesc, longdesc),
+		val, 0,
 	}, nil
 }
 
 // Val returns the current Set value of PCPMetric
-func (m *PCPMetric) Val() interface{} {
+func (m *PCPSingletonMetric) Val() interface{} {
 	m.RLock()
 	defer m.RUnlock()
 	return m.val
 }
 
 // Set Sets the current value of PCPMetric
-func (m *PCPMetric) Set(val interface{}) error {
-	if !m.desc.t.IsCompatible(val) {
+func (m *PCPSingletonMetric) Set(val interface{}) error {
+	if !m.t.IsCompatible(val) {
 		return errors.New("the value is incompatible with this metrics MetricType")
 	}
 
@@ -278,38 +354,14 @@ func (m *PCPMetric) Set(val interface{}) error {
 		defer m.Unlock()
 		m.val = val
 	}
+
 	return nil
 }
 
-// ID returns the generated id for PCPMetric
-func (m *PCPMetric) ID() uint32 { return m.desc.id }
+// Indom returns the instance domain for a PCPMetric
+func (m *PCPSingletonMetric) Indom() *PCPInstanceDomain { return nil }
 
-// Name returns the generated id for PCPMetric
-func (m *PCPMetric) Name() string { return m.desc.name }
-
-// Semantics returns the current stored value for PCPMetric
-func (m *PCPMetric) Semantics() MetricSemantics { return m.desc.sem }
-
-// Unit returns the unit for PCPMetric
-func (m *PCPMetric) Unit() MetricUnit { return m.desc.u }
-
-// Type returns the type for PCPMetric
-func (m *PCPMetric) Type() MetricType { return m.desc.t }
-
-// Indom returns the instance domain for PCPMetric
-func (m *PCPMetric) Indom() InstanceDomain { return m.desc.indom }
-
-// Description returns the description for PCPMetric
-func (m *PCPMetric) Description() string {
-	sd := m.desc.shortDescription
-	ld := m.desc.longDescription
-	if len(ld.val) > 0 {
-		return sd.val + "\n\n" + ld.val
-	}
-	return sd.val
-}
-
-func (m *PCPMetric) String() string {
+func (m *PCPSingletonMetric) String() string {
 	return fmt.Sprintf("Val: %v\n%v", m.val, m.Description())
 }
 
