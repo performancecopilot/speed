@@ -158,13 +158,30 @@ func (w *PCPWriter) initializeOffsets() {
 	w.r.valuesoffset = valuesoffset
 	w.r.stringsoffset = stringsoffset
 
+	initializeSingletonMetricOffsets := func(metric *PCPSingletonMetric) {
+		metric.descoffset = metricsoffset
+		metricsoffset += MetricLength
+		metric.valueoffset = valuesoffset
+		valuesoffset += ValueLength
+
+		if metric.shortDescription.val != "" {
+			metric.shortDescription.offset = stringsoffset
+			stringsoffset += StringBlockLength
+		}
+
+		if metric.longDescription.val != "" {
+			metric.longDescription.offset = stringsoffset
+			stringsoffset += StringBlockLength
+		}
+	}
+
 	for _, indom := range w.r.instanceDomains {
 		indom.offset = indomoffset
 		indom.instanceOffset = instanceoffset
 		indomoffset += InstanceDomainLength
 
 		for _, i := range indom.instances {
-			i.offset = instanceoffset
+			i.descoffset = instanceoffset
 			instanceoffset += InstanceLength
 		}
 
@@ -180,19 +197,9 @@ func (w *PCPWriter) initializeOffsets() {
 	}
 
 	for _, metric := range w.r.metrics {
-		metric.desc.offset = metricsoffset
-		metricsoffset += MetricLength
-		metric.offset = valuesoffset
-		valuesoffset += ValueLength
-
-		if metric.desc.shortDescription.val != "" {
-			metric.desc.shortDescription.offset = stringsoffset
-			stringsoffset += StringBlockLength
-		}
-
-		if metric.desc.longDescription.val != "" {
-			metric.desc.longDescription.offset = stringsoffset
-			stringsoffset += StringBlockLength
+		switch metric.(type) {
+		case *PCPSingletonMetric:
+			initializeSingletonMetricOffsets(metric.(*PCPSingletonMetric))
 		}
 	}
 }
@@ -295,7 +302,7 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock() {
 		}
 
 		for _, i := range indom.instances {
-			w.buffer.SetPos(i.offset)
+			w.buffer.SetPos(i.descoffset)
 			w.buffer.WriteInt64(int64(indom.offset))
 			w.buffer.WriteInt32(0)
 			w.buffer.WriteUint32(i.id)
@@ -304,58 +311,56 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock() {
 	}
 }
 
-func (w *PCPWriter) writeMetricDesc(desc *pcpMetricDesc) {
-	pos := desc.offset
+func (w *PCPWriter) writeMetricDesc(m PCPMetric, pos int) {
 	w.buffer.SetPos(pos)
 
-	w.buffer.WriteString(desc.name)
-	w.buffer.Write([]byte{0})
+	w.buffer.WriteString(m.Name())
 	w.buffer.SetPos(pos + MaxMetricNameLength + 1)
-	w.buffer.WriteUint32(desc.id)
-	w.buffer.WriteInt32(int32(desc.t))
-	w.buffer.WriteInt32(int32(desc.sem))
-	w.buffer.WriteUint32(desc.u.PMAPI())
-	if desc.indom != nil {
-		w.buffer.WriteUint32(desc.indom.ID())
+	w.buffer.WriteUint32(m.ID())
+	w.buffer.WriteInt32(int32(m.Type()))
+	w.buffer.WriteInt32(int32(m.Semantics()))
+	w.buffer.WriteUint32(m.Unit().PMAPI())
+	if m.Indom() != nil {
+		w.buffer.WriteUint32(m.Indom().ID())
 	} else {
 		w.buffer.WriteInt32(-1)
 	}
 	w.buffer.WriteInt32(0)
 
-	so, lo := desc.shortDescription.offset, desc.longDescription.offset
+	so, lo := m.ShortDescription().offset, m.LongDescription().offset
 	w.buffer.WriteInt64(int64(so))
 	w.buffer.WriteInt64(int64(lo))
 
 	if so != 0 {
 		w.buffer.SetPos(so)
-		w.buffer.WriteString(desc.shortDescription.val)
+		w.buffer.WriteString(m.ShortDescription().val)
 	}
 
 	if lo != 0 {
 		w.buffer.SetPos(lo)
-		w.buffer.WriteString(desc.longDescription.val)
+		w.buffer.WriteString(m.LongDescription().val)
 	}
 }
 
-func (w *PCPWriter) writeMetricVal(m *PCPMetric) {
-	pos := m.offset
+func (w *PCPWriter) writeSingletonMetric(m *PCPSingletonMetric) {
+	w.writeMetricDesc(m, m.descoffset)
+
+	pos := m.valueoffset
 	w.buffer.SetPos(pos)
 
-	m.desc.t.WriteVal(m.val, w.buffer)
+	m.t.WriteVal(m.val, w.buffer)
 
 	w.buffer.SetPos(pos + MaxDataValueSize)
-	w.buffer.WriteInt64(int64(m.desc.offset))
-	if m.desc.indom != nil {
-		w.buffer.WriteInt64(int64(m.desc.indom.(*PCPInstanceDomain).instanceOffset))
-	} else {
-		w.buffer.WriteInt64(0)
-	}
+	w.buffer.WriteInt64(int64(m.descoffset))
+	w.buffer.WriteInt64(0)
 }
 
 func (w *PCPWriter) writeMetricsAndValuesBlock() {
 	for _, metric := range w.r.metrics {
-		w.writeMetricDesc(metric.desc)
-		w.writeMetricVal(metric)
+		switch metric.(type) {
+		case *PCPSingletonMetric:
+			w.writeSingletonMetric(metric.(*PCPSingletonMetric))
+		}
 	}
 }
 
@@ -421,9 +426,6 @@ func (w *PCPWriter) RegisterIndom(indom InstanceDomain) error {
 
 // RegisterString is simply a shorthand for Registry().AddMetricByString
 func (w *PCPWriter) RegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) error {
-	_, err := w.Registry().AddMetricByString(str, val, s, t, u)
+	_, err := w.Registry().AddSingletonMetricByString(str, val, s, t, u)
 	return err
 }
-
-// Update is simply a shorthand for Registry().UpdateMetric
-func (w *PCPWriter) Update(m Metric, val interface{}) error { return w.Registry().UpdateMetric(m, val) }
