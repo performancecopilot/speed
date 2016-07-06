@@ -36,19 +36,13 @@ type Registry interface {
 	AddMetric(Metric) error
 
 	// adds a Metric object after parsing the passed string for Instances and InstanceDomains
-	AddMetricByString(name string, initialval interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error)
-
-	// updates the passed metric with the passed value
-	UpdateMetric(m Metric, val interface{}) error
-
-	// updates a Metric object by looking it up by name and updating its value
-	UpdateMetricByName(name string, val interface{}) error
+	AddSingletonMetricByString(name string, initialval interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error)
 }
 
 // PCPRegistry implements a registry for PCP as the client
 type PCPRegistry struct {
 	instanceDomains map[string]*PCPInstanceDomain // a cache for instanceDomains
-	metrics         map[string]*PCPMetric         // a cache for metrics
+	metrics         map[string]PCPMetric          // a cache for metrics
 
 	// locks
 	indomlock   sync.RWMutex
@@ -72,7 +66,7 @@ type PCPRegistry struct {
 func NewPCPRegistry() *PCPRegistry {
 	return &PCPRegistry{
 		instanceDomains: make(map[string]*PCPInstanceDomain),
-		metrics:         make(map[string]*PCPMetric),
+		metrics:         make(map[string]PCPMetric),
 	}
 }
 
@@ -161,7 +155,7 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 		return errors.New("Cannot add a metric when a mapping is active")
 	}
 
-	pcpm := m.(*PCPMetric)
+	pcpm := m.(PCPMetric)
 
 	r.metrics[m.Name()] = pcpm
 
@@ -172,11 +166,11 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 		}
 	}
 
-	if pcpm.desc.shortDescription.val != "" {
+	if pcpm.ShortDescription().String() != "" {
 		r.stringcount++
 	}
 
-	if pcpm.desc.longDescription.val != "" {
+	if pcpm.LongDescription().String() != "" {
 		r.stringcount++
 	}
 
@@ -209,41 +203,13 @@ func (r *PCPRegistry) AddInstanceDomainByName(name string, instances []string) (
 	return indom, nil
 }
 
-// IdentifierPat contains the pattern for a valid name identifier
-const IdentifierPat = "[\\p{L}\\p{N}]+"
-
-const p = "\\A((" + IdentifierPat + ")(\\." + IdentifierPat + ")*?)(\\[(" + IdentifierPat + ")\\])?((\\." + IdentifierPat + ")*)\\z"
-
-// identifierRegex gets the *regexp.Regexp object representing a valid metric identifier
-var identifierRegex, _ = regexp.Compile(p)
-
-func parseString(name string) (iname string, indomname string, mname string, err error) {
-	if !identifierRegex.MatchString(name) {
-		return "", "", "", errors.New("I don't know this")
-	}
-
-	matches := identifierRegex.FindStringSubmatch(name)
-	iname, indomname, mname, err = matches[5], matches[1], matches[1]+matches[6], nil
-	return
-}
-
-// AddMetricByString provides parfait style metric creation
-func (r *PCPRegistry) AddMetricByString(name string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
-	iname, indomname, mname, err := parseString(name)
-	if err != nil {
-		return nil, err
-	}
-
-	if r.HasMetric(mname) {
+// AddSingletonMetricByString adds a new Singleton Metric
+func (r *PCPRegistry) AddSingletonMetricByString(name string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
+	if r.HasMetric(name) {
 		return nil, errors.New("The Metric already exists for this registry")
 	}
 
-	indom, err := r.AddInstanceDomainByName(indomname, []string{iname})
-	if err != nil {
-		return nil, err
-	}
-
-	m, err := NewPCPMetric(val, name, indom, t, s, u, "", "")
+	m, err := NewPCPSingletonMetric(val, name, t, s, u, "", "")
 	if err != nil {
 		return nil, err
 	}
@@ -256,23 +222,20 @@ func (r *PCPRegistry) AddMetricByString(name string, val interface{}, s MetricSe
 	return m, nil
 }
 
-// UpdateMetric updates the passed metric's value
-func (r *PCPRegistry) UpdateMetric(m Metric, val interface{}) error {
-	// NOTE: this deliberately doesn't use the metricslock as metric
-	// updates are synchronized by their own RWLock instances
-	// also, mapped is synchronized by the writer's lock
-	if r.mapped {
-		return errors.New("Cannot update metric when a mapping is active")
+// IdentifierPat contains the pattern for a valid name identifier
+const identifierPat = "[\\p{L}\\p{N}]+"
+
+const p = "\\A((" + identifierPat + ")(\\." + identifierPat + ")*?)(\\[(" + identifierPat + ")\\])?((\\." + identifierPat + ")*)\\z"
+
+// identifierRegex gets the *regexp.Regexp object representing a valid metric identifier
+var identifierRegex, _ = regexp.Compile(p)
+
+func parseString(name string) (iname string, indomname string, mname string, err error) {
+	if !identifierRegex.MatchString(name) {
+		return "", "", "", errors.New("I don't know this")
 	}
 
-	return m.Set(val)
-}
-
-// UpdateMetricByName safely updates the value of a metric
-func (r *PCPRegistry) UpdateMetricByName(name string, val interface{}) error {
-	if !r.HasMetric(name) {
-		return errors.New("The Metric doesn't exist for this registry")
-	}
-
-	return r.UpdateMetric(r.metrics[name], val)
+	matches := identifierRegex.FindStringSubmatch(name)
+	iname, indomname, mname, err = matches[5], matches[1], matches[1]+matches[6], nil
+	return
 }
