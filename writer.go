@@ -345,12 +345,10 @@ func (w *PCPWriter) writeMetricDesc(m PCPMetric, pos int) {
 func (w *PCPWriter) writeSingletonMetric(m *PCPSingletonMetric) {
 	w.writeMetricDesc(m, m.descoffset)
 
-	pos := m.valueoffset
-	w.buffer.SetPos(pos)
+	m.update = newupdateClosure(m.valueoffset, w.buffer, m.t)
+	m.update(m.val)
 
-	m.t.WriteVal(m.val, w.buffer)
-
-	w.buffer.SetPos(pos + MaxDataValueSize)
+	w.buffer.SetPos(m.valueoffset + MaxDataValueSize)
 	w.buffer.WriteInt64(int64(m.descoffset))
 	w.buffer.WriteInt64(0)
 }

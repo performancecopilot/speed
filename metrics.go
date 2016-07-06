@@ -68,35 +68,37 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 }
 
 // WriteVal implements value writer for the current MetricType to a buffer
-func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) {
+func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) error {
 	switch val.(type) {
 	case int:
 		switch m {
 		case Int32Type:
-			b.WriteInt32(int32(val.(int)))
+			return b.WriteInt32(int32(val.(int)))
 		case Int64Type:
-			b.WriteInt64(int64(val.(int)))
+			return b.WriteInt64(int64(val.(int)))
 		case Uint32Type:
-			b.WriteUint32(uint32(val.(int)))
+			return b.WriteUint32(uint32(val.(int)))
 		case Uint64Type:
-			b.WriteUint64(uint64(val.(int)))
+			return b.WriteUint64(uint64(val.(int)))
 		}
 	case int32:
-		b.WriteInt32(val.(int32))
+		return b.WriteInt32(val.(int32))
 	case int64:
-		b.WriteInt64(val.(int64))
+		return b.WriteInt64(val.(int64))
 	case uint:
 		switch m {
 		case Uint32Type:
-			b.WriteUint32(uint32(val.(uint)))
+			return b.WriteUint32(uint32(val.(uint)))
 		case Uint64Type:
-			b.WriteUint64(uint64(val.(uint)))
+			return b.WriteUint64(uint64(val.(uint)))
 		}
 	case uint32:
-		b.WriteUint32(val.(uint32))
+		return b.WriteUint32(val.(uint32))
 	case uint64:
-		b.WriteUint64(val.(uint64))
+		return b.WriteUint64(val.(uint64))
 	}
+
+	return errors.New("Invalid Type")
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -310,6 +312,19 @@ func (md *pcpMetricDesc) Description() string {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+// updateClosure is a closure that will write the modified value of a metric on disk
+type updateClosure func(interface{}) error
+
+// newupdateClosure creates a new update closure for an offset, type and buffer
+func newupdateClosure(offset int, buffer bytebuffer.Buffer, t MetricType) updateClosure {
+	return func(val interface{}) error {
+		buffer.SetPos(offset)
+		return t.WriteVal(val, buffer)
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 // PCPSingletonMetric defines a singleton metric with no instance domain
 // only a value and a valueoffset
 type PCPSingletonMetric struct {
@@ -317,9 +332,10 @@ type PCPSingletonMetric struct {
 	*pcpMetricDesc
 	val         interface{}
 	valueoffset int
+	update      updateClosure
 }
 
-// NewPCPSingletonMetric creates a new instance of PCPMetric
+// NewPCPSingletonMetric creates a new instance of PCPSingletonMetric
 func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) (*PCPSingletonMetric, error) {
 	if name == "" {
 		return nil, errors.New("Metric name cannot be empty")
@@ -332,18 +348,18 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 	return &PCPSingletonMetric{
 		sync.RWMutex{},
 		newpcpMetricDesc(name, t, s, u, shortdesc, longdesc),
-		val, 0,
+		val, 0, nil,
 	}, nil
 }
 
-// Val returns the current Set value of PCPMetric
+// Val returns the current Set value of PCPSingletonMetric
 func (m *PCPSingletonMetric) Val() interface{} {
 	m.RLock()
 	defer m.RUnlock()
 	return m.val
 }
 
-// Set Sets the current value of PCPMetric
+// Set Sets the current value of PCPSingletonMetric
 func (m *PCPSingletonMetric) Set(val interface{}) error {
 	if !m.t.IsCompatible(val) {
 		return errors.New("the value is incompatible with this metrics MetricType")
@@ -352,13 +368,19 @@ func (m *PCPSingletonMetric) Set(val interface{}) error {
 	if val != m.val {
 		m.Lock()
 		defer m.Unlock()
+		if m.update != nil {
+			err := m.update(m.val)
+			if err != nil {
+				return err
+			}
+		}
 		m.val = val
 	}
 
 	return nil
 }
 
-// Indom returns the instance domain for a PCPMetric
+// Indom returns the instance domain for a PCPSingletonMetric
 func (m *PCPSingletonMetric) Indom() *PCPInstanceDomain { return nil }
 
 func (m *PCPSingletonMetric) String() string {
