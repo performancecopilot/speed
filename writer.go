@@ -53,10 +53,9 @@ type Writer interface {
 
 	// adds metric and instance domain from a string
 	RegisterString(string, interface{}, MetricSemantics, MetricType, MetricUnit) error
-
-	// update a metric
-	Update(Metric, interface{}) error
 }
+
+///////////////////////////////////////////////////////////////////////////////
 
 func mmvFileLocation(name string) (string, error) {
 	if strings.ContainsRune(name, os.PathSeparator) {
@@ -141,7 +140,8 @@ func (w *PCPWriter) Length() int {
 		(w.tocCount() * TocLength) +
 		(w.Registry().InstanceCount() * InstanceLength) +
 		(w.Registry().InstanceDomainCount() * InstanceDomainLength) +
-		(w.Registry().MetricCount() * (MetricLength + ValueLength)) +
+		(w.Registry().MetricCount() * MetricLength) +
+		(w.Registry().ValuesCount() * ValueLength) +
 		(w.Registry().StringCount() * StringBlockLength)
 }
 
@@ -150,7 +150,7 @@ func (w *PCPWriter) initializeOffsets() {
 	instanceoffset := indomoffset + InstanceDomainLength*w.r.InstanceDomainCount()
 	metricsoffset := instanceoffset + InstanceLength*w.r.InstanceCount()
 	valuesoffset := metricsoffset + MetricLength*w.r.MetricCount()
-	stringsoffset := valuesoffset + ValueLength*w.r.MetricCount()
+	stringsoffset := valuesoffset + ValueLength*w.r.ValuesCount()
 
 	w.r.indomoffset = indomoffset
 	w.r.instanceoffset = instanceoffset
@@ -175,13 +175,33 @@ func (w *PCPWriter) initializeOffsets() {
 		}
 	}
 
+	initializeInstanceMetricOffsets := func(metric *PCPInstanceMetric) {
+		metric.descoffset = metricsoffset
+		metricsoffset += MetricLength
+
+		for name := range metric.indom.instances {
+			metric.vals[name].offset = valuesoffset
+			valuesoffset += ValueLength
+		}
+
+		if metric.shortDescription.val != "" {
+			metric.shortDescription.offset = stringsoffset
+			stringsoffset += StringBlockLength
+		}
+
+		if metric.longDescription.val != "" {
+			metric.longDescription.offset = stringsoffset
+			stringsoffset += StringBlockLength
+		}
+	}
+
 	for _, indom := range w.r.instanceDomains {
 		indom.offset = indomoffset
 		indom.instanceOffset = instanceoffset
 		indomoffset += InstanceDomainLength
 
 		for _, i := range indom.instances {
-			i.descoffset = instanceoffset
+			i.offset = instanceoffset
 			instanceoffset += InstanceLength
 		}
 
@@ -200,6 +220,8 @@ func (w *PCPWriter) initializeOffsets() {
 		switch metric.(type) {
 		case *PCPSingletonMetric:
 			initializeSingletonMetricOffsets(metric.(*PCPSingletonMetric))
+		case *PCPInstanceMetric:
+			initializeInstanceMetricOffsets(metric.(*PCPInstanceMetric))
 		}
 	}
 }
@@ -270,7 +292,7 @@ func (w *PCPWriter) writeTocBlock() {
 	tocpos += TocLength
 
 	// 4 is the identifier for values
-	w.writeSingleToc(tocpos, 4, w.r.MetricCount(), valuesoffset)
+	w.writeSingleToc(tocpos, 4, w.r.ValuesCount(), valuesoffset)
 	tocpos += TocLength
 
 	// strings toc
@@ -302,7 +324,7 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock() {
 		}
 
 		for _, i := range indom.instances {
-			w.buffer.SetPos(i.descoffset)
+			w.buffer.SetPos(i.offset)
 			w.buffer.WriteInt64(int64(indom.offset))
 			w.buffer.WriteInt32(0)
 			w.buffer.WriteUint32(i.id)
@@ -353,11 +375,28 @@ func (w *PCPWriter) writeSingletonMetric(m *PCPSingletonMetric) {
 	w.buffer.WriteInt64(0)
 }
 
+func (w *PCPWriter) writeInstanceMetric(m *PCPInstanceMetric) {
+	w.writeMetricDesc(m, m.descoffset)
+
+	for name, i := range m.indom.instances {
+		ival := m.vals[name]
+
+		ival.update = newupdateClosure(ival.offset, w.buffer, m.t)
+		ival.update(ival.val)
+
+		w.buffer.SetPos(ival.offset + MaxDataValueSize)
+		w.buffer.WriteInt64(int64(m.descoffset))
+		w.buffer.WriteInt64(int64(i.offset))
+	}
+}
+
 func (w *PCPWriter) writeMetricsAndValuesBlock() {
 	for _, metric := range w.r.metrics {
 		switch metric.(type) {
 		case *PCPSingletonMetric:
 			w.writeSingletonMetric(metric.(*PCPSingletonMetric))
+		case *PCPInstanceMetric:
+			w.writeInstanceMetric(metric.(*PCPInstanceMetric))
 		}
 	}
 }
