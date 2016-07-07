@@ -255,12 +255,12 @@ type PCPMetric interface {
 // see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
 const PCPMetricItemBitLength = 10
 
-// pcpMetricDesc is a metric metadata wrapper
-// each metric type can wrap its metadata by containing a pcpMetricDesc type and only define its own
-// specific properties assuming pcpMetricDesc will handle the rest
+// PCPMetricDesc is a metric metadata wrapper
+// each metric type can wrap its metadata by containing a PCPMetricDesc type and only define its own
+// specific properties assuming PCPMetricDesc will handle the rest
 //
 // when writing, this type is supposed to map directly to the pmDesc struct as defined in PCP core
-type pcpMetricDesc struct {
+type PCPMetricDesc struct {
 	id                                uint32          // unique metric id
 	name                              string          // the name
 	t                                 MetricType      // the type of a metric
@@ -270,9 +270,9 @@ type pcpMetricDesc struct {
 	shortDescription, longDescription *PCPString
 }
 
-// newpcpMetricDesc creates a new Metric Description wrapper type
-func newpcpMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) *pcpMetricDesc {
-	return &pcpMetricDesc{
+// newPCPMetricDesc creates a new Metric Description wrapper type
+func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) *PCPMetricDesc {
+	return &PCPMetricDesc{
 		getHash(n, PCPMetricItemBitLength),
 		n, t, s, u, 0,
 		NewPCPString(shortdesc), NewPCPString(longdesc),
@@ -280,28 +280,28 @@ func newpcpMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, s
 }
 
 // ID returns the generated id for PCPMetric
-func (md *pcpMetricDesc) ID() uint32 { return md.id }
+func (md *PCPMetricDesc) ID() uint32 { return md.id }
 
 // Name returns the generated id for PCPMetric
-func (md *pcpMetricDesc) Name() string { return md.name }
+func (md *PCPMetricDesc) Name() string { return md.name }
 
 // Semantics returns the current stored value for PCPMetric
-func (md *pcpMetricDesc) Semantics() MetricSemantics { return md.sem }
+func (md *PCPMetricDesc) Semantics() MetricSemantics { return md.sem }
 
 // Unit returns the unit for PCPMetric
-func (md *pcpMetricDesc) Unit() MetricUnit { return md.u }
+func (md *PCPMetricDesc) Unit() MetricUnit { return md.u }
 
 // Type returns the type for PCPMetric
-func (md *pcpMetricDesc) Type() MetricType { return md.t }
+func (md *PCPMetricDesc) Type() MetricType { return md.t }
 
 // ShortDescription returns the shortdesc value
-func (md *pcpMetricDesc) ShortDescription() *PCPString { return md.shortDescription }
+func (md *PCPMetricDesc) ShortDescription() *PCPString { return md.shortDescription }
 
 // LongDescription returns the longdesc value
-func (md *pcpMetricDesc) LongDescription() *PCPString { return md.longDescription }
+func (md *PCPMetricDesc) LongDescription() *PCPString { return md.longDescription }
 
 // Description returns the description for PCPMetric
-func (md *pcpMetricDesc) Description() string {
+func (md *PCPMetricDesc) Description() string {
 	sd := md.shortDescription
 	ld := md.longDescription
 	if len(ld.val) > 0 {
@@ -329,7 +329,7 @@ func newupdateClosure(offset int, buffer bytebuffer.Buffer, t MetricType) update
 // only a value and a valueoffset
 type PCPSingletonMetric struct {
 	sync.RWMutex
-	*pcpMetricDesc
+	*PCPMetricDesc
 	val         interface{}
 	valueoffset int
 	update      updateClosure
@@ -347,7 +347,7 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 
 	return &PCPSingletonMetric{
 		sync.RWMutex{},
-		newpcpMetricDesc(name, t, s, u, shortdesc, longdesc),
+		newPCPMetricDesc(name, t, s, u, shortdesc, longdesc),
 		val, 0, nil,
 	}, nil
 }
@@ -405,7 +405,7 @@ func newinstanceValue(val interface{}) *instanceValue {
 // over multiple instances in an instance domain
 type PCPInstanceMetric struct {
 	sync.RWMutex
-	*pcpMetricDesc
+	*PCPMetricDesc
 	indom *PCPInstanceDomain
 	vals  map[string]*instanceValue
 }
@@ -437,7 +437,7 @@ func NewPCPInstanceMetric(vals map[string]interface{}, name string, indom *PCPIn
 
 	return &PCPInstanceMetric{
 		sync.RWMutex{},
-		newpcpMetricDesc(name, t, s, u, shortdesc, longdesc),
+		newPCPMetricDesc(name, t, s, u, shortdesc, longdesc),
 		indom,
 		mvals,
 	}, nil
