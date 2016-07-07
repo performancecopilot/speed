@@ -17,6 +17,9 @@ type Registry interface {
 	// returns the number of Metrics in the current registry
 	MetricCount() int
 
+	// returns the number of Values in the current registry
+	ValuesCount() int
+
 	// returns the number of Instance Domains in the current registry
 	InstanceDomainCount() int
 
@@ -57,6 +60,7 @@ type PCPRegistry struct {
 
 	// counts
 	instanceCount int
+	valueCount    int
 	stringcount   int
 
 	mapped bool
@@ -93,6 +97,9 @@ func (r *PCPRegistry) MetricCount() int {
 
 	return len(r.metrics)
 }
+
+// ValuesCount returns the number of values in the registry
+func (r *PCPRegistry) ValuesCount() int { return r.valueCount }
 
 // StringCount returns the number of strings in the registry
 func (r *PCPRegistry) StringCount() int { return r.stringcount }
@@ -148,22 +155,26 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 		return errors.New("Metric is already defined for the current registry")
 	}
 
-	r.metricslock.Lock()
-	defer r.metricslock.Unlock()
+	pcpm := m.(PCPMetric)
+
+	// if it is an indom metric
+	if pcpm.Indom() != nil && !r.HasInstanceDomain(pcpm.Indom().Name()) {
+		return errors.New("Instance Domain is not defined for current registry")
+	}
 
 	if r.mapped {
 		return errors.New("Cannot add a metric when a mapping is active")
 	}
 
-	pcpm := m.(PCPMetric)
+	r.metricslock.Lock()
+	defer r.metricslock.Unlock()
 
 	r.metrics[m.Name()] = pcpm
 
 	if pcpm.Indom() != nil {
-		err := r.AddInstanceDomain(pcpm.Indom())
-		if err != nil {
-			return err
-		}
+		r.valueCount += pcpm.Indom().InstanceCount()
+	} else {
+		r.valueCount++
 	}
 
 	if pcpm.ShortDescription().String() != "" {
@@ -183,16 +194,9 @@ func (r *PCPRegistry) AddInstanceDomainByName(name string, instances []string) (
 		return nil, errors.New("The InstanceDomain already exists for this registry")
 	}
 
-	indom, err := NewPCPInstanceDomain(name, "", "")
+	indom, err := NewPCPInstanceDomain(name, instances, "", "")
 	if err != nil {
 		return nil, err
-	}
-
-	for _, i := range instances {
-		err = indom.AddInstance(i)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	err = r.AddInstanceDomain(indom)
