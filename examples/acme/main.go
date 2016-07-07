@@ -1,18 +1,19 @@
 // A golang implementation of the acme factory example from mmv.py in PCP core
 // (https://github.com/performancecopilot/pcp/blob/master/src/python/pcp/mmv.py#L21-L70)
-//
-// TODO:
-// - modify values section when support for multiple valued metrics are added to speed
-// - add update section when memory mapped buffer with pmdammv visibility is done
 package main
 
-import "github.com/performancecopilot/speed"
+import (
+	"time"
+
+	"github.com/performancecopilot/speed"
+)
 
 func main() {
-	instances := []string{"Anvils", "Rockets", "Giant Rubber Bands"}
+	instances := []string{"Anvils", "Rockets", "Giant_Rubber_Bands"}
 
 	indom, err := speed.NewPCPInstanceDomain(
 		"Acme Products",
+		instances,
 		"Acme products",
 		"Most popular products produced by the Acme Corporation",
 	)
@@ -20,13 +21,12 @@ func main() {
 		panic(err)
 	}
 
-	err = indom.AddInstances(instances)
-	if err != nil {
-		panic(err)
-	}
-
-	countmetric, err := speed.NewPCPMetric(
-		0,
+	countmetric, err := speed.NewPCPInstanceMetric(
+		map[string]interface{}{
+			"Anvils":             0,
+			"Rockets":            0,
+			"Giant_Rubber_Bands": 0,
+		},
 		"products.count",
 		indom,
 		speed.Uint64Type,
@@ -40,8 +40,12 @@ func main() {
 		panic(err)
 	}
 
-	timemetric, err := speed.NewPCPMetric(
-		0,
+	timemetric, err := speed.NewPCPInstanceMetric(
+		map[string]interface{}{
+			"Anvils":             0,
+			"Rockets":            0,
+			"Giant_Rubber_Bands": 0,
+		},
 		"products.time",
 		indom,
 		speed.Uint64Type,
@@ -59,12 +63,35 @@ func main() {
 		panic(err)
 	}
 
-	writer.Register(countmetric)
-	writer.Register(timemetric)
+	err = writer.RegisterIndom(indom)
+	if err != nil {
+		panic(err)
+	}
 
-	writer.Start()
+	err = writer.Register(countmetric)
+	if err != nil {
+		panic(err)
+	}
 
-	// TODO: add update code after finishing memory mapped buffer implementation
+	err = writer.Register(timemetric)
+	if err != nil {
+		panic(err)
+	}
 
-	writer.Stop()
+	err = writer.Start()
+	if err != nil {
+		panic(err)
+	}
+
+	time.Sleep(time.Second * 5)
+	err = countmetric.SetInstance("Anvils", 42)
+	if err != nil {
+		panic(err)
+	}
+	time.Sleep(time.Second * 5)
+
+	err = writer.Stop()
+	if err != nil {
+		panic(err)
+	}
 }
