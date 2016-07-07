@@ -222,16 +222,16 @@ type SingletonMetric interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// InstanceDomainMetric defines the interface for a metric that stores multiple values
+// InstanceMetric defines the interface for a metric that stores multiple values
 // in instances and instance domains
-type InstanceDomainMetric interface {
+type InstanceMetric interface {
 	Metric
 
 	// gets the value of a particular instance
-	ValInstance(string) interface{}
+	ValInstance(string) (interface{}, error)
 
 	// sets the value of a particular instance
-	SetInstance(string, interface{})
+	SetInstance(string, interface{}) error
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -388,3 +388,92 @@ func (m *PCPSingletonMetric) String() string {
 }
 
 // TODO: implement PCPCounterMetric, PCPGaugeMetric ...
+
+///////////////////////////////////////////////////////////////////////////////
+
+type instanceValue struct {
+	val    interface{}
+	offset int
+	update updateClosure
+}
+
+func newinstanceValue(val interface{}) *instanceValue {
+	return &instanceValue{val, 0, nil}
+}
+
+// PCPInstanceMetric represents a PCPMetric that can have multiple values
+// over multiple instances in an instance domain
+type PCPInstanceMetric struct {
+	sync.RWMutex
+	*pcpMetricDesc
+	indom *PCPInstanceDomain
+	vals  map[string]*instanceValue
+}
+
+// NewPCPInstanceMetric creates a new instance of PCPSingletonMetric
+func NewPCPInstanceMetric(vals map[string]interface{}, name string, indom *PCPInstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) (*PCPInstanceMetric, error) {
+	if name == "" {
+		return nil, errors.New("Metric name cannot be empty")
+	}
+
+	if len(vals) != indom.InstanceCount() {
+		return nil, errors.New("values for all instances in the instance domain only should be passed")
+	}
+
+	mvals := make(map[string]*instanceValue)
+
+	for name := range indom.instances {
+		val, present := vals[name]
+		if !present {
+			return nil, fmt.Errorf("Instance %v not initialized", name)
+		}
+
+		if !t.IsCompatible(val) {
+			return nil, fmt.Errorf("value %v is incompatible with type %v for Instance %v", val, t, name)
+		}
+
+		mvals[name] = newinstanceValue(val)
+	}
+
+	return &PCPInstanceMetric{
+		sync.RWMutex{},
+		newpcpMetricDesc(name, t, s, u, shortdesc, longdesc),
+		indom,
+		mvals,
+	}, nil
+}
+
+// Indom returns the instance domain for the metric
+func (m *PCPInstanceMetric) Indom() *PCPInstanceDomain { return m.indom }
+
+// ValInstance returns the value for a particular instance of the metric
+func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
+	if !m.indom.HasInstance(instance) {
+		return nil, fmt.Errorf("%v is not an instance of this metric", instance)
+	}
+
+	m.RLock()
+	defer m.RUnlock()
+
+	return m.vals[instance], nil
+}
+
+// SetInstance sets the value for a particular instance of the metric
+func (m *PCPInstanceMetric) SetInstance(instance string, val interface{}) error {
+	if !m.indom.HasInstance(instance) {
+		return fmt.Errorf("%v is not an instance of this metric", instance)
+	}
+
+	m.Lock()
+	defer m.Unlock()
+
+	if m.vals[instance].update != nil {
+		err := m.vals[instance].update(val)
+		if err != nil {
+			return err
+		}
+	}
+
+	m.vals[instance].val = val
+	return nil
+}
