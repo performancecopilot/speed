@@ -4,7 +4,6 @@ package speed
 type pcpInstance struct {
 	name   string
 	id     uint32
-	indom  *PCPInstanceDomain
 	offset int
 }
 
@@ -13,9 +12,9 @@ type pcpInstance struct {
 // after initializing the InstanceDomain
 // this is not a part of the public API as this is not supposed to be used directly,
 // but instead added using the AddInstance method of InstanceDomain
-func newpcpInstance(id uint32, name string, indom *PCPInstanceDomain) *pcpInstance {
+func newpcpInstance(name string) *pcpInstance {
 	return &pcpInstance{
-		name, id, indom, 0,
+		name, getHash(name, 0), 0,
 	}
 }
 
