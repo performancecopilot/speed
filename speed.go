@@ -16,7 +16,7 @@ func init() {
 // NOTE: make sure this is as fast as possible
 //
 // see: http://programmers.stackexchange.com/a/145633
-func getHash(s string, b uint32) uint32 {
+func hash(s string, b uint32) uint32 {
 	h := fnv.New32a()
 	h.Write([]byte(s))
 	val := h.Sum32()

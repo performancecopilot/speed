@@ -14,7 +14,7 @@ type pcpInstance struct {
 // but instead added using the AddInstance method of InstanceDomain
 func newpcpInstance(name string) *pcpInstance {
 	return &pcpInstance{
-		name, getHash(name, 0), 0,
+		name, hash(name, 0), 0,
 	}
 }
 

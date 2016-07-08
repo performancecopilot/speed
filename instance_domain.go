@@ -42,7 +42,7 @@ func NewPCPInstanceDomain(name string, instances []string, shortDescription, lon
 	}
 
 	return &PCPInstanceDomain{
-		id:               getHash(name, PCPInstanceDomainBitLength),
+		id:               hash(name, PCPInstanceDomainBitLength),
 		name:             name,
 		instances:        imap,
 		shortDescription: NewPCPString(shortDescription),

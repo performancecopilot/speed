@@ -109,7 +109,7 @@ func NewPCPWriter(name string, flag MMVFlag) (*PCPWriter, error) {
 	return &PCPWriter{
 		loc:       fileLocation,
 		r:         NewPCPRegistry(),
-		clusterID: getHash(name, PCPClusterIDBitLength),
+		clusterID: hash(name, PCPClusterIDBitLength),
 		flag:      flag,
 		buffer:    nil,
 	}, nil

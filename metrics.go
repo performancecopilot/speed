@@ -273,7 +273,7 @@ type PCPMetricDesc struct {
 // newPCPMetricDesc creates a new Metric Description wrapper type
 func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) *PCPMetricDesc {
 	return &PCPMetricDesc{
-		getHash(n, PCPMetricItemBitLength),
+		hash(n, PCPMetricItemBitLength),
 		n, t, s, u, 0,
 		NewPCPString(shortdesc), NewPCPString(longdesc),
 	}
