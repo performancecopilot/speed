@@ -95,3 +95,37 @@ func TestWriteString(t *testing.T) {
 		}
 	}
 }
+
+func TestSetPos(t *testing.T) {
+	b := NewByteBuffer(4)
+	err := b.SetPos(4)
+	if err == nil {
+		t.Error("Expected error at setting a bytebuffer to a position outside its range")
+	}
+
+	b.SetPos(2)
+	b.WriteString("a")
+
+	if b.Pos() != 3 {
+		t.Error("Position not changing as expected")
+		return
+	}
+
+	if b.Bytes()[2] != 'a' {
+		t.Error("Value was not written at the expected position")
+		return
+	}
+
+	b.SetPos(2)
+	err = b.WriteInt32(10)
+
+	if err == nil {
+		t.Error("Expected error in writing a value guaranteed to overflow")
+		return
+	}
+
+	if b.Pos() != 2 {
+		t.Error("Position changing despite a write failure")
+		return
+	}
+}
