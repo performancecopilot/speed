@@ -46,6 +46,15 @@ func (m MetricType) isCompatibleInt(val int) bool {
 	}
 }
 
+func (m MetricType) isCompatibleFloat(val float64) bool {
+	switch {
+	case val >= -math.MaxFloat32 && val <= math.MaxFloat32:
+		return m == FloatType || m == DoubleType
+	default:
+		return m == DoubleType
+	}
+}
+
 // IsCompatible checks if the passed value is compatible with the current MetricType
 func (m MetricType) IsCompatible(val interface{}) bool {
 	switch val.(type) {
@@ -65,6 +74,10 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 		return m == Uint32Type
 	case uint64:
 		return m == Uint64Type
+	case float32:
+		return m == FloatType
+	case float64:
+		return m.isCompatibleFloat(val.(float64))
 	default:
 		return false
 	}
@@ -88,6 +101,23 @@ func (m MetricType) resolveInt(val interface{}) interface{} {
 	return int32(val.(int))
 }
 
+// resolveFloat will resolve a float64 to one of the 2 compatible types
+func (m MetricType) resolveFloat(val interface{}) interface{} {
+	_, isFloat64 := val.(float64)
+	if isFloat64 && m == FloatType {
+		return float32(val.(float64))
+	}
+
+	return val
+}
+
+func (m MetricType) resolve(val interface{}) interface{} {
+	val = m.resolveInt(val)
+	val = m.resolveFloat(val)
+
+	return val
+}
+
 // WriteVal implements value writer for the current MetricType to a buffer
 func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) error {
 	switch val.(type) {
@@ -106,6 +136,10 @@ func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) error {
 		return b.WriteUint32(val.(uint32))
 	case uint64:
 		return b.WriteUint64(val.(uint64))
+	case float32:
+		return b.WriteFloat32(val.(float32))
+	case float64:
+		return b.WriteFloat64(val.(float64))
 	}
 
 	return errors.New("Invalid Type")
@@ -355,7 +389,7 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 		return nil, fmt.Errorf("type %v is not compatible with value %v", t, val)
 	}
 
-	val = t.resolveInt(val)
+	val = t.resolve(val)
 
 	return &PCPSingletonMetric{
 		sync.RWMutex{},
@@ -377,7 +411,7 @@ func (m *PCPSingletonMetric) Set(val interface{}) error {
 		return errors.New("the value is incompatible with this metrics MetricType")
 	}
 
-	val = m.t.resolveInt(val)
+	val = m.t.resolve(val)
 
 	if val != m.val {
 		m.Lock()
@@ -446,7 +480,7 @@ func NewPCPInstanceMetric(vals map[string]interface{}, name string, indom *PCPIn
 			return nil, fmt.Errorf("value %v is incompatible with type %v for Instance %v", val, t, name)
 		}
 
-		val = t.resolveInt(val)
+		val = t.resolve(val)
 		mvals[name] = newinstanceValue(val)
 	}
 
@@ -482,7 +516,7 @@ func (m *PCPInstanceMetric) SetInstance(instance string, val interface{}) error 
 	m.Lock()
 	defer m.Unlock()
 
-	val = m.t.resolveInt(val)
+	val = m.t.resolve(val)
 	if m.vals[instance].update != nil {
 		err := m.vals[instance].update(val)
 		if err != nil {
