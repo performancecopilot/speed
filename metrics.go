@@ -31,23 +31,26 @@ const (
 
 //go:generate stringer -type=MetricType
 
+func (m MetricType) isCompatibleInt(val int) bool {
+	switch {
+	case val < 0:
+		return m == Int32Type || m == Int64Type
+	case val <= math.MaxInt32:
+		return m == Int32Type || m == Int64Type || m == Uint32Type || m == Uint64Type
+	case uint32(val) <= math.MaxUint32:
+		return m == Int64Type || m == Uint32Type || m == Uint64Type
+	case int64(val) <= math.MaxInt64:
+		return m == Int64Type || m == Uint64Type
+	default:
+		return false
+	}
+}
+
 // IsCompatible checks if the passed value is compatible with the current MetricType
 func (m MetricType) IsCompatible(val interface{}) bool {
 	switch val.(type) {
 	case int:
-		v := val.(int)
-		switch {
-		case v < 0:
-			return m == Int32Type || m == Int64Type
-		case v <= math.MaxInt32:
-			return m == Int32Type || m == Int64Type || m == Uint32Type || m == Uint64Type
-		case uint32(v) <= math.MaxUint32:
-			return m == Int64Type || m == Uint32Type || m == Uint64Type
-		case int64(v) <= math.MaxInt64:
-			return m == Int64Type || m == Uint64Type
-		default:
-			return false
-		}
+		return m.isCompatibleInt(val.(int))
 	case int32:
 		return m == Int32Type
 	case int64:
@@ -67,20 +70,27 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 	}
 }
 
+// resolveInt will resolve an int to one of the 4 compatible types
+func (m MetricType) resolveInt(val interface{}) interface{} {
+	_, isInt := val.(int)
+	if !isInt {
+		return val
+	}
+
+	switch m {
+	case Int64Type:
+		return int64(val.(int))
+	case Uint32Type:
+		return uint32(val.(int))
+	case Uint64Type:
+		return uint64(val.(int))
+	}
+	return int32(val.(int))
+}
+
 // WriteVal implements value writer for the current MetricType to a buffer
 func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) error {
 	switch val.(type) {
-	case int:
-		switch m {
-		case Int32Type:
-			return b.WriteInt32(int32(val.(int)))
-		case Int64Type:
-			return b.WriteInt64(int64(val.(int)))
-		case Uint32Type:
-			return b.WriteUint32(uint32(val.(int)))
-		case Uint64Type:
-			return b.WriteUint64(uint64(val.(int)))
-		}
 	case int32:
 		return b.WriteInt32(val.(int32))
 	case int64:
@@ -345,6 +355,8 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 		return nil, fmt.Errorf("type %v is not compatible with value %v", t, val)
 	}
 
+	val = t.resolveInt(val)
+
 	return &PCPSingletonMetric{
 		sync.RWMutex{},
 		newPCPMetricDesc(name, t, s, u, shortdesc, longdesc),
@@ -365,11 +377,13 @@ func (m *PCPSingletonMetric) Set(val interface{}) error {
 		return errors.New("the value is incompatible with this metrics MetricType")
 	}
 
+	val = m.t.resolveInt(val)
+
 	if val != m.val {
 		m.Lock()
 		defer m.Unlock()
 		if m.update != nil {
-			err := m.update(m.val)
+			err := m.update(val)
 			if err != nil {
 				return err
 			}
@@ -432,6 +446,7 @@ func NewPCPInstanceMetric(vals map[string]interface{}, name string, indom *PCPIn
 			return nil, fmt.Errorf("value %v is incompatible with type %v for Instance %v", val, t, name)
 		}
 
+		val = t.resolveInt(val)
 		mvals[name] = newinstanceValue(val)
 	}
 
@@ -467,6 +482,7 @@ func (m *PCPInstanceMetric) SetInstance(instance string, val interface{}) error 
 	m.Lock()
 	defer m.Unlock()
 
+	val = m.t.resolveInt(val)
 	if m.vals[instance].update != nil {
 		err := m.vals[instance].update(val)
 		if err != nil {
