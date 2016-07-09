@@ -45,7 +45,7 @@ func main() {
 
 	fmt.Println("The metric should be visible as mmv.singletoncounter.counter")
 	for i := 0; i < *timelimit; i++ {
-		v := metric.Val().(int)
+		v := metric.Val().(int32)
 		v++
 		time.Sleep(time.Second)
 		metric.Set(v)
