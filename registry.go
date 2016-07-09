@@ -208,25 +208,6 @@ func (r *PCPRegistry) AddInstanceDomainByName(name string, instances []string) (
 	return indom, nil
 }
 
-// AddSingletonMetricByString adds a new Singleton Metric
-func (r *PCPRegistry) AddSingletonMetricByString(name string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
-	if r.HasMetric(name) {
-		return nil, errors.New("The Metric already exists for this registry")
-	}
-
-	m, err := NewPCPSingletonMetric(val, name, t, s, u, "", "")
-	if err != nil {
-		return nil, err
-	}
-
-	err = r.AddMetric(m)
-	if err != nil {
-		return nil, err
-	}
-
-	return m, nil
-}
-
 const id = "[\\p{L}\\p{N}]+"
 
 var instancesPattern = fmt.Sprintf("(%v)((,\\s?(%v))*)", id, id)
@@ -288,6 +269,8 @@ func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSem
 	if err != nil {
 		return nil, err
 	}
+
+	r.AddMetric(m)
 
 	return m, nil
 }
