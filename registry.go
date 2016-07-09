@@ -245,12 +245,20 @@ func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSem
 		return nil, err
 	}
 
+	var m Metric
+
 	if instances == nil {
 		// singleton metric
-		m, err := NewPCPSingletonMetric(val, metric, t, s, u, "", "")
+		m, err = NewPCPSingletonMetric(val, metric, t, s, u, "", "")
 		if err != nil {
 			return nil, err
 		}
+
+		err = r.AddMetric(m)
+		if err != nil {
+			return nil, err
+		}
+
 		return m, nil
 	}
 
@@ -265,12 +273,15 @@ func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSem
 		return nil, err
 	}
 
-	m, err := NewPCPInstanceMetric(mp, metric, id.(*PCPInstanceDomain), t, s, u, "", "")
+	m, err = NewPCPInstanceMetric(mp, metric, id.(*PCPInstanceDomain), t, s, u, "", "")
 	if err != nil {
 		return nil, err
 	}
 
-	r.AddMetric(m)
+	err = r.AddMetric(m)
+	if err != nil {
+		return nil, err
+	}
 
 	return m, nil
 }

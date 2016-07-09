@@ -68,6 +68,18 @@ func TestStringSingletonConstruction(t *testing.T) {
 	if sm.Val() != int32(10) {
 		t.Errorf("Expected metric value to be %v, got %v", 10, sm.Val())
 	}
+
+	if r.InstanceCount() != 0 {
+		t.Error("Expected Instance Count to be 0")
+	}
+
+	if r.InstanceDomainCount() != 0 {
+		t.Error("Expected Instance Domain Count to be 0")
+	}
+
+	if r.MetricCount() != 1 {
+		t.Error("Expected Metric Count to be 1")
+	}
 }
 
 func TestStringInstanceConstruction(t *testing.T) {
@@ -102,5 +114,17 @@ func TestStringInstanceConstruction(t *testing.T) {
 		if val != v {
 			t.Errorf("wrong value for instance %v, expected %v, got %v", i, v, val)
 		}
+	}
+
+	if r.InstanceCount() != 3 {
+		t.Error("Expected Instance Count to be 3")
+	}
+
+	if r.InstanceDomainCount() != 1 {
+		t.Error("Expected Instance Domain Count to be 1")
+	}
+
+	if r.MetricCount() != 1 {
+		t.Error("Expected Metric Count to be 1")
 	}
 }
