@@ -504,7 +504,7 @@ func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
 	m.RLock()
 	defer m.RUnlock()
 
-	return m.vals[instance], nil
+	return m.vals[instance].val, nil
 }
 
 // SetInstance sets the value for a particular instance of the metric
