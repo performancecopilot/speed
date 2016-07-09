@@ -463,6 +463,6 @@ func (w *PCPWriter) RegisterIndom(indom InstanceDomain) error {
 
 // RegisterString is simply a shorthand for Registry().AddMetricByString
 func (w *PCPWriter) RegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) error {
-	_, err := w.Registry().AddSingletonMetricByString(str, val, s, t, u)
+	_, err := w.Registry().AddMetricByString(str, val, s, t, u)
 	return err
 }
