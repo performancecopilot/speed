@@ -2,6 +2,7 @@ package speed
 
 import (
 	"errors"
+	"fmt"
 	"regexp"
 	"sync"
 )
@@ -39,7 +40,7 @@ type Registry interface {
 	AddMetric(Metric) error
 
 	// adds a Metric object after parsing the passed string for Instances and InstanceDomains
-	AddSingletonMetricByString(name string, initialval interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error)
+	AddMetricByString(name string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error)
 }
 
 // PCPRegistry implements a registry for PCP as the client
@@ -226,20 +227,37 @@ func (r *PCPRegistry) AddSingletonMetricByString(name string, val interface{}, s
 	return m, nil
 }
 
-// IdentifierPat contains the pattern for a valid name identifier
-const identifierPat = "[\\p{L}\\p{N}]+"
+const id = "[\\p{L}\\p{N}]+"
 
-const p = "\\A((" + identifierPat + ")(\\." + identifierPat + ")*?)(\\[(" + identifierPat + ")\\])?((\\." + identifierPat + ")*)\\z"
+var instancesPattern = fmt.Sprintf("(%v)((,\\s?(%v))*)", id, id)
+var pattern = fmt.Sprintf("\\A((%v)(\\.%v)*?)(\\[(%v)\\])?((\\.%v)*)\\z", id, id, instancesPattern, id)
 
-// identifierRegex gets the *regexp.Regexp object representing a valid metric identifier
-var identifierRegex, _ = regexp.Compile(p)
+var ireg, _ = regexp.Compile(id)
+var reg, _ = regexp.Compile(pattern)
 
-func parseString(name string) (iname string, indomname string, mname string, err error) {
-	if !identifierRegex.MatchString(name) {
-		return "", "", "", errors.New("I don't know this")
+func parseString(s string) (metric string, indom string, instances []string, err error) {
+	if !reg.MatchString(s) {
+		return "", "", nil, errors.New("Invalid String")
 	}
 
-	matches := identifierRegex.FindStringSubmatch(name)
-	iname, indomname, mname, err = matches[5], matches[1], matches[1]+matches[6], nil
+	matches := reg.FindStringSubmatch(s)
+	n := len(matches)
+
+	indom = matches[1]
+	metric = indom + matches[n-2]
+
+	iarr := matches[5]
+	if iarr != "" {
+		instances = ireg.FindAllString(iarr, -1)
+	} else {
+		instances = nil
+		indom = ""
+	}
+
 	return
+}
+
+// AddMetricByString dynamically creates a PCPMetric
+func (r *PCPRegistry) AddMetricByString(name string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
+	return nil, nil
 }

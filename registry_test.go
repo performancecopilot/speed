@@ -4,31 +4,45 @@ import "testing"
 
 func TestIdentifierRegex(t *testing.T) {
 	cases := []struct {
-		val, iname, indomname, mname string
+		val, indom, metric string
+		instances          []string
 	}{
-		{"sheep[baabaablack].bagsfull.count", "baabaablack", "sheep", "sheep.bagsfull.count"},
-		{"sheep[limpy].legs.available", "limpy", "sheep", "sheep.legs.available"},
-		{"cow.how.now", "", "cow", "cow.how.now"},
+		{"sheep[baabaablack].bagsfull.count", "sheep", "sheep.bagsfull.count", []string{"baabaablack"}},
+		{"sheep[limpy].legs.available", "sheep", "sheep.legs.available", []string{"limpy"}},
+		{"cow.how.now", "", "cow.how.now", nil},
+		{"sheep[limpy,grumpy,chumpy].legs.available", "sheep", "sheep.legs.available", []string{"limpy", "grumpy", "chumpy"}},
 	}
 
 	for _, c := range cases {
-		i, id, m, err := parseString(c.val)
+		m, id, i, err := parseString(c.val)
 
 		if err != nil {
-			t.Errorf("Failing to parse %s\n", c.val)
+			t.Errorf("Error %v while parsing %v", err, c.val)
 			continue
 		}
 
-		if i != c.iname {
-			t.Errorf("Instance name incorrectly parsed, expected %s, got %s\n", c.iname, i)
+		if id != c.indom {
+			t.Errorf("Wrong InstanceDomain for %v, expected %v, got %v", c.val, c.indom, id)
 		}
 
-		if id != c.indomname {
-			t.Errorf("Instance Domain name incorrectly parsed, expected %s, got %s\n", c.indomname, id)
+		if m != c.metric {
+			t.Errorf("Wrong Metric for %v, expected %v, got %v", c.val, c.metric, m)
 		}
 
-		if m != c.mname {
-			t.Errorf("Metric name incorrectly parsed, expected %s, got %s\n", c.mname, m)
+		if len(i) != len(c.instances) {
+			t.Errorf("Wrong number of Instances for %v, expected %v, got %v", c.val, len(c.instances), i)
+		} else {
+			m := make(map[string]bool)
+			for x := 0; x < len(i); x++ {
+				m[i[x]] = true
+			}
+
+			for x := 0; x < len(i); x++ {
+				_, present := m[c.instances[x]]
+				if !present {
+					t.Errorf("Instance %v not found in input", c.instances[x])
+				}
+			}
 		}
 	}
 }
