@@ -46,3 +46,61 @@ func TestIdentifierRegex(t *testing.T) {
 		}
 	}
 }
+
+func TestStringSingletonConstruction(t *testing.T) {
+	r := NewPCPRegistry()
+
+	m, err := r.AddMetricByString("cow.how.now", 10, CounterSemantics, Int32Type, OneUnit)
+	if err != nil {
+		t.Error("Cannot parse, error", err)
+		return
+	}
+
+	sm, ok := m.(*PCPSingletonMetric)
+	if !ok {
+		t.Error("Expected a PCPSingletonMetric")
+	}
+
+	if sm.Name() != "cow.how.now" {
+		t.Errorf("Expected metric name to be %v, got %v", "cow.how.now", sm.Name())
+	}
+
+	if sm.Val() != int32(10) {
+		t.Errorf("Expected metric value to be %v, got %v", 10, sm.Val())
+	}
+}
+
+func TestStringInstanceConstruction(t *testing.T) {
+	r := NewPCPRegistry()
+
+	m, err := r.AddMetricByString("sheep[limpy,grumpy,chumpy].legs.available", map[string]interface{}{
+		"limpy":  10,
+		"grumpy": 20,
+		"chumpy": 30,
+	}, CounterSemantics, Int32Type, OneUnit)
+	if err != nil {
+		t.Error("Cannot parse, error", err)
+		return
+	}
+
+	im, ok := m.(*PCPInstanceMetric)
+	if !ok {
+		t.Error("Expected a PCPInstanceMetric")
+	}
+
+	if im.Name() != "sheep.legs.available" {
+		t.Errorf("Expected metric name to be %v, got %v", "cow.how.now", im.Name())
+	}
+
+	for i, v := range map[string]int32{"limpy": 10, "grumpy": 20, "chumpy": 30} {
+		val, err := im.ValInstance(i)
+
+		if err != nil {
+			t.Errorf("error retrieving instance %v value", i)
+		}
+
+		if val != v {
+			t.Errorf("wrong value for instance %v, expected %v, got %v", i, v, val)
+		}
+	}
+}

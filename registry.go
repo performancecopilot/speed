@@ -258,6 +258,36 @@ func parseString(s string) (metric string, indom string, instances []string, err
 }
 
 // AddMetricByString dynamically creates a PCPMetric
-func (r *PCPRegistry) AddMetricByString(name string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
-	return nil, nil
+func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
+	metric, indom, instances, err := parseString(str)
+	if err != nil {
+		return nil, err
+	}
+
+	if instances == nil {
+		// singleton metric
+		m, err := NewPCPSingletonMetric(val, metric, t, s, u, "", "")
+		if err != nil {
+			return nil, err
+		}
+		return m, nil
+	}
+
+	// instance metric
+	mp, ok := val.(map[string]interface{})
+	if !ok {
+		return nil, errors.New("to define an instance metric, a map[string]interface{} is required")
+	}
+
+	id, err := r.AddInstanceDomainByName(indom, instances)
+	if err != nil {
+		return nil, err
+	}
+
+	m, err := NewPCPInstanceMetric(mp, metric, id.(*PCPInstanceDomain), t, s, u, "", "")
+	if err != nil {
+		return nil, err
+	}
+
+	return m, nil
 }
