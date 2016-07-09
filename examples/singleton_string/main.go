@@ -28,10 +28,11 @@ func main() {
 		panic(err)
 	}
 
+	metric := m.(speed.SingletonMetric)
 	for i := 0; i < *timelimit; i++ {
-		val := m.(*speed.PCPSingletonMetric).Val().(int32)
+		val := metric.Val().(int32)
 		val++
-		m.(*speed.PCPSingletonMetric).Set(val)
+		metric.Set(val)
 		time.Sleep(time.Second)
 	}
 
