@@ -1,14 +1,20 @@
-[![GoDoc](https://godoc.org/github.com/performancecopilot/speed?status.svg)](https://godoc.org/github.com/performancecopilot/speed) [![Go Report Card](https://goreportcard.com/badge/github.com/performancecopilot/speed)](https://goreportcard.com/report/github.com/performancecopilot/speed)
-
 ![Speed](images/speed.png)
 
 Golang implementation of the Performance Co-Pilot (PCP) instrumentation API
 
 > A **Google Summer of Code 2016** project!
 
+[![GoDoc](https://godoc.org/github.com/performancecopilot/speed?status.svg)](https://godoc.org/github.com/performancecopilot/speed) [![Go Report Card](https://goreportcard.com/badge/github.com/performancecopilot/speed)](https://goreportcard.com/report/github.com/performancecopilot/speed)
+
 ## Install
 
 ### Prerequisites
+
+#### PCP
+
+Install Performance Co-Pilot on your local machine, either using prebuilt archives or by getting and building the source code. For detailed instructions, read the [PCP Install.md](https://github.com/performancecopilot/pcp/blob/master/INSTALL.md).
+
+#### Go
 
 Set up a go environment on your computer. For more information about these steps, please read [how to write go code](https://golang.org/doc/code.html), or [watch the video](https://www.youtube.com/watch?v=XCsL89YtqCs)
 
