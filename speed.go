@@ -1,10 +1,24 @@
 package speed
 
-import "hash/fnv"
+import (
+	"hash/fnv"
+
+	"github.com/Sirupsen/logrus"
+	prefixed "github.com/x-cray/logrus-prefixed-formatter"
+)
+
+var log = logrus.New()
+
+func initLogging() {
+	log.Formatter = new(prefixed.TextFormatter)
+	log.Level = logrus.InfoLevel
+}
 
 // init maintains a central location of all things that happen when the package is initialized
 // instead of everything being scattered in multiple source files
 func init() {
+	initLogging()
+
 	err := initConfig()
 	if err != nil {
 		// TODO: do something better here, like silently exit
