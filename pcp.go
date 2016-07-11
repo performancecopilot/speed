@@ -7,6 +7,7 @@ type PCPString struct {
 	offset int
 }
 
+// NewPCPString creates a new instance of a PCPString from a raw string
 func NewPCPString(s string) *PCPString {
 	return &PCPString{s, 0}
 }
