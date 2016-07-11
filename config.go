@@ -5,6 +5,8 @@ import (
 	"os"
 	"path"
 	"regexp"
+
+	"github.com/Sirupsen/logrus"
 )
 
 // rootPath stores path to the pcp root installation
@@ -29,11 +31,21 @@ func initConfig() error {
 	}
 	rootPath = r
 
+	log.WithFields(logrus.Fields{
+		"prefix":   "config",
+		"rootPath": rootPath,
+	}).Info("detected root directory for PCP")
+
 	c, ok := os.LookupEnv("PCP_CONF")
 	if !ok {
 		c = path.Join(rootPath, "etc", "pcp.conf")
 	}
 	confPath = c
+
+	log.WithFields(logrus.Fields{
+		"prefix":   "config",
+		"confPath": confPath,
+	}).Info("detected directory for PCP config file")
 
 	f, err := os.Open(confPath)
 	if err != nil {
@@ -51,6 +63,8 @@ func initConfig() error {
 			config[matches[1]] = matches[2]
 		}
 	}
+
+	log.WithFields(logrus.Fields{"prefix": "config"}).Info("successfully read PCP config file")
 
 	return nil
 }

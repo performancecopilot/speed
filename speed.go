@@ -21,8 +21,10 @@ func init() {
 
 	err := initConfig()
 	if err != nil {
-		// TODO: do something better here, like silently exit
-		panic(err)
+		log.WithFields(logrus.Fields{
+			"prefix": "config",
+			"error":  err,
+		}).Error("error initializing config. maybe PCP isn't installed properly")
 	}
 }
 
