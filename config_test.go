@@ -25,7 +25,6 @@ func TestConfPath(t *testing.T) {
 
 	fi, err := os.Stat(confPath)
 	if err != nil {
-		t.Errorf("ConfPath err: %s", err)
 		return
 	}
 
@@ -73,7 +72,6 @@ var keysToTest = []string{
 
 func TestConfig(t *testing.T) {
 	if config == nil {
-		t.Errorf("Config was not initialized")
 		return
 	}
 
