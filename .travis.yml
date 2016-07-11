@@ -6,7 +6,12 @@ go:
   - tip
 env:
   global:
-  - GO15VENDOREXPERIMENT=1
+    - GO15VENDOREXPERIMENT=1
+    - secure: Tt++Fdp5IqwJyYuK5EFA29BHGInHxVylFQMRtvpNt2qMZA89Z1N4BUDswqVu23TaMwoFM0a1/E3tAuC0Ffqm19oS8jnFyonuFlXduwG8iVb8znWzP67Jtj9l5xDzra/NhdhE25OxUD3b203rOMChpRx77i+eBITlaYsOMUTq/K77at+NW58qL3W7h6vu4WFBG0T0RbEVjp+IxSJiAUJI9jSYYldo7EpeDL/BqMJeMVe1D0UfVa/DU0GNdDKYibmF+Mag/v34ttlfdYarLEicwQpcQb52NfrRg06iPmiiqRsN/glU2clzkJPLZUmx3UgMPK8nKg4Iu8LXKMCm46UhnnsWcXjnquioLa8vPCv2hoModCcwjGLqC4BHnnh4QqNkMnL3UpLWQcT5zrqvsEIcy1TpwKwOEcIRo1ZqEmgl2kkz5hBN6hjFKR44Uti2ayw831X8FRxyGsq7O6b8R7M4w5gdt12Hj2V04Qnr718ZBhsrbNn+GPPv3p9Pspal9CXvuWTnIRbPCw0DOdajLIX9JMUB86ElPqLGxHBsrc6Ev2rsFPlJZqyur9KBU/KJfmlhrV8veksorugMk6nxshzS0P8eAdbmC+xTo999LQPNZqsNVfbKI97UKkfy7jZxHLDriTBD9qHtJSt+J2wkcS6iGrNe5bEpksZAmxJlSwSqIuY=
+before_install:
+  - make deps
+  - go get github.com/mattn/goveralls
+  - go get golang.org/x/tools/cmd/cover
 before_script:
   - go get github.com/performancecopilot/speed/vendor/github.com/Sirupsen/logrus
   - go get github.com/performancecopilot/speed/vendor/github.com/x-cray/logrus-prefixed-formatter
@@ -16,6 +21,7 @@ before_script:
   - gometalinter --install --update
 script:
   - make test
+  - $HOME/gopath/bin/goveralls -service=travis-ci
 notifications:
   email:
     on_success: change
