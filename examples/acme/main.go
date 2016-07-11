@@ -22,7 +22,7 @@ func main() {
 	}
 
 	countmetric, err := speed.NewPCPInstanceMetric(
-		map[string]interface{}{
+		speed.Instances{
 			"Anvils":             0,
 			"Rockets":            0,
 			"Giant_Rubber_Bands": 0,
@@ -41,7 +41,7 @@ func main() {
 	}
 
 	timemetric, err := speed.NewPCPInstanceMetric(
-		map[string]interface{}{
+		speed.Instances{
 			"Anvils":             0,
 			"Rockets":            0,
 			"Giant_Rubber_Bands": 0,

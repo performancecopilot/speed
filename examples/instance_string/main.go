@@ -17,7 +17,7 @@ func main() {
 		panic(err)
 	}
 
-	m, err := w.RegisterString("language[go, javascript, php].users", map[string]interface{}{
+	m, err := w.RegisterString("language[go, javascript, php].users", speed.Instances{
 		"go":         1,
 		"javascript": 100,
 		"php":        10,
