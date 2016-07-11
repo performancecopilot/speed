@@ -263,9 +263,9 @@ func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSem
 	}
 
 	// instance metric
-	mp, ok := val.(map[string]interface{})
+	mp, ok := val.(Instances)
 	if !ok {
-		return nil, errors.New("to define an instance metric, a map[string]interface{} is required")
+		return nil, errors.New("to define an instance metric, a Instances type is required")
 	}
 
 	id, err := r.AddInstanceDomainByName(indom, instances)

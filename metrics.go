@@ -459,7 +459,7 @@ type PCPInstanceMetric struct {
 }
 
 // NewPCPInstanceMetric creates a new instance of PCPSingletonMetric
-func NewPCPInstanceMetric(vals map[string]interface{}, name string, indom *PCPInstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) (*PCPInstanceMetric, error) {
+func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) (*PCPInstanceMetric, error) {
 	if name == "" {
 		return nil, errors.New("Metric name cannot be empty")
 	}

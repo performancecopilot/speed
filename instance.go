@@ -1,5 +1,8 @@
 package speed
 
+// Instances defines a valid collection of instance name and values
+type Instances map[string]interface{}
+
 // pcpInstance wraps a PCP compatible Instance
 type pcpInstance struct {
 	name   string

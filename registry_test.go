@@ -85,7 +85,7 @@ func TestStringSingletonConstruction(t *testing.T) {
 func TestStringInstanceConstruction(t *testing.T) {
 	r := NewPCPRegistry()
 
-	m, err := r.AddMetricByString("sheep[limpy,grumpy,chumpy].legs.available", map[string]interface{}{
+	m, err := r.AddMetricByString("sheep[limpy,grumpy,chumpy].legs.available", Instances{
 		"limpy":  10,
 		"grumpy": 20,
 		"chumpy": 30,
