@@ -1,3 +1,11 @@
+// Package speed implements a golang client for the Performance Co-Pilot
+// instrumentation API.
+//
+// It is based on the C/Perl/Python API implemented in PCP core as well as the
+// Java API implemented by `parfait`, a separate project.
+//
+// Some examples on using the API are implemented as executable go programs in the
+// `examples` subdirectory.
 package speed
 
 import (
