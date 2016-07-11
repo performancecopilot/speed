@@ -19,7 +19,7 @@ const (
 	ValueLength          = 32
 	InstanceLength       = 80
 	InstanceDomainLength = 32
-	StringBlockLength    = 256
+	StringLength         = 256
 )
 
 // MaxMetricNameLength is the maximum length for a metric name
@@ -146,7 +146,7 @@ func (w *PCPWriter) Length() int {
 		(w.Registry().InstanceDomainCount() * InstanceDomainLength) +
 		(w.Registry().MetricCount() * MetricLength) +
 		(w.Registry().ValuesCount() * ValueLength) +
-		(w.Registry().StringCount() * StringBlockLength)
+		(w.Registry().StringCount() * StringLength)
 }
 
 func (w *PCPWriter) initializeOffsets() {
@@ -170,12 +170,12 @@ func (w *PCPWriter) initializeOffsets() {
 
 		if metric.shortDescription.val != "" {
 			metric.shortDescription.offset = stringsoffset
-			stringsoffset += StringBlockLength
+			stringsoffset += StringLength
 		}
 
 		if metric.longDescription.val != "" {
 			metric.longDescription.offset = stringsoffset
-			stringsoffset += StringBlockLength
+			stringsoffset += StringLength
 		}
 	}
 
@@ -190,12 +190,12 @@ func (w *PCPWriter) initializeOffsets() {
 
 		if metric.shortDescription.val != "" {
 			metric.shortDescription.offset = stringsoffset
-			stringsoffset += StringBlockLength
+			stringsoffset += StringLength
 		}
 
 		if metric.longDescription.val != "" {
 			metric.longDescription.offset = stringsoffset
-			stringsoffset += StringBlockLength
+			stringsoffset += StringLength
 		}
 	}
 
@@ -211,12 +211,12 @@ func (w *PCPWriter) initializeOffsets() {
 
 		if indom.shortDescription.val != "" {
 			indom.shortDescription.offset = stringsoffset
-			stringsoffset += StringBlockLength
+			stringsoffset += StringLength
 		}
 
 		if indom.longDescription.val != "" {
 			indom.longDescription.offset = stringsoffset
-			stringsoffset += StringBlockLength
+			stringsoffset += StringLength
 		}
 	}
 
