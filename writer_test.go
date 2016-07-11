@@ -7,22 +7,27 @@ import (
 )
 
 func TestMmvFileLocation(t *testing.T) {
-	l := config["PCP_TMP_DIR"]
+	l, present := config["PCP_TMP_DIR"]
 
-	loc, _ := mmvFileLocation("test")
-	expected := fmt.Sprintf("%v%cmmv%c%v", l, os.PathSeparator, os.PathSeparator, "test")
-	if loc != expected {
-		t.Errorf("location not expected value, expected %v, got %v", expected, loc)
+	if present {
+		loc, _ := mmvFileLocation("test")
+		expected := fmt.Sprintf("%v%cmmv%c%v", l, os.PathSeparator, os.PathSeparator, "test")
+		if loc != expected {
+			t.Errorf("location not expected value, expected %v, got %v", expected, loc)
+		}
 	}
 
 	delete(config, "PCP_TMP_DIR")
-	loc, _ = mmvFileLocation("test")
-	expected = fmt.Sprintf("%v%cmmv%c%v", os.TempDir(), os.PathSeparator, os.PathSeparator, "test")
+	loc, _ := mmvFileLocation("test")
+	expected := fmt.Sprintf("%v%cmmv%c%v", os.TempDir(), os.PathSeparator, os.PathSeparator, "test")
 	if loc != expected {
 		t.Errorf("location not expected value, expected %v, got %v", expected, loc)
 	}
 
-	config["PCP_TMP_DIR"] = l
+	if present {
+		config["PCP_TMP_DIR"] = l
+	}
+
 	loc, err := mmvFileLocation(fmt.Sprintf("%v%c", "test", os.PathSeparator))
 	if err == nil {
 		t.Errorf("expected error, instead got path %v", loc)
