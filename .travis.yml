@@ -1,7 +1,6 @@
 language: go
 install: true
 go:
-  - 1.5.4
   - 1.6.2
   - 1.7rc1
   - tip
@@ -17,8 +16,6 @@ before_script:
   - gometalinter --install --update
 script:
   - make test
-  - rm *_string.go
-  - gometalinter . && gometalinter bytebuffer/
 notifications:
   email:
     on_success: change
