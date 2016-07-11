@@ -3,6 +3,7 @@ package bytebuffer
 import (
 	"fmt"
 	"os"
+	"path"
 	"syscall"
 )
 
@@ -20,6 +21,13 @@ func NewMemoryMappedBuffer(loc string, size int) (*MemoryMappedBuffer, error) {
 		if err != nil {
 			return nil, err
 		}
+	}
+
+	// ensure destination directory exists
+	dir := path.Dir(loc)
+	err := os.MkdirAll(dir, 0775)
+	if err != nil {
+		return nil, err
 	}
 
 	f, err := os.OpenFile(loc, syscall.O_CREAT|syscall.O_RDWR|syscall.O_EXCL, 0644)
