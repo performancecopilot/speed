@@ -15,6 +15,9 @@ import (
 	prefixed "github.com/x-cray/logrus-prefixed-formatter"
 )
 
+// Version is the last tagged version of the package
+const Version = "1.0.0-alpha"
+
 var log = logrus.New()
 
 func initLogging() {
