@@ -81,3 +81,34 @@ func TestTocCountAndLength(t *testing.T) {
 		t.Errorf("expected tocCount to be 5, got %v", w.tocCount())
 	}
 }
+
+func TestMapping(t *testing.T) {
+	w, err := NewPCPWriter("test", ProcessFlag)
+	_, err = w.RegisterString("test.1", 2, CounterSemantics, Int32Type, OneUnit)
+	if err != nil {
+		t.Error("Cannot Register")
+	}
+
+	w.Start()
+	loc, _ := mmvFileLocation("test")
+	if _, err = os.Stat(loc); err != nil {
+		t.Error("expected a MMV file to be created on startup")
+	}
+
+	_, err = w.RegisterString("test.2", 2, CounterSemantics, Int32Type, OneUnit)
+	if err == nil {
+		t.Error("expected registration to fail when a mapping is active")
+	}
+
+	EraseFileOnStop = true
+	err = w.Stop()
+	if err != nil {
+		t.Error("Cannot stop a mapping")
+	}
+
+	if _, err = os.Stat(loc); err == nil {
+		t.Error("expected the MMV file be deleted after stopping")
+	}
+
+	EraseFileOnStop = false
+}
