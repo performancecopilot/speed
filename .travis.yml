@@ -1,5 +1,5 @@
 language: go
-install: false
+install: true
 go:
   - 1.5.4
   - 1.6.2
@@ -9,6 +9,9 @@ env:
   global:
   - GO15VENDOREXPERIMENT=1
 before_script:
+  - go get github.com/performancecopilot/speed/vendor/github.com/Sirupsen/logrus
+  - go get github.com/performancecopilot/speed/vendor/github.com/x-cray/logrus-prefixed-formatter
+  - go get github.com/performancecopilot/speed/bytebuffer
   - make
   - go get -u github.com/alecthomas/gometalinter
   - gometalinter --install --update
