@@ -1,0 +1,24 @@
+language: go
+install: false
+go:
+  - 1.5.4
+  - 1.6.2
+  - 1.7rc1
+  - tip
+env:
+  global:
+  - GO15VENDOREXPERIMENT=1
+before_script:
+  - make
+  - go get -u github.com/alecthomas/gometalinter
+  - gometalinter --install --update
+script:
+  - make test
+  - rm *_string.go
+  - gometalinter . && gometalinter bytebuffer/
+notifications:
+  email:
+    on_success: change
+    on_failure: always
+  slack:
+    secure: Lh0JUxPNbJcFgMJ0e9A2BhV4IfT6gntzWsB2g7dvrEYZeKEkTV2AABHKwjPU59bMggaV4js1Qnvt6FSmK2/GmTl64HCSUbuR1qpzuveSeolQNPmUoA71c9q3nOGdC4l1wckvfV8Xwov2NVCukPfHfeN6pi0T6EQF1znLZYihxWFQG0YjN2CsxDJU6vNt4xelY0MMtyHxr0rwp0PJ1z0J/zhkFXe/mbBBsWDayI2XRD+/a2x9QGFVsXRcq9AOFssVAdYL6ZWpRMDnq47nsxFYUDfOk4IMuz09jDKZDqLGrKHAci7WeYdsUHlDU39UFrX3oOLxFWXCqkv7JCaI06bVFgAtEkwUSZXGpCNXKTNnet5aEubU9Ob4d7WWaPL9OhctXlk9pVYXxczPDr+AkFspeA+UcUx9wrzSgUq+xMfPC1Vow1maKEMbrEgv+/2H6gHy09r9LJGBFOQ0VToNJk2l/xHV/1OmcvYxGCneB6q7wGnzoPPFtDk5W0ild5egvVbAqRArqg9ru70uegzkiToFL51dJzbUC5+Z09zeZ4kLtPRIb9s9/Upd4Tq2rJdwQKF2rV0tIDGoioHj6t0GAoC25RrqDq85RE87Un+OO9/LSmOtyVxcabNpTu02xViicT1ZhiddSbQu6rPlBQIeLdr1A6v9JHwJoA10uwHj3f0uSvg=
