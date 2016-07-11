@@ -21,6 +21,7 @@ before_script:
   - gometalinter --install --update
 script:
   - make test
+  - rm *_string.go
   - $HOME/gopath/bin/goveralls -service=travis-ci
 notifications:
   email:
