@@ -11,7 +11,7 @@
 //	pos = writeString(buffer, pos, "mmv")
 //
 // which became unmaintainable after a while, and along with all the side
-// maintainance looked extremely ugly
+// maintenance looked extremely ugly
 //
 // this (tries) to implement a minimal buffer wrapper that gives the freedom
 // to move around and write anywhere you want
