@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 	"sync"
+
+	"github.com/Sirupsen/logrus"
 )
 
 // Registry defines a valid set of instance domains and metrics
@@ -139,6 +141,12 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 	r.instanceDomains[indom.Name()] = indom.(*PCPInstanceDomain)
 	r.instanceCount += indom.InstanceCount()
 
+	log.WithFields(logrus.Fields{
+		"prefix":        "registry",
+		"name":          indom.Name(),
+		"instanceCount": indom.InstanceCount(),
+	}).Info("added new instance domain")
+
 	if indom.(*PCPInstanceDomain).shortDescription.val != "" {
 		r.stringcount++
 	}
@@ -169,6 +177,14 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 
 	r.metricslock.Lock()
 	defer r.metricslock.Unlock()
+
+	log.WithFields(logrus.Fields{
+		"prefix":    "registry",
+		"name":      m.Name(),
+		"type":      m.Type(),
+		"unit":      m.Unit(),
+		"semantics": m.Semantics(),
+	}).Info("added new metric")
 
 	r.metrics[m.Name()] = pcpm
 
