@@ -3,10 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "htjvdG/znrHmFYRQBqA2vHrJsF4=",
+			"checksumSHA1": "DWPL08pD/SQ2GzLfoR7ZXnjj7Sw=",
 			"path": "github.com/Sirupsen/logrus",
-			"revision": "f3cfb454f4c209e6668c95216c4744b8fddb2356",
-			"revisionTime": "2016-06-01T11:32:10Z"
+			"revision": "4b6ea7319e214d98c938f12692336f7ca9348d6b",
+			"revisionTime": "2016-03-17T14:11:10Z",
+			"version": "v0.10.0",
+			"versionExact": "v0.10.0"
 		},
 		{
 			"checksumSHA1": "hBgLmZ/4mCxmnH88mqFKBkpJFUY=",
