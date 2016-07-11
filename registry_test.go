@@ -117,14 +117,18 @@ func TestStringInstanceConstruction(t *testing.T) {
 	}
 
 	if r.InstanceCount() != 3 {
-		t.Error("Expected Instance Count to be 3")
+		t.Errorf("Expected Instance Count to be 3, got %v", r.InstanceCount())
 	}
 
 	if r.InstanceDomainCount() != 1 {
-		t.Error("Expected Instance Domain Count to be 1")
+		t.Errorf("Expected Instance Domain Count to be 1, got %v", r.InstanceDomainCount())
 	}
 
 	if r.MetricCount() != 1 {
-		t.Error("Expected Metric Count to be 1")
+		t.Errorf("Expected Metric Count to be 1, got %v", r.MetricCount())
+	}
+
+	if r.ValuesCount() != 3 {
+		t.Errorf("Expected Value Count to be 3, got %v", r.ValuesCount())
 	}
 }
