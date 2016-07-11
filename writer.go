@@ -31,6 +31,8 @@ const MaxDataValueSize = 16
 // EraseFileOnStop if set to true, will also delete the memory mapped file
 var EraseFileOnStop = false
 
+var writerlog = log.WithField("prefix", "writer")
+
 // Writer defines the interface of a MMV file writer's properties
 type Writer interface {
 	// a writer must contain a registry of metrics and instance domains
@@ -105,6 +107,8 @@ func NewPCPWriter(name string, flag MMVFlag) (*PCPWriter, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	writerlog.WithField("location", fileLocation).Info("deduced location to write the MMV file")
 
 	return &PCPWriter{
 		loc:       fileLocation,
@@ -421,16 +425,21 @@ func (w *PCPWriter) Start() error {
 	defer w.Unlock()
 
 	l := w.Length()
+	writerlog.WithField("length", l).Info("initializing writing the MMV file")
 
 	w.initializeOffsets()
+	writerlog.Info("initialized offsets for all written types")
 
 	buffer, err := bytebuffer.NewMemoryMappedBuffer(w.loc, l)
 	if err != nil {
+		writerlog.WithField("error", err).Error("cannot create MemoryMappedBuffer")
 		return err
 	}
 	w.buffer = buffer
+	writerlog.Info("created MemoryMappedBuffer")
 
 	w.fillData()
+	writerlog.Info("written data to MMV file")
 
 	w.r.mapped = true
 
@@ -442,13 +451,18 @@ func (w *PCPWriter) Stop() error {
 	w.Lock()
 	defer w.Unlock()
 
+	writerlog.Info("stopping the writer")
+
 	w.r.mapped = false
 
 	err := w.buffer.(*bytebuffer.MemoryMappedBuffer).Unmap(EraseFileOnStop)
 	w.buffer = nil
 	if err != nil {
+		writerlog.WithField("error", err).Error("error unmapping MemoryMappedBuffer")
 		return err
 	}
+
+	writerlog.Info("unmapped the memory mapped file")
 
 	return nil
 }
