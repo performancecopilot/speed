@@ -26,10 +26,10 @@ Set up a go environment on your computer. For more information about these steps
 
 ### Getting the library
 
-First download the package without installing it
+First download the package
 
 ```sh
-go get -d github.com/performancecopilot/speed
+go get github.com/performancecopilot/speed
 ```
 
 then go to the source and run make
