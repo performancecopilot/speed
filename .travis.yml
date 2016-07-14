@@ -1,5 +1,4 @@
 language: go
-install: true
 go:
   - 1.6.2
   - 1.7rc1
@@ -12,13 +11,11 @@ before_install:
   - make deps
   - go get github.com/mattn/goveralls
   - go get golang.org/x/tools/cmd/cover
-before_script:
-  - go get github.com/performancecopilot/speed/vendor/github.com/Sirupsen/logrus
-  - go get github.com/performancecopilot/speed/vendor/github.com/x-cray/logrus-prefixed-formatter
-  - go get github.com/performancecopilot/speed/bytebuffer
-  - make
   - go get -u github.com/alecthomas/gometalinter
   - gometalinter --install --update
+install: true
+before_script:
+  - make
 script:
   - make test
   - rm *_string.go
