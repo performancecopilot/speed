@@ -256,8 +256,11 @@ type SingletonMetric interface {
 	// gets the value of the metric
 	Val() interface{}
 
-	// Sets the value of the metric to a value, optionally returns an error on failure
+	// sets the value of the metric to a value, optionally returns an error on failure
 	Set(interface{}) error
+
+	// tries to set and panics on error
+	MustSet(interface{})
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -272,6 +275,9 @@ type InstanceMetric interface {
 
 	// sets the value of a particular instance
 	SetInstance(string, interface{}) error
+
+	// tries to set the value of a particular instance and panics on error
+	MustSetInstance(string, interface{})
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -424,6 +430,13 @@ func (m *PCPSingletonMetric) Set(val interface{}) error {
 	return nil
 }
 
+// MustSet is a Set that panics
+func (m *PCPSingletonMetric) MustSet(val interface{}) {
+	if err := m.Set(val); err != nil {
+		panic(err)
+	}
+}
+
 // Indom returns the instance domain for a PCPSingletonMetric
 func (m *PCPSingletonMetric) Indom() *PCPInstanceDomain { return nil }
 
@@ -522,4 +535,11 @@ func (m *PCPInstanceMetric) SetInstance(instance string, val interface{}) error 
 
 	m.vals[instance].val = val
 	return nil
+}
+
+// MustSetInstance is a SetInstance that panics
+func (m *PCPInstanceMetric) MustSetInstance(instance string, val interface{}) {
+	if err := m.SetInstance(instance, val); err != nil {
+		panic(err)
+	}
 }
