@@ -26,7 +26,9 @@ type Buffer interface {
 	Bytes() []byte
 	Pos() int
 	SetPos(int) error
+	MustSetPos(int)
 	Len() int
+
 	WriteVal(val interface{}) error
 	WriteString(string) error
 	WriteInt32(int32) error
@@ -35,4 +37,13 @@ type Buffer interface {
 	WriteUint64(uint64) error
 	WriteFloat32(float32) error
 	WriteFloat64(float64) error
+
+	MustWriteVal(val interface{})
+	MustWriteString(string)
+	MustWriteInt32(int32)
+	MustWriteInt64(int64)
+	MustWriteUint32(uint32)
+	MustWriteUint64(uint64)
+	MustWriteFloat32(float32)
+	MustWriteFloat64(float64)
 }
