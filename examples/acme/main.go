@@ -63,25 +63,12 @@ func main() {
 		panic(err)
 	}
 
-	err = writer.RegisterIndom(indom)
-	if err != nil {
-		panic(err)
-	}
+	writer.MustRegisterIndom(indom)
+	writer.MustRegister(countmetric)
+	writer.MustRegister(timemetric)
 
-	err = writer.Register(countmetric)
-	if err != nil {
-		panic(err)
-	}
-
-	err = writer.Register(timemetric)
-	if err != nil {
-		panic(err)
-	}
-
-	err = writer.Start()
-	if err != nil {
-		panic(err)
-	}
+	writer.MustStart()
+	defer writer.MustStop()
 
 	time.Sleep(time.Second * 5)
 	err = countmetric.SetInstance("Anvils", 42)
@@ -89,9 +76,4 @@ func main() {
 		panic(err)
 	}
 	time.Sleep(time.Second * 5)
-
-	err = writer.Stop()
-	if err != nil {
-		panic(err)
-	}
 }

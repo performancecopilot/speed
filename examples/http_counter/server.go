@@ -8,10 +8,11 @@ import (
 	"github.com/performancecopilot/speed"
 )
 
-var metric *speed.PCPSingletonMetric
+// TODO: replace the raw metric with a Counter once defined
+
+var metric speed.SingletonMetric
 
 func main() {
-
 	var err error
 	metric, err = speed.NewPCPSingletonMetric(
 		0,
@@ -31,16 +32,10 @@ func main() {
 		panic(err)
 	}
 
-	err = writer.Register(metric)
-	if err != nil {
-		panic(err)
-	}
+	writer.MustRegister(metric)
 
-	err = writer.Start()
-	if err != nil {
-		panic(err)
-	}
-	defer writer.Stop()
+	writer.MustStart()
+	defer writer.MustStop()
 
 	http.HandleFunc("/increment", handleIncrement)
 	go http.ListenAndServe(":8080", nil)
@@ -53,6 +48,6 @@ func main() {
 func handleIncrement(w http.ResponseWriter, r *http.Request) {
 	v := metric.Val().(int32)
 	v++
-	metric.Set(v)
+	metric.MustSet(v)
 	fmt.Fprintf(w, "incremented\n")
 }
