@@ -41,8 +41,14 @@ type Writer interface {
 	// writes an mmv file
 	Start() error
 
+	// Start that will panic on failure
+	MustStart()
+
 	// stops writing and cleans up
 	Stop() error
+
+	// Stop that will panic on failure
+	MustStop()
 
 	// returns the number of bytes that will be written by the current writer
 	Length() int
@@ -50,11 +56,20 @@ type Writer interface {
 	// adds a metric to be written
 	Register(Metric) error
 
+	// tries to add a metric to be written and panics on error
+	MustRegister(Metric)
+
 	// adds an instance domain to be written
 	RegisterIndom(InstanceDomain) error
 
+	// tries to add an indom and panics on error
+	MustRegisterIndom(InstanceDomain)
+
 	// adds metric and instance domain from a string
 	RegisterString(string, interface{}, MetricSemantics, MetricType, MetricUnit) error
+
+	// tries to add a metric and an instance domain from a string and panics on an error
+	MustRegisterString(string, interface{}, MetricSemantics, MetricType, MetricUnit) error
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -446,10 +461,21 @@ func (w *PCPWriter) Start() error {
 	return nil
 }
 
+// MustStart is a start that panics
+func (w *PCPWriter) MustStart() {
+	if err := w.Start(); err != nil {
+		panic(err)
+	}
+}
+
 // Stop removes existing mapping and cleans up
 func (w *PCPWriter) Stop() error {
 	w.Lock()
 	defer w.Unlock()
+
+	if !w.r.mapped {
+		return errors.New("trying to stop an already stopped mapping")
+	}
 
 	writerlog.Info("stopping the writer")
 
@@ -467,15 +493,45 @@ func (w *PCPWriter) Stop() error {
 	return nil
 }
 
+// MustStop is a stop that panics
+func (w *PCPWriter) MustStop() {
+	if err := w.Stop(); err != nil {
+		panic(err)
+	}
+}
+
 // Register is simply a shorthand for Registry().AddMetric
 func (w *PCPWriter) Register(m Metric) error { return w.Registry().AddMetric(m) }
+
+// MustRegister is simply a Register that can panic
+func (w *PCPWriter) MustRegister(m Metric) {
+	if err := w.Register(m); err != nil {
+		panic(err)
+	}
+}
 
 // RegisterIndom is simply a shorthand for Registry().AddInstanceDomain
 func (w *PCPWriter) RegisterIndom(indom InstanceDomain) error {
 	return w.Registry().AddInstanceDomain(indom)
 }
 
+// MustRegisterIndom is simply a RegisterIndom that can panic
+func (w *PCPWriter) MustRegisterIndom(indom InstanceDomain) {
+	if err := w.RegisterIndom(indom); err != nil {
+		panic(err)
+	}
+}
+
 // RegisterString is simply a shorthand for Registry().AddMetricByString
 func (w *PCPWriter) RegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
 	return w.Registry().AddMetricByString(str, val, s, t, u)
+}
+
+// MustRegisterString is simply a RegisterString that panics
+func (w *PCPWriter) MustRegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) Metric {
+	if m, err := w.RegisterString(str, val, s, t, u); err != nil {
+		panic(err)
+	} else {
+		return m
+	}
 }
