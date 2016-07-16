@@ -76,6 +76,8 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 		return m == FloatType
 	case float64:
 		return m.isCompatibleFloat(val.(float64))
+	case string:
+		return m == StringType
 	default:
 		return false
 	}
@@ -110,6 +112,10 @@ func (m MetricType) resolveFloat(val interface{}) interface{} {
 }
 
 func (m MetricType) resolve(val interface{}) interface{} {
+	if sval, isString := val.(string); isString {
+		return NewPCPString(sval)
+	}
+
 	val = m.resolveInt(val)
 	val = m.resolveFloat(val)
 
@@ -138,6 +144,9 @@ func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) error {
 		return b.WriteFloat32(val.(float32))
 	case float64:
 		return b.WriteFloat64(val.(float64))
+	case *PCPString:
+		b.WriteString(val.(*PCPString).val)
+		return b.WriteVal(byte(0))
 	}
 
 	return errors.New("Invalid Type")
