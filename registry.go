@@ -188,10 +188,14 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 
 	r.metrics[m.Name()] = pcpm
 
+	currentValues := 1
 	if pcpm.Indom() != nil {
-		r.valueCount += pcpm.Indom().InstanceCount()
-	} else {
-		r.valueCount++
+		currentValues = pcpm.Indom().InstanceCount()
+	}
+
+	r.valueCount += currentValues
+	if pcpm.Type() == StringType {
+		r.stringcount += currentValues
 	}
 
 	if pcpm.ShortDescription().String() != "" {
