@@ -215,10 +215,10 @@ type MetricSemantics int32
 
 // Possible values for MetricSemantics
 const (
-	NoSemantics MetricSemantics = iota
-	CounterSemantics
-	InstantSemantics
-	DiscreteSemantics
+	NoSemantics       MetricSemantics = 0
+	CounterSemantics  MetricSemantics = 1
+	InstantSemantics  MetricSemantics = 3
+	DiscreteSemantics MetricSemantics = 4
 )
 
 //go:generate stringer -type=MetricSemantics
