@@ -28,14 +28,16 @@ const (
 //go:generate stringer -type=MetricType
 
 func (m MetricType) isCompatibleInt(val int) bool {
-	switch {
-	case val < 0:
+	switch v := int64(val); {
+	case v < math.MinInt32:
+		return m == Int64Type
+	case v < 0:
 		return m == Int32Type || m == Int64Type
-	case val <= math.MaxInt32:
+	case v <= math.MaxInt32:
 		return m == Int32Type || m == Int64Type || m == Uint32Type || m == Uint64Type
-	case uint32(val) <= math.MaxUint32:
+	case v <= math.MaxUint32:
 		return m == Int64Type || m == Uint32Type || m == Uint64Type
-	case int64(val) <= math.MaxInt64:
+	case v <= math.MaxInt64:
 		return m == Int64Type || m == Uint64Type
 	default:
 		return false
