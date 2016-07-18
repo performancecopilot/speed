@@ -113,6 +113,9 @@ func (m MetricType) resolveFloat(val interface{}) interface{} {
 
 func (m MetricType) resolve(val interface{}) interface{} {
 	if sval, isString := val.(string); isString {
+		if len(sval) > StringLength {
+			sval = sval[:StringLength]
+		}
 		return NewPCPString(sval)
 	}
 
