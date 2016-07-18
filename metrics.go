@@ -118,26 +118,33 @@ func (m MetricType) resolve(val interface{}) interface{} {
 
 // WriteVal implements value writer for the current MetricType to a buffer
 func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) error {
-	switch val.(type) {
+	switch v := val.(type) {
+	case int:
+		switch m {
+		case Int32Type:
+			return b.WriteInt32(int32(v))
+		case Int64Type:
+			return b.WriteInt64(int64(v))
+		}
 	case int32:
-		return b.WriteInt32(val.(int32))
+		return b.WriteInt32(v)
 	case int64:
-		return b.WriteInt64(val.(int64))
+		return b.WriteInt64(v)
 	case uint:
 		switch m {
 		case Uint32Type:
-			return b.WriteUint32(uint32(val.(uint)))
+			return b.WriteUint32(uint32(v))
 		case Uint64Type:
-			return b.WriteUint64(uint64(val.(uint)))
+			return b.WriteUint64(uint64(v))
 		}
 	case uint32:
-		return b.WriteUint32(val.(uint32))
+		return b.WriteUint32(v)
 	case uint64:
-		return b.WriteUint64(val.(uint64))
+		return b.WriteUint64(v)
 	case float32:
-		return b.WriteFloat32(val.(float32))
+		return b.WriteFloat32(v)
 	case float64:
-		return b.WriteFloat64(val.(float64))
+		return b.WriteFloat64(v)
 	}
 
 	return errors.New("Invalid Type")
