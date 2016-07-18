@@ -23,21 +23,14 @@ func main() {
 		panic(err)
 	}
 
-	err = w.Start()
-	if err != nil {
-		panic(err)
-	}
+	w.MustStart()
+	defer w.MustStop()
 
 	metric := m.(speed.SingletonMetric)
 	for i := 0; i < *timelimit; i++ {
 		val := metric.Val().(int32)
 		val++
-		metric.Set(val)
+		metric.MustSet(val)
 		time.Sleep(time.Second)
-	}
-
-	err = w.Stop()
-	if err != nil {
-		panic(err)
 	}
 }

@@ -38,18 +38,14 @@ func main() {
 		panic(err)
 	}
 
-	err = writer.Start()
-	if err != nil {
-		panic(err)
-	}
+	writer.MustStart()
+	defer writer.MustStop()
 
 	fmt.Println("The metric should be visible as mmv.singletoncounter.counter")
 	for i := 0; i < *timelimit; i++ {
 		v := metric.Val().(int32)
 		v++
+		metric.MustSet(v)
 		time.Sleep(time.Second)
-		metric.Set(v)
 	}
-
-	writer.Stop()
 }
