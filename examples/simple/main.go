@@ -26,18 +26,11 @@ func main() {
 		panic(err)
 	}
 
-	err = writer.Register(metric)
-	if err != nil {
-		panic(err)
-	}
+	writer.MustRegister(metric)
 
-	err = writer.Start()
-	if err != nil {
-		panic(err)
-	}
+	writer.MustStart()
+	defer writer.MustStop()
 
 	fmt.Println("The metric is currently mapped as mmv.simple.simple.counter, to stop the mapping, press enter")
 	os.Stdin.Read(make([]byte, 1))
-
-	writer.Stop()
 }

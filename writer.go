@@ -41,8 +41,14 @@ type Writer interface {
 	// writes an mmv file
 	Start() error
 
+	// Start that will panic on failure
+	MustStart()
+
 	// stops writing and cleans up
 	Stop() error
+
+	// Stop that will panic on failure
+	MustStop()
 
 	// returns the number of bytes that will be written by the current writer
 	Length() int
@@ -50,11 +56,20 @@ type Writer interface {
 	// adds a metric to be written
 	Register(Metric) error
 
+	// tries to add a metric to be written and panics on error
+	MustRegister(Metric)
+
 	// adds an instance domain to be written
 	RegisterIndom(InstanceDomain) error
 
+	// tries to add an indom and panics on error
+	MustRegisterIndom(InstanceDomain)
+
 	// adds metric and instance domain from a string
 	RegisterString(string, interface{}, MetricSemantics, MetricType, MetricUnit) error
+
+	// tries to add a metric and an instance domain from a string and panics on an error
+	MustRegisterString(string, interface{}, MetricSemantics, MetricType, MetricUnit) error
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -232,40 +247,40 @@ func (w *PCPWriter) initializeOffsets() {
 
 func (w *PCPWriter) writeHeaderBlock() (generation2offset int, generation int64) {
 	// tag
-	w.buffer.WriteString("MMV")
-	w.buffer.SetPos(w.buffer.Pos() + 1) // extra null byte is needed and \0 isn't a valid escape character in go
+	w.buffer.MustWriteString("MMV")
+	w.buffer.MustSetPos(w.buffer.Pos() + 1) // extra null byte is needed and \0 isn't a valid escape character in go
 
 	// version
-	w.buffer.WriteUint32(1)
+	w.buffer.MustWriteUint32(1)
 
 	// generation
 	generation = time.Now().Unix()
-	w.buffer.WriteInt64(generation)
+	w.buffer.MustWriteInt64(generation)
 
 	generation2offset = w.buffer.Pos()
 
-	w.buffer.WriteInt64(0)
+	w.buffer.MustWriteInt64(0)
 
 	// tocCount
-	w.buffer.WriteInt32(int32(w.tocCount()))
+	w.buffer.MustWriteInt32(int32(w.tocCount()))
 
 	// flag mask
-	w.buffer.WriteInt32(int32(w.flag))
+	w.buffer.MustWriteInt32(int32(w.flag))
 
 	// process identifier
-	w.buffer.WriteInt32(int32(os.Getpid()))
+	w.buffer.MustWriteInt32(int32(os.Getpid()))
 
 	// cluster identifier
-	w.buffer.WriteUint32(w.clusterID)
+	w.buffer.MustWriteUint32(w.clusterID)
 
 	return
 }
 
 func (w *PCPWriter) writeSingleToc(pos, identifier, count, offset int) {
-	w.buffer.SetPos(pos)
-	w.buffer.WriteInt32(int32(identifier))
-	w.buffer.WriteInt32(int32(count))
-	w.buffer.WriteUint64(uint64(offset))
+	w.buffer.MustSetPos(pos)
+	w.buffer.MustWriteInt32(int32(identifier))
+	w.buffer.MustWriteInt32(int32(count))
+	w.buffer.MustWriteUint64(uint64(offset))
 }
 
 func (w *PCPWriter) writeTocBlock() {
@@ -308,63 +323,63 @@ func (w *PCPWriter) writeTocBlock() {
 
 func (w *PCPWriter) writeInstanceAndInstanceDomainBlock() {
 	for _, indom := range w.r.instanceDomains {
-		w.buffer.SetPos(indom.offset)
-		w.buffer.WriteUint32(indom.ID())
-		w.buffer.WriteInt32(int32(indom.InstanceCount()))
-		w.buffer.WriteInt64(int64(indom.instanceOffset))
+		w.buffer.MustSetPos(indom.offset)
+		w.buffer.MustWriteUint32(indom.ID())
+		w.buffer.MustWriteInt32(int32(indom.InstanceCount()))
+		w.buffer.MustWriteInt64(int64(indom.instanceOffset))
 
 		so, lo := indom.shortDescription.offset, indom.longDescription.offset
-		w.buffer.WriteInt64(int64(so))
-		w.buffer.WriteInt64(int64(lo))
+		w.buffer.MustWriteInt64(int64(so))
+		w.buffer.MustWriteInt64(int64(lo))
 
 		if so != 0 {
-			w.buffer.SetPos(so)
-			w.buffer.WriteString(indom.shortDescription.val)
+			w.buffer.MustSetPos(so)
+			w.buffer.MustWriteString(indom.shortDescription.val)
 		}
 
 		if lo != 0 {
-			w.buffer.SetPos(lo)
-			w.buffer.WriteString(indom.longDescription.val)
+			w.buffer.MustSetPos(lo)
+			w.buffer.MustWriteString(indom.longDescription.val)
 		}
 
 		for _, i := range indom.instances {
-			w.buffer.SetPos(i.offset)
-			w.buffer.WriteInt64(int64(indom.offset))
-			w.buffer.WriteInt32(0)
-			w.buffer.WriteUint32(i.id)
-			w.buffer.WriteString(i.name)
+			w.buffer.MustSetPos(i.offset)
+			w.buffer.MustWriteInt64(int64(indom.offset))
+			w.buffer.MustWriteInt32(0)
+			w.buffer.MustWriteUint32(i.id)
+			w.buffer.MustWriteString(i.name)
 		}
 	}
 }
 
 func (w *PCPWriter) writeMetricDesc(m PCPMetric, pos int) {
-	w.buffer.SetPos(pos)
+	w.buffer.MustSetPos(pos)
 
-	w.buffer.WriteString(m.Name())
-	w.buffer.SetPos(pos + MaxMetricNameLength + 1)
-	w.buffer.WriteUint32(m.ID())
-	w.buffer.WriteInt32(int32(m.Type()))
-	w.buffer.WriteInt32(int32(m.Semantics()))
-	w.buffer.WriteUint32(m.Unit().PMAPI())
+	w.buffer.MustWriteString(m.Name())
+	w.buffer.MustSetPos(pos + MaxMetricNameLength + 1)
+	w.buffer.MustWriteUint32(m.ID())
+	w.buffer.MustWriteInt32(int32(m.Type()))
+	w.buffer.MustWriteInt32(int32(m.Semantics()))
+	w.buffer.MustWriteUint32(m.Unit().PMAPI())
 	if m.Indom() != nil {
-		w.buffer.WriteUint32(m.Indom().ID())
+		w.buffer.MustWriteUint32(m.Indom().ID())
 	} else {
-		w.buffer.WriteInt32(-1)
+		w.buffer.MustWriteInt32(-1)
 	}
-	w.buffer.WriteInt32(0)
+	w.buffer.MustWriteInt32(0)
 
 	so, lo := m.ShortDescription().offset, m.LongDescription().offset
-	w.buffer.WriteInt64(int64(so))
-	w.buffer.WriteInt64(int64(lo))
+	w.buffer.MustWriteInt64(int64(so))
+	w.buffer.MustWriteInt64(int64(lo))
 
 	if so != 0 {
-		w.buffer.SetPos(so)
-		w.buffer.WriteString(m.ShortDescription().val)
+		w.buffer.MustSetPos(so)
+		w.buffer.MustWriteString(m.ShortDescription().val)
 	}
 
 	if lo != 0 {
-		w.buffer.SetPos(lo)
-		w.buffer.WriteString(m.LongDescription().val)
+		w.buffer.MustSetPos(lo)
+		w.buffer.MustWriteString(m.LongDescription().val)
 	}
 }
 
@@ -374,9 +389,9 @@ func (w *PCPWriter) writeSingletonMetric(m *PCPSingletonMetric) {
 	m.update = newupdateClosure(m.valueoffset, w.buffer, m.t)
 	m.update(m.val)
 
-	w.buffer.SetPos(m.valueoffset + MaxDataValueSize)
-	w.buffer.WriteInt64(int64(m.descoffset))
-	w.buffer.WriteInt64(0)
+	w.buffer.MustSetPos(m.valueoffset + MaxDataValueSize)
+	w.buffer.MustWriteInt64(int64(m.descoffset))
+	w.buffer.MustWriteInt64(0)
 }
 
 func (w *PCPWriter) writeInstanceMetric(m *PCPInstanceMetric) {
@@ -388,9 +403,9 @@ func (w *PCPWriter) writeInstanceMetric(m *PCPInstanceMetric) {
 		ival.update = newupdateClosure(ival.offset, w.buffer, m.t)
 		ival.update(ival.val)
 
-		w.buffer.SetPos(ival.offset + MaxDataValueSize)
-		w.buffer.WriteInt64(int64(m.descoffset))
-		w.buffer.WriteInt64(int64(i.offset))
+		w.buffer.MustSetPos(ival.offset + MaxDataValueSize)
+		w.buffer.MustWriteInt64(int64(m.descoffset))
+		w.buffer.MustWriteInt64(int64(i.offset))
 	}
 }
 
@@ -413,8 +428,8 @@ func (w *PCPWriter) fillData() error {
 	w.writeInstanceAndInstanceDomainBlock()
 	w.writeMetricsAndValuesBlock()
 
-	w.buffer.SetPos(generation2offset)
-	w.buffer.WriteUint64(uint64(generation))
+	w.buffer.MustSetPos(generation2offset)
+	w.buffer.MustWriteUint64(uint64(generation))
 
 	return nil
 }
@@ -446,10 +461,21 @@ func (w *PCPWriter) Start() error {
 	return nil
 }
 
+// MustStart is a start that panics
+func (w *PCPWriter) MustStart() {
+	if err := w.Start(); err != nil {
+		panic(err)
+	}
+}
+
 // Stop removes existing mapping and cleans up
 func (w *PCPWriter) Stop() error {
 	w.Lock()
 	defer w.Unlock()
+
+	if !w.r.mapped {
+		return errors.New("trying to stop an already stopped mapping")
+	}
 
 	writerlog.Info("stopping the writer")
 
@@ -467,15 +493,45 @@ func (w *PCPWriter) Stop() error {
 	return nil
 }
 
+// MustStop is a stop that panics
+func (w *PCPWriter) MustStop() {
+	if err := w.Stop(); err != nil {
+		panic(err)
+	}
+}
+
 // Register is simply a shorthand for Registry().AddMetric
 func (w *PCPWriter) Register(m Metric) error { return w.Registry().AddMetric(m) }
+
+// MustRegister is simply a Register that can panic
+func (w *PCPWriter) MustRegister(m Metric) {
+	if err := w.Register(m); err != nil {
+		panic(err)
+	}
+}
 
 // RegisterIndom is simply a shorthand for Registry().AddInstanceDomain
 func (w *PCPWriter) RegisterIndom(indom InstanceDomain) error {
 	return w.Registry().AddInstanceDomain(indom)
 }
 
+// MustRegisterIndom is simply a RegisterIndom that can panic
+func (w *PCPWriter) MustRegisterIndom(indom InstanceDomain) {
+	if err := w.RegisterIndom(indom); err != nil {
+		panic(err)
+	}
+}
+
 // RegisterString is simply a shorthand for Registry().AddMetricByString
 func (w *PCPWriter) RegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
 	return w.Registry().AddMetricByString(str, val, s, t, u)
+}
+
+// MustRegisterString is simply a RegisterString that panics
+func (w *PCPWriter) MustRegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) Metric {
+	if m, err := w.RegisterString(str, val, s, t, u); err != nil {
+		panic(err)
+	} else {
+		return m
+	}
 }

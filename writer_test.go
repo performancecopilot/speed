@@ -54,7 +54,7 @@ func TestTocCountAndLength(t *testing.T) {
 		t.Error("Cannot create a metric")
 	}
 
-	w.Register(m)
+	w.MustRegister(m)
 	if w.tocCount() != 3 {
 		t.Errorf("expected tocCount to be 3, got %v", w.tocCount())
 	}
@@ -65,7 +65,7 @@ func TestTocCountAndLength(t *testing.T) {
 	}
 
 	indom, _ := NewPCPInstanceDomain("testindom", []string{"test"}, "", "")
-	w.RegisterIndom(indom)
+	w.MustRegisterIndom(indom)
 
 	m2, err := NewPCPInstanceMetric(
 		Instances{
@@ -94,7 +94,7 @@ func TestMapping(t *testing.T) {
 		t.Error("Cannot Register")
 	}
 
-	w.Start()
+	w.MustStart()
 	loc, _ := mmvFileLocation("test")
 	if _, err = os.Stat(loc); err != nil {
 		t.Error("expected a MMV file to be created on startup")

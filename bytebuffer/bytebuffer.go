@@ -44,6 +44,13 @@ func (b *ByteBuffer) SetPos(position int) error {
 	return nil
 }
 
+// MustSetPos will try to set the position inside the buffer and panic on error
+func (b *ByteBuffer) MustSetPos(position int) {
+	if err := b.SetPos(position); err != nil {
+		panic(err)
+	}
+}
+
 // Len returns the maximum size of the ByteBuffer
 func (b *ByteBuffer) Len() int { return len(b.buffer) }
 
@@ -72,26 +79,82 @@ func (b *ByteBuffer) WriteVal(val interface{}) error {
 	return binary.Write(b, byteOrder, val)
 }
 
+// MustWriteVal panics if WriteVal fails
+func (b *ByteBuffer) MustWriteVal(val interface{}) {
+	if err := b.WriteVal(val); err != nil {
+		panic(err)
+	}
+}
+
 // WriteString writes a string to the buffer
 func (b *ByteBuffer) WriteString(val string) error {
 	_, err := b.Write([]byte(val))
 	return err
 }
 
+// MustWriteString panics if WriteString fails
+func (b *ByteBuffer) MustWriteString(val string) {
+	if err := b.WriteString(val); err != nil {
+		panic(err)
+	}
+}
+
 // WriteInt32 writes an int32 to the buffer
 func (b *ByteBuffer) WriteInt32(val int32) error { return b.WriteVal(val) }
+
+// MustWriteInt32 panics if WriteInt32 fails
+func (b *ByteBuffer) MustWriteInt32(val int32) {
+	if err := b.WriteInt32(val); err != nil {
+		panic(err)
+	}
+}
 
 // WriteInt64 writes an int64 to the buffer
 func (b *ByteBuffer) WriteInt64(val int64) error { return b.WriteVal(val) }
 
+// MustWriteInt64 panics if WriteInt64 fails
+func (b *ByteBuffer) MustWriteInt64(val int64) {
+	if err := b.WriteInt64(val); err != nil {
+		panic(err)
+	}
+}
+
 // WriteUint32 writes an uint32 to the buffer
 func (b *ByteBuffer) WriteUint32(val uint32) error { return b.WriteVal(val) }
+
+// MustWriteUint32 panics if WriteInt32 fails
+func (b *ByteBuffer) MustWriteUint32(val uint32) {
+	if err := b.WriteUint32(val); err != nil {
+		panic(err)
+	}
+}
 
 // WriteUint64 writes an uint64 to the buffer
 func (b *ByteBuffer) WriteUint64(val uint64) error { return b.WriteVal(val) }
 
+// MustWriteUint64 panics if WriteInt64 fails
+func (b *ByteBuffer) MustWriteUint64(val uint64) {
+	if err := b.WriteUint64(val); err != nil {
+		panic(err)
+	}
+}
+
 // WriteFloat32 writes an float32 to the buffer
 func (b *ByteBuffer) WriteFloat32(val float32) error { return b.WriteVal(val) }
 
+// MustWriteFloat32 panics if WriteFloat32 fails
+func (b *ByteBuffer) MustWriteFloat32(val float32) {
+	if err := b.WriteFloat32(val); err != nil {
+		panic(err)
+	}
+}
+
 // WriteFloat64 writes an float64 to the buffer
 func (b *ByteBuffer) WriteFloat64(val float64) error { return b.WriteVal(val) }
+
+// MustWriteFloat64 panics if WriteFloat64 fails
+func (b *ByteBuffer) MustWriteFloat64(val float64) {
+	if err := b.WriteFloat64(val); err != nil {
+		panic(err)
+	}
+}
