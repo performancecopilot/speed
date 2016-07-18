@@ -145,8 +145,10 @@ func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) error {
 	case float64:
 		return b.WriteFloat64(val.(float64))
 	case *PCPString:
-		b.WriteString(val.(*PCPString).val)
-		return b.WriteVal(byte(0))
+		pos := b.Pos()
+		b.Write(make([]byte, StringLength))
+		b.SetPos(pos)
+		return b.WriteString(val.(*PCPString).val)
 	}
 
 	return errors.New("Invalid Type")
