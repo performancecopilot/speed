@@ -164,6 +164,66 @@ func (w *PCPWriter) Length() int {
 		(w.Registry().StringCount() * StringLength)
 }
 
+func (w *PCPWriter) initializeInstanceAndInstanceDomainOffsets(instanceoffset, indomoffset int, stringsoffset *int) {
+	for _, indom := range w.r.instanceDomains {
+		indom.offset = indomoffset
+		indom.instanceOffset = instanceoffset
+		indomoffset += InstanceDomainLength
+
+		for _, i := range indom.instances {
+			i.offset = instanceoffset
+			instanceoffset += InstanceLength
+		}
+
+		if indom.shortDescription.val != "" {
+			indom.shortDescription.offset = *stringsoffset
+			*stringsoffset += StringLength
+		}
+
+		if indom.longDescription.val != "" {
+			indom.longDescription.offset = *stringsoffset
+			*stringsoffset += StringLength
+		}
+	}
+}
+
+func (w *PCPWriter) initializeSingletonMetricOffsets(metric *PCPSingletonMetric, metricsoffset, valuesoffset, stringsoffset *int) {
+	metric.descoffset = *metricsoffset
+	*metricsoffset += MetricLength
+	metric.valueoffset = *valuesoffset
+	*valuesoffset += ValueLength
+
+	if metric.shortDescription.val != "" {
+		metric.shortDescription.offset = *stringsoffset
+		*stringsoffset += StringLength
+	}
+
+	if metric.longDescription.val != "" {
+		metric.longDescription.offset = *stringsoffset
+		*stringsoffset += StringLength
+	}
+}
+
+func (w *PCPWriter) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, metricsoffset, valuesoffset, stringsoffset *int) {
+	metric.descoffset = *metricsoffset
+	*metricsoffset += MetricLength
+
+	for name := range metric.indom.instances {
+		metric.vals[name].offset = *valuesoffset
+		*valuesoffset += ValueLength
+	}
+
+	if metric.shortDescription.val != "" {
+		metric.shortDescription.offset = *stringsoffset
+		*stringsoffset += StringLength
+	}
+
+	if metric.longDescription.val != "" {
+		metric.longDescription.offset = *stringsoffset
+		*stringsoffset += StringLength
+	}
+}
+
 func (w *PCPWriter) initializeOffsets() {
 	indomoffset := HeaderLength + TocLength*w.tocCount()
 	instanceoffset := indomoffset + InstanceDomainLength*w.r.InstanceDomainCount()
@@ -177,70 +237,14 @@ func (w *PCPWriter) initializeOffsets() {
 	w.r.valuesoffset = valuesoffset
 	w.r.stringsoffset = stringsoffset
 
-	initializeSingletonMetricOffsets := func(metric *PCPSingletonMetric) {
-		metric.descoffset = metricsoffset
-		metricsoffset += MetricLength
-		metric.valueoffset = valuesoffset
-		valuesoffset += ValueLength
-
-		if metric.shortDescription.val != "" {
-			metric.shortDescription.offset = stringsoffset
-			stringsoffset += StringLength
-		}
-
-		if metric.longDescription.val != "" {
-			metric.longDescription.offset = stringsoffset
-			stringsoffset += StringLength
-		}
-	}
-
-	initializeInstanceMetricOffsets := func(metric *PCPInstanceMetric) {
-		metric.descoffset = metricsoffset
-		metricsoffset += MetricLength
-
-		for name := range metric.indom.instances {
-			metric.vals[name].offset = valuesoffset
-			valuesoffset += ValueLength
-		}
-
-		if metric.shortDescription.val != "" {
-			metric.shortDescription.offset = stringsoffset
-			stringsoffset += StringLength
-		}
-
-		if metric.longDescription.val != "" {
-			metric.longDescription.offset = stringsoffset
-			stringsoffset += StringLength
-		}
-	}
-
-	for _, indom := range w.r.instanceDomains {
-		indom.offset = indomoffset
-		indom.instanceOffset = instanceoffset
-		indomoffset += InstanceDomainLength
-
-		for _, i := range indom.instances {
-			i.offset = instanceoffset
-			instanceoffset += InstanceLength
-		}
-
-		if indom.shortDescription.val != "" {
-			indom.shortDescription.offset = stringsoffset
-			stringsoffset += StringLength
-		}
-
-		if indom.longDescription.val != "" {
-			indom.longDescription.offset = stringsoffset
-			stringsoffset += StringLength
-		}
-	}
+	w.initializeInstanceAndInstanceDomainOffsets(instanceoffset, indomoffset, &stringsoffset)
 
 	for _, metric := range w.r.metrics {
-		switch metric.(type) {
+		switch m := metric.(type) {
 		case *PCPSingletonMetric:
-			initializeSingletonMetricOffsets(metric.(*PCPSingletonMetric))
+			w.initializeSingletonMetricOffsets(m, &metricsoffset, &valuesoffset, &stringsoffset)
 		case *PCPInstanceMetric:
-			initializeInstanceMetricOffsets(metric.(*PCPInstanceMetric))
+			w.initializeInstanceMetricOffsets(m, &metricsoffset, &valuesoffset, &stringsoffset)
 		}
 	}
 }
