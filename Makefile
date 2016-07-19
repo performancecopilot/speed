@@ -1,15 +1,23 @@
-build: deps
+build: clean
 	go build ./...
 	go install ./...
 	go generate
 	go build ./...
 	go install ./...
 
-deps:
-	go get golang.org/x/tools/cmd/stringer
+clean:
+	git clean -Xf
 
-test:
-	go test -cover ./...
+deps:
+	go get -u golang.org/x/tools/cmd/stringer
+	go get -u github.com/alecthomas/gometalinter
+	gometalinter --install --update
+
+lint:
+	gometalinter ./... --vendor --deadline=10000s	
+
+test: lint
+	go test ./...
 
 cover: coverage
 coverage:
