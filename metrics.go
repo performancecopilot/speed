@@ -42,6 +42,15 @@ func (m MetricType) isCompatibleInt(val int) bool {
 	return false
 }
 
+func (m MetricType) isCompatibleUint(val uint) bool {
+	switch {
+	case val <= math.MaxUint32:
+		return m == Uint32Type || m == Uint64Type
+	default:
+		return m == Uint64Type
+	}
+}
+
 func (m MetricType) isCompatibleFloat(val float64) bool {
 	switch {
 	case val >= -math.MaxFloat32 && val <= math.MaxFloat32:
@@ -53,19 +62,15 @@ func (m MetricType) isCompatibleFloat(val float64) bool {
 
 // IsCompatible checks if the passed value is compatible with the current MetricType
 func (m MetricType) IsCompatible(val interface{}) bool {
-	switch val.(type) {
+	switch v := val.(type) {
 	case int:
-		return m.isCompatibleInt(val.(int))
+		return m.isCompatibleInt(v)
 	case int32:
 		return m == Int32Type
 	case int64:
 		return m == Int64Type
 	case uint:
-		v := val.(uint)
-		if v > math.MaxUint32 {
-			return m == Uint64Type
-		}
-		return m == Uint32Type || m == Uint64Type
+		return m.isCompatibleUint(v)
 	case uint32:
 		return m == Uint32Type
 	case uint64:
@@ -73,12 +78,11 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 	case float32:
 		return m == FloatType
 	case float64:
-		return m.isCompatibleFloat(val.(float64))
+		return m.isCompatibleFloat(v)
 	case string:
 		return m == StringType
-	default:
-		return false
 	}
+	return false
 }
 
 // resolveInt will resolve an int to one of the 4 compatible types
