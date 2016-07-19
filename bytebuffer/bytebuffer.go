@@ -74,6 +74,17 @@ func (b *ByteBuffer) Write(data []byte) (int, error) {
 	return l, nil
 }
 
+func (b *ByteBuffer) MustWrite(data []byte) {
+	l := len(data)
+	wl, err := b.Write(data)
+	if err != nil {
+		panic(err)
+	}
+	if wl < l {
+		panic(errors.New("couldn't write all bytes to the buffer"))
+	}
+}
+
 // WriteVal writes an arbitrary value to the buffer
 func (b *ByteBuffer) WriteVal(val interface{}) error {
 	return binary.Write(b, byteOrder, val)
