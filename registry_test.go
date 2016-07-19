@@ -92,16 +92,12 @@ func TestStringInstanceConstruction(t *testing.T) {
 	}, CounterSemantics, Int32Type, OneUnit)
 	if err != nil {
 		t.Error("Cannot parse, error", err)
-		return
 	}
 
-	im, ok := m.(*PCPInstanceMetric)
-	if !ok {
-		t.Error("Expected a PCPInstanceMetric")
-	}
+	im := m.(*PCPInstanceMetric)
 
 	if im.Name() != "sheep.legs.available" {
-		t.Errorf("Expected metric name to be %v, got %v", "cow.how.now", im.Name())
+		t.Errorf("Expected metric name to be %v, got %v", "sheep.legs.available", im.Name())
 	}
 
 	for i, v := range map[string]int32{"limpy": 10, "grumpy": 20, "chumpy": 30} {
