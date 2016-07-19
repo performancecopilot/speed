@@ -85,20 +85,26 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 
 // resolveInt will resolve an int to one of the 4 compatible types
 func (m MetricType) resolveInt(val interface{}) interface{} {
-	_, isInt := val.(int)
-	if !isInt {
-		return val
+	if vi, isInt := val.(int); isInt {
+		switch m {
+		case Int64Type:
+			return int64(vi)
+		case Uint32Type:
+			return uint32(vi)
+		case Uint64Type:
+			return uint64(vi)
+		}
+		return int32(val.(int))
 	}
 
-	switch m {
-	case Int64Type:
-		return int64(val.(int))
-	case Uint32Type:
-		return uint32(val.(int))
-	case Uint64Type:
-		return uint64(val.(int))
+	if vui, isUint := val.(uint); isUint {
+		if m == Uint64Type {
+			return uint64(vui)
+		}
+		return uint32(vui)
 	}
-	return int32(val.(int))
+
+	return val
 }
 
 // resolveFloat will resolve a float64 to one of the 2 compatible types
@@ -132,13 +138,6 @@ func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) error {
 		return b.WriteInt32(val.(int32))
 	case int64:
 		return b.WriteInt64(val.(int64))
-	case uint:
-		switch m {
-		case Uint32Type:
-			return b.WriteUint32(uint32(val.(uint)))
-		case Uint64Type:
-			return b.WriteUint64(uint64(val.(uint)))
-		}
 	case uint32:
 		return b.WriteUint32(val.(uint32))
 	case uint64:
