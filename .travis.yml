@@ -15,8 +15,8 @@ install: true
 before_script:
   - make
 script:
+  - make clean
   - make test
-  - rm *_string.go
   - $HOME/gopath/bin/goveralls -service=travis-ci
 notifications:
   email:
