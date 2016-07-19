@@ -45,10 +45,16 @@ func init() {
 // see: http://programmers.stackexchange.com/a/145633
 func hash(s string, b uint32) uint32 {
 	h := fnv.New32a()
-	h.Write([]byte(s))
+
+	_, err := h.Write([]byte(s))
+	if err != nil {
+		panic(err)
+	}
+
 	val := h.Sum32()
 	if b == 0 {
 		return val
 	}
+
 	return val & ((1 << b) - 1)
 }

@@ -149,8 +149,8 @@ func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) error {
 		return b.WriteFloat64(val.(float64))
 	case *PCPString:
 		pos := b.Pos()
-		b.Write(make([]byte, StringLength))
-		b.SetPos(pos)
+		b.MustWrite(make([]byte, StringLength))
+		b.MustSetPos(pos)
 		return b.WriteString(val.(*PCPString).val)
 	}
 
@@ -380,7 +380,7 @@ type updateClosure func(interface{}) error
 // newupdateClosure creates a new update closure for an offset, type and buffer
 func newupdateClosure(offset int, buffer bytebuffer.Buffer, t MetricType) updateClosure {
 	return func(val interface{}) error {
-		buffer.SetPos(offset)
+		buffer.MustSetPos(offset)
 		return t.WriteVal(val, buffer)
 	}
 }

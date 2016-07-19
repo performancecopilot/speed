@@ -387,16 +387,16 @@ func (w *PCPWriter) writeInstance(t MetricType, val interface{}, valueoffset int
 	offset := valueoffset
 
 	if t == StringType {
-		w.buffer.SetPos(offset)
-		w.buffer.WriteUint64(StringLength - 1)
+		w.buffer.MustSetPos(offset)
+		w.buffer.MustWriteUint64(StringLength - 1)
 		offset = val.(*PCPString).offset
-		w.buffer.WriteUint64(uint64(offset))
+		w.buffer.MustWriteUint64(uint64(offset))
 	}
 
 	update := newupdateClosure(offset, w.buffer, t)
-	update(val)
+	_ = update(val)
 
-	w.buffer.SetPos(valueoffset + MaxDataValueSize)
+	w.buffer.MustSetPos(valueoffset + MaxDataValueSize)
 
 	return update
 }
@@ -404,8 +404,8 @@ func (w *PCPWriter) writeInstance(t MetricType, val interface{}, valueoffset int
 func (w *PCPWriter) writeSingletonMetric(m *PCPSingletonMetric) {
 	w.writeMetricDesc(m, m.descoffset)
 	m.update = w.writeInstance(m.t, m.val, m.valueoffset)
-	w.buffer.WriteInt64(int64(m.descoffset))
-	w.buffer.WriteInt64(0)
+	w.buffer.MustWriteInt64(int64(m.descoffset))
+	w.buffer.MustWriteInt64(0)
 }
 
 func (w *PCPWriter) writeInstanceMetric(m *PCPInstanceMetric) {
@@ -414,8 +414,8 @@ func (w *PCPWriter) writeInstanceMetric(m *PCPInstanceMetric) {
 	for name, i := range m.indom.instances {
 		ival := m.vals[name]
 		ival.update = w.writeInstance(m.t, ival.val, ival.offset)
-		w.buffer.WriteInt64(int64(m.descoffset))
-		w.buffer.WriteInt64(int64(i.offset))
+		w.buffer.MustWriteInt64(int64(m.descoffset))
+		w.buffer.MustWriteInt64(int64(i.offset))
 	}
 }
 
@@ -463,7 +463,11 @@ func (w *PCPWriter) Start() error {
 	w.buffer = buffer
 	writerlog.Info("created MemoryMappedBuffer")
 
-	w.fillData()
+	err = w.fillData()
+	if err != nil {
+		writerlog.WithField("error", err).Error("cannot fill MMV data")
+		return err
+	}
 	writerlog.Info("written data to MMV file")
 
 	w.r.mapped = true
