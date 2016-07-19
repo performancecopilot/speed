@@ -74,6 +74,8 @@ func (b *ByteBuffer) Write(data []byte) (int, error) {
 	return l, nil
 }
 
+// MustWrite is a write that will panic if Write returns an error or does not write all the bytes
+// it is supposed to
 func (b *ByteBuffer) MustWrite(data []byte) {
 	l := len(data)
 	wl, err := b.Write(data)

@@ -103,8 +103,13 @@ func TestSetPos(t *testing.T) {
 		t.Error("Expected error at setting a bytebuffer to a position outside its range")
 	}
 
-	b.SetPos(2)
-	b.WriteString("a")
+	b.MustSetPos(2)
+
+	err = b.WriteString("a")
+	if err != nil {
+		t.Error("Did not Expect error in writing a value inside the buffer")
+		return
+	}
 
 	if b.Pos() != 3 {
 		t.Error("Position not changing as expected")
@@ -116,9 +121,9 @@ func TestSetPos(t *testing.T) {
 		return
 	}
 
-	b.SetPos(2)
-	err = b.WriteInt32(10)
+	b.MustSetPos(2)
 
+	err = b.WriteInt32(10)
 	if err == nil {
 		t.Error("Expected error in writing a value guaranteed to overflow")
 		return

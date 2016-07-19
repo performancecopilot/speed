@@ -29,7 +29,7 @@ func TestMemoryMappedBuffer(t *testing.T) {
 		return
 	}
 
-	b.SetPos(5)
+	b.MustSetPos(5)
 	err = b.WriteString("x")
 	if err != nil {
 		t.Error("Cannot Write to MemoryMappedBuffer")
@@ -48,7 +48,10 @@ func TestMemoryMappedBuffer(t *testing.T) {
 		t.Error("Data Written in buffer not getting reflected in file")
 	}
 
-	b.Unmap(true)
+	err = b.Unmap(true)
+	if err != nil {
+		t.Error(err)
+	}
 
 	if _, err := os.Stat(loc); err == nil {
 		t.Error("Memory Mapped File not getting deleted on Unmap")
