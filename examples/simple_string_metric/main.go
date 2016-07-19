@@ -31,12 +31,12 @@ func main() {
 		panic(err)
 	}
 
-	w.Start()
-	defer w.Stop()
+	w.MustStart()
+	defer w.MustStop()
 
 	metric := m.(speed.SingletonMetric)
 	for i := 0; i < *timelimit; i++ {
-		metric.Set(names[i%len(names)])
+		metric.MustSet(names[i%len(names)])
 		time.Sleep(time.Second)
 	}
 }

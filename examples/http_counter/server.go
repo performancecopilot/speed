@@ -38,10 +38,14 @@ func main() {
 	defer writer.MustStop()
 
 	http.HandleFunc("/increment", handleIncrement)
-	go http.ListenAndServe(":8080", nil)
+	go func() {
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			panic(err)
+		}
+	}()
 
 	fmt.Println("To stop the server press enter")
-	os.Stdin.Read(make([]byte, 1))
+	_, _ = os.Stdin.Read(make([]byte, 1))
 	os.Exit(0)
 }
 

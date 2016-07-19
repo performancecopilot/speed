@@ -32,5 +32,5 @@ func main() {
 	defer writer.MustStop()
 
 	fmt.Println("The metric is currently mapped as mmv.simple.simple.counter, to stop the mapping, press enter")
-	os.Stdin.Read(make([]byte, 1))
+	_, _ = os.Stdin.Read(make([]byte, 1))
 }
