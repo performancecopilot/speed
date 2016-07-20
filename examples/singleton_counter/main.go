@@ -28,18 +28,18 @@ func main() {
 		panic(err)
 	}
 
-	writer, err := speed.NewPCPClient("singletoncounter", speed.ProcessFlag)
+	client, err := speed.NewPCPClient("singletoncounter", speed.ProcessFlag)
 	if err != nil {
 		panic(err)
 	}
 
-	err = writer.Register(metric)
+	err = client.Register(metric)
 	if err != nil {
 		panic(err)
 	}
 
-	writer.MustStart()
-	defer writer.MustStop()
+	client.MustStart()
+	defer client.MustStop()
 
 	fmt.Println("The metric should be visible as mmv.singletoncounter.counter")
 	for i := 0; i < *timelimit; i++ {

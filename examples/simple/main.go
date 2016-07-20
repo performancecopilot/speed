@@ -21,15 +21,15 @@ func main() {
 		panic(err)
 	}
 
-	writer, err := speed.NewPCPClient("simple", speed.ProcessFlag)
+	client, err := speed.NewPCPClient("simple", speed.ProcessFlag)
 	if err != nil {
 		panic(err)
 	}
 
-	writer.MustRegister(metric)
+	client.MustRegister(metric)
 
-	writer.MustStart()
-	defer writer.MustStop()
+	client.MustStart()
+	defer client.MustStop()
 
 	fmt.Println("The metric is currently mapped as mmv.simple.simple.counter, to stop the mapping, press enter")
 	_, _ = os.Stdin.Read(make([]byte, 1))

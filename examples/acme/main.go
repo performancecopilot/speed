@@ -58,17 +58,17 @@ func main() {
 		panic(err)
 	}
 
-	writer, err := speed.NewPCPClient("acme", speed.ProcessFlag)
+	client, err := speed.NewPCPClient("acme", speed.ProcessFlag)
 	if err != nil {
 		panic(err)
 	}
 
-	writer.MustRegisterIndom(indom)
-	writer.MustRegister(countmetric)
-	writer.MustRegister(timemetric)
+	client.MustRegisterIndom(indom)
+	client.MustRegister(countmetric)
+	client.MustRegister(timemetric)
 
-	writer.MustStart()
-	defer writer.MustStop()
+	client.MustStart()
+	defer client.MustStop()
 
 	time.Sleep(time.Second * 5)
 	err = countmetric.SetInstance("Anvils", 42)

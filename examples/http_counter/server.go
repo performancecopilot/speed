@@ -27,15 +27,15 @@ func main() {
 		panic(err)
 	}
 
-	writer, err := speed.NewPCPClient("example", speed.ProcessFlag)
+	client, err := speed.NewPCPClient("example", speed.ProcessFlag)
 	if err != nil {
 		panic(err)
 	}
 
-	writer.MustRegister(metric)
+	client.MustRegister(metric)
 
-	writer.MustStart()
-	defer writer.MustStop()
+	client.MustStart()
+	defer client.MustStop()
 
 	http.HandleFunc("/increment", handleIncrement)
 	go func() {
