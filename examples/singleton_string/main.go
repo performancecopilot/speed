@@ -13,18 +13,18 @@ var timelimit = flag.Int("time", 60, "number of seconds to run for")
 func main() {
 	flag.Parse()
 
-	w, err := speed.NewPCPWriter("strings", speed.ProcessFlag)
+	c, err := speed.NewPCPClient("strings", speed.ProcessFlag)
 	if err != nil {
 		panic(err)
 	}
 
-	m, err := w.RegisterString("simple.counter", 10, speed.CounterSemantics, speed.Int32Type, speed.OneUnit)
+	m, err := c.RegisterString("simple.counter", 10, speed.CounterSemantics, speed.Int32Type, speed.OneUnit)
 	if err != nil {
 		panic(err)
 	}
 
-	w.MustStart()
-	defer w.MustStop()
+	c.MustStart()
+	defer c.MustStop()
 
 	metric := m.(speed.SingletonMetric)
 	for i := 0; i < *timelimit; i++ {

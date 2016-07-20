@@ -12,12 +12,12 @@ var timelimit = flag.Int("time", 60, "number of seconds to run for")
 func main() {
 	flag.Parse()
 
-	w, err := speed.NewPCPWriter("strings", speed.ProcessFlag)
+	c, err := speed.NewPCPClient("strings", speed.ProcessFlag)
 	if err != nil {
 		panic(err)
 	}
 
-	m, err := w.RegisterString("language[go, javascript, php].users", speed.Instances{
+	m, err := c.RegisterString("language[go, javascript, php].users", speed.Instances{
 		"go":         1,
 		"javascript": 100,
 		"php":        10,
@@ -26,8 +26,8 @@ func main() {
 		panic(err)
 	}
 
-	w.MustStart()
-	defer w.MustStop()
+	c.MustStart()
+	defer c.MustStop()
 
 	metric := m.(speed.InstanceMetric)
 	for i := 0; i < *timelimit; i++ {
