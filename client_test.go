@@ -35,7 +35,7 @@ func TestMmvFileLocation(t *testing.T) {
 }
 
 func TestTocCountAndLength(t *testing.T) {
-	w, err := NewPCPWriter("test", ProcessFlag)
+	w, err := NewPCPClient("test", ProcessFlag)
 	if err != nil {
 		t.Errorf("cannot create writer, error: %v", err)
 	}
@@ -88,7 +88,7 @@ func TestTocCountAndLength(t *testing.T) {
 }
 
 func TestMapping(t *testing.T) {
-	w, err := NewPCPWriter("test", ProcessFlag)
+	w, err := NewPCPClient("test", ProcessFlag)
 	_, err = w.RegisterString("test.1", 2, CounterSemantics, Int32Type, OneUnit)
 	if err != nil {
 		t.Error("Cannot Register")

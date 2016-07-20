@@ -33,42 +33,33 @@ var EraseFileOnStop = false
 
 var writerlog = log.WithField("prefix", "writer")
 
-// Writer defines the interface of a MMV file writer's properties
-type Writer interface {
-	// a writer must contain a registry of metrics and instance domains
+// Client defines the interface for a type that can talk to an instrumentation agent
+type Client interface {
+	// a client must contain a registry of metrics
 	Registry() Registry
 
-	// writes an mmv file
+	// starts monitoring
 	Start() error
 
 	// Start that will panic on failure
 	MustStart()
 
-	// stops writing and cleans up
+	// stop monitoring
 	Stop() error
 
 	// Stop that will panic on failure
 	MustStop()
 
-	// returns the number of bytes that will be written by the current writer
-	Length() int
-
-	// adds a metric to be written
+	// adds a metric to be monitored
 	Register(Metric) error
 
 	// tries to add a metric to be written and panics on error
 	MustRegister(Metric)
 
-	// adds an instance domain to be written
-	RegisterIndom(InstanceDomain) error
-
-	// tries to add an indom and panics on error
-	MustRegisterIndom(InstanceDomain)
-
-	// adds metric and instance domain from a string
+	// adds metric from a string
 	RegisterString(string, interface{}, MetricSemantics, MetricType, MetricUnit) error
 
-	// tries to add a metric and an instance domain from a string and panics on an error
+	// tries to add a metric from a string and panics on an error
 	MustRegisterString(string, interface{}, MetricSemantics, MetricType, MetricUnit) error
 }
 
@@ -106,8 +97,8 @@ const (
 
 //go:generate stringer -type=MMVFlag
 
-// PCPWriter implements a writer that can write PCP compatible MMV files
-type PCPWriter struct {
+// PCPClient implements a client that can generate instrumentation for PCP
+type PCPClient struct {
 	sync.Mutex
 	loc       string            // absolute location of the mmv file
 	clusterID uint32            // cluster identifier for the writer
@@ -116,8 +107,8 @@ type PCPWriter struct {
 	buffer    bytebuffer.Buffer // current Buffer
 }
 
-// NewPCPWriter initializes a new PCPWriter object
-func NewPCPWriter(name string, flag MMVFlag) (*PCPWriter, error) {
+// NewPCPClient initializes a new PCPClient object
+func NewPCPClient(name string, flag MMVFlag) (*PCPClient, error) {
 	fileLocation, err := mmvFileLocation(name)
 	if err != nil {
 		return nil, err
@@ -125,7 +116,7 @@ func NewPCPWriter(name string, flag MMVFlag) (*PCPWriter, error) {
 
 	writerlog.WithField("location", fileLocation).Info("deduced location to write the MMV file")
 
-	return &PCPWriter{
+	return &PCPClient{
 		loc:       fileLocation,
 		r:         NewPCPRegistry(),
 		clusterID: hash(name, PCPClusterIDBitLength),
@@ -135,11 +126,11 @@ func NewPCPWriter(name string, flag MMVFlag) (*PCPWriter, error) {
 }
 
 // Registry returns a writer's registry
-func (w *PCPWriter) Registry() Registry {
+func (w *PCPClient) Registry() Registry {
 	return w.r
 }
 
-func (w *PCPWriter) tocCount() int {
+func (w *PCPClient) tocCount() int {
 	ans := 2
 
 	if w.Registry().InstanceCount() > 0 {
@@ -154,7 +145,7 @@ func (w *PCPWriter) tocCount() int {
 }
 
 // Length returns the byte length of data in the mmv file written by the current writer
-func (w *PCPWriter) Length() int {
+func (w *PCPClient) Length() int {
 	return HeaderLength +
 		(w.tocCount() * TocLength) +
 		(w.Registry().InstanceCount() * InstanceLength) +
@@ -164,7 +155,7 @@ func (w *PCPWriter) Length() int {
 		(w.Registry().StringCount() * StringLength)
 }
 
-func (w *PCPWriter) initializeInstanceAndInstanceDomainOffsets(instanceoffset, indomoffset int, stringsoffset *int) {
+func (w *PCPClient) initializeInstanceAndInstanceDomainOffsets(instanceoffset, indomoffset int, stringsoffset *int) {
 	for _, indom := range w.r.instanceDomains {
 		indom.offset = indomoffset
 		indom.instanceOffset = instanceoffset
@@ -187,7 +178,7 @@ func (w *PCPWriter) initializeInstanceAndInstanceDomainOffsets(instanceoffset, i
 	}
 }
 
-func (w *PCPWriter) initializeSingletonMetricOffsets(metric *PCPSingletonMetric, metricsoffset, valuesoffset, stringsoffset *int) {
+func (w *PCPClient) initializeSingletonMetricOffsets(metric *PCPSingletonMetric, metricsoffset, valuesoffset, stringsoffset *int) {
 	metric.descoffset = *metricsoffset
 	*metricsoffset += MetricLength
 	metric.valueoffset = *valuesoffset
@@ -204,7 +195,7 @@ func (w *PCPWriter) initializeSingletonMetricOffsets(metric *PCPSingletonMetric,
 	}
 }
 
-func (w *PCPWriter) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, metricsoffset, valuesoffset, stringsoffset *int) {
+func (w *PCPClient) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, metricsoffset, valuesoffset, stringsoffset *int) {
 	metric.descoffset = *metricsoffset
 	*metricsoffset += MetricLength
 
@@ -224,7 +215,7 @@ func (w *PCPWriter) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, m
 	}
 }
 
-func (w *PCPWriter) initializeOffsets() {
+func (w *PCPClient) initializeOffsets() {
 	indomoffset := HeaderLength + TocLength*w.tocCount()
 	instanceoffset := indomoffset + InstanceDomainLength*w.r.InstanceDomainCount()
 	metricsoffset := instanceoffset + InstanceLength*w.r.InstanceCount()
@@ -249,7 +240,7 @@ func (w *PCPWriter) initializeOffsets() {
 	}
 }
 
-func (w *PCPWriter) writeHeaderBlock() (generation2offset int, generation int64) {
+func (w *PCPClient) writeHeaderBlock() (generation2offset int, generation int64) {
 	// tag
 	w.buffer.MustWriteString("MMV")
 	w.buffer.MustSetPos(w.buffer.Pos() + 1) // extra null byte is needed and \0 isn't a valid escape character in go
@@ -280,14 +271,14 @@ func (w *PCPWriter) writeHeaderBlock() (generation2offset int, generation int64)
 	return
 }
 
-func (w *PCPWriter) writeSingleToc(pos, identifier, count, offset int) {
+func (w *PCPClient) writeSingleToc(pos, identifier, count, offset int) {
 	w.buffer.MustSetPos(pos)
 	w.buffer.MustWriteInt32(int32(identifier))
 	w.buffer.MustWriteInt32(int32(count))
 	w.buffer.MustWriteUint64(uint64(offset))
 }
 
-func (w *PCPWriter) writeTocBlock() {
+func (w *PCPClient) writeTocBlock() {
 	tocpos := HeaderLength
 
 	// instance domains toc
@@ -325,7 +316,7 @@ func (w *PCPWriter) writeTocBlock() {
 	}
 }
 
-func (w *PCPWriter) writeInstanceAndInstanceDomainBlock() {
+func (w *PCPClient) writeInstanceAndInstanceDomainBlock() {
 	for _, indom := range w.r.instanceDomains {
 		w.buffer.MustSetPos(indom.offset)
 		w.buffer.MustWriteUint32(indom.ID())
@@ -356,7 +347,7 @@ func (w *PCPWriter) writeInstanceAndInstanceDomainBlock() {
 	}
 }
 
-func (w *PCPWriter) writeMetricDesc(m PCPMetric, pos int) {
+func (w *PCPClient) writeMetricDesc(m PCPMetric, pos int) {
 	w.buffer.MustSetPos(pos)
 
 	w.buffer.MustWriteString(m.Name())
@@ -387,7 +378,7 @@ func (w *PCPWriter) writeMetricDesc(m PCPMetric, pos int) {
 	}
 }
 
-func (w *PCPWriter) writeInstance(t MetricType, val interface{}, valueoffset int) updateClosure {
+func (w *PCPClient) writeInstance(t MetricType, val interface{}, valueoffset int) updateClosure {
 	offset := valueoffset
 
 	if t == StringType {
@@ -405,14 +396,14 @@ func (w *PCPWriter) writeInstance(t MetricType, val interface{}, valueoffset int
 	return update
 }
 
-func (w *PCPWriter) writeSingletonMetric(m *PCPSingletonMetric) {
+func (w *PCPClient) writeSingletonMetric(m *PCPSingletonMetric) {
 	w.writeMetricDesc(m, m.descoffset)
 	m.update = w.writeInstance(m.t, m.val, m.valueoffset)
 	w.buffer.MustWriteInt64(int64(m.descoffset))
 	w.buffer.MustWriteInt64(0)
 }
 
-func (w *PCPWriter) writeInstanceMetric(m *PCPInstanceMetric) {
+func (w *PCPClient) writeInstanceMetric(m *PCPInstanceMetric) {
 	w.writeMetricDesc(m, m.descoffset)
 
 	for name, i := range m.indom.instances {
@@ -423,7 +414,7 @@ func (w *PCPWriter) writeInstanceMetric(m *PCPInstanceMetric) {
 	}
 }
 
-func (w *PCPWriter) writeMetricsAndValuesBlock() {
+func (w *PCPClient) writeMetricsAndValuesBlock() {
 	for _, metric := range w.r.metrics {
 		switch metric.(type) {
 		case *PCPSingletonMetric:
@@ -436,7 +427,7 @@ func (w *PCPWriter) writeMetricsAndValuesBlock() {
 
 // fillData will fill the Buffer with the mmv file
 // data as long as something doesn't go wrong
-func (w *PCPWriter) fillData() error {
+func (w *PCPClient) fillData() error {
 	generation2offset, generation := w.writeHeaderBlock()
 	w.writeTocBlock()
 	w.writeInstanceAndInstanceDomainBlock()
@@ -449,7 +440,7 @@ func (w *PCPWriter) fillData() error {
 }
 
 // Start dumps existing registry data
-func (w *PCPWriter) Start() error {
+func (w *PCPClient) Start() error {
 	w.Lock()
 	defer w.Unlock()
 
@@ -480,14 +471,14 @@ func (w *PCPWriter) Start() error {
 }
 
 // MustStart is a start that panics
-func (w *PCPWriter) MustStart() {
+func (w *PCPClient) MustStart() {
 	if err := w.Start(); err != nil {
 		panic(err)
 	}
 }
 
 // Stop removes existing mapping and cleans up
-func (w *PCPWriter) Stop() error {
+func (w *PCPClient) Stop() error {
 	w.Lock()
 	defer w.Unlock()
 
@@ -512,41 +503,41 @@ func (w *PCPWriter) Stop() error {
 }
 
 // MustStop is a stop that panics
-func (w *PCPWriter) MustStop() {
+func (w *PCPClient) MustStop() {
 	if err := w.Stop(); err != nil {
 		panic(err)
 	}
 }
 
 // Register is simply a shorthand for Registry().AddMetric
-func (w *PCPWriter) Register(m Metric) error { return w.Registry().AddMetric(m) }
+func (w *PCPClient) Register(m Metric) error { return w.Registry().AddMetric(m) }
 
 // MustRegister is simply a Register that can panic
-func (w *PCPWriter) MustRegister(m Metric) {
+func (w *PCPClient) MustRegister(m Metric) {
 	if err := w.Register(m); err != nil {
 		panic(err)
 	}
 }
 
 // RegisterIndom is simply a shorthand for Registry().AddInstanceDomain
-func (w *PCPWriter) RegisterIndom(indom InstanceDomain) error {
+func (w *PCPClient) RegisterIndom(indom InstanceDomain) error {
 	return w.Registry().AddInstanceDomain(indom)
 }
 
 // MustRegisterIndom is simply a RegisterIndom that can panic
-func (w *PCPWriter) MustRegisterIndom(indom InstanceDomain) {
+func (w *PCPClient) MustRegisterIndom(indom InstanceDomain) {
 	if err := w.RegisterIndom(indom); err != nil {
 		panic(err)
 	}
 }
 
 // RegisterString is simply a shorthand for Registry().AddMetricByString
-func (w *PCPWriter) RegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
+func (w *PCPClient) RegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
 	return w.Registry().AddMetricByString(str, val, s, t, u)
 }
 
 // MustRegisterString is simply a RegisterString that panics
-func (w *PCPWriter) MustRegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) Metric {
+func (w *PCPClient) MustRegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) Metric {
 	if m, err := w.RegisterString(str, val, s, t, u); err != nil {
 		panic(err)
 	} else {
