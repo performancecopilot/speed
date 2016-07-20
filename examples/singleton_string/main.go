@@ -13,7 +13,7 @@ var timelimit = flag.Int("time", 60, "number of seconds to run for")
 func main() {
 	flag.Parse()
 
-	w, err := speed.NewPCPWriter("strings", speed.ProcessFlag)
+	w, err := speed.NewPCPClient("strings", speed.ProcessFlag)
 	if err != nil {
 		panic(err)
 	}

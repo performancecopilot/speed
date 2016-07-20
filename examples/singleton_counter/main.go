@@ -28,7 +28,7 @@ func main() {
 		panic(err)
 	}
 
-	writer, err := speed.NewPCPWriter("singletoncounter", speed.ProcessFlag)
+	writer, err := speed.NewPCPClient("singletoncounter", speed.ProcessFlag)
 	if err != nil {
 		panic(err)
 	}
