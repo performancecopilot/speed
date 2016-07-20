@@ -18,7 +18,7 @@ Install Performance Co-Pilot on your local machine, either using prebuilt archiv
 
 Set up a go environment on your computer. For more information about these steps, please read [how to write go code](https://golang.org/doc/code.html), or [watch the video](https://www.youtube.com/watch?v=XCsL89YtqCs)
 
-- download and install go from [https://golang.org/dl](https://golang.org/dl)
+- download and install go 1.6 or above from [https://golang.org/dl](https://golang.org/dl)
 
 - set up `$GOPATH` to the root folder where you want to keep your go code
 
