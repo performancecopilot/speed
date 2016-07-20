@@ -35,18 +35,18 @@ func TestMmvFileLocation(t *testing.T) {
 }
 
 func TestTocCountAndLength(t *testing.T) {
-	w, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test", ProcessFlag)
 	if err != nil {
 		t.Errorf("cannot create writer, error: %v", err)
 	}
 
-	if w.tocCount() != 2 {
-		t.Errorf("expected tocCount to be 2, got %v", w.tocCount())
+	if c.tocCount() != 2 {
+		t.Errorf("expected tocCount to be 2, got %v", c.tocCount())
 	}
 
 	expectedLength := HeaderLength + 2*TocLength
-	if w.Length() != expectedLength {
-		t.Errorf("expected Length to be %v, got %v", expectedLength, w.Length())
+	if c.Length() != expectedLength {
+		t.Errorf("expected Length to be %v, got %v", expectedLength, c.Length())
 	}
 
 	m, err := NewPCPSingletonMetric(10, "test", Int32Type, CounterSemantics, OneUnit, "test", "")
@@ -54,18 +54,18 @@ func TestTocCountAndLength(t *testing.T) {
 		t.Error("Cannot create a metric")
 	}
 
-	w.MustRegister(m)
-	if w.tocCount() != 3 {
-		t.Errorf("expected tocCount to be 3, got %v", w.tocCount())
+	c.MustRegister(m)
+	if c.tocCount() != 3 {
+		t.Errorf("expected tocCount to be 3, got %v", c.tocCount())
 	}
 
 	expectedLength = HeaderLength + 3*TocLength + 1*MetricLength + 1*ValueLength + 1*StringLength
-	if w.Length() != expectedLength {
-		t.Errorf("expected Length to be %v, got %v", expectedLength, w.Length())
+	if c.Length() != expectedLength {
+		t.Errorf("expected Length to be %v, got %v", expectedLength, c.Length())
 	}
 
 	indom, _ := NewPCPInstanceDomain("testindom", []string{"test"}, "", "")
-	w.MustRegisterIndom(indom)
+	c.MustRegisterIndom(indom)
 
 	m2, err := NewPCPInstanceMetric(
 		Instances{
@@ -77,36 +77,36 @@ func TestTocCountAndLength(t *testing.T) {
 		t.Error("Cannot create a metric")
 	}
 
-	err = w.Register(m2)
+	err = c.Register(m2)
 	if err != nil {
 		t.Error("Cannot register m2")
 	}
 
-	if w.tocCount() != 5 {
-		t.Errorf("expected tocCount to be 5, got %v", w.tocCount())
+	if c.tocCount() != 5 {
+		t.Errorf("expected tocCount to be 5, got %v", c.tocCount())
 	}
 }
 
 func TestMapping(t *testing.T) {
-	w, err := NewPCPClient("test", ProcessFlag)
-	_, err = w.RegisterString("test.1", 2, CounterSemantics, Int32Type, OneUnit)
+	c, err := NewPCPClient("test", ProcessFlag)
+	_, err = c.RegisterString("test.1", 2, CounterSemantics, Int32Type, OneUnit)
 	if err != nil {
 		t.Error("Cannot Register")
 	}
 
-	w.MustStart()
+	c.MustStart()
 	loc, _ := mmvFileLocation("test")
 	if _, err = os.Stat(loc); err != nil {
 		t.Error("expected a MMV file to be created on startup")
 	}
 
-	_, err = w.RegisterString("test.2", 2, CounterSemantics, Int32Type, OneUnit)
+	_, err = c.RegisterString("test.2", 2, CounterSemantics, Int32Type, OneUnit)
 	if err == nil {
 		t.Error("expected registration to fail when a mapping is active")
 	}
 
 	EraseFileOnStop = true
-	err = w.Stop()
+	err = c.Stop()
 	if err != nil {
 		t.Error("Cannot stop a mapping")
 	}
