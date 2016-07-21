@@ -16,7 +16,7 @@ deps:
 lint:
 	gometalinter ./... --vendor --deadline=10000s	
 
-test: lint
+test: 
 	go test ./...
 
 cover: coverage
