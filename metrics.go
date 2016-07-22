@@ -133,31 +133,6 @@ func (m MetricType) resolve(val interface{}) interface{} {
 	return val
 }
 
-// WriteVal implements value writer for the current MetricType to a buffer
-func (m MetricType) WriteVal(val interface{}, b bytebuffer.Buffer) error {
-	switch val.(type) {
-	case int32:
-		return b.WriteInt32(val.(int32))
-	case int64:
-		return b.WriteInt64(val.(int64))
-	case uint32:
-		return b.WriteUint32(val.(uint32))
-	case uint64:
-		return b.WriteUint64(val.(uint64))
-	case float32:
-		return b.WriteFloat32(val.(float32))
-	case float64:
-		return b.WriteFloat64(val.(float64))
-	case *PCPString:
-		pos := b.Pos()
-		b.MustWrite(make([]byte, StringLength))
-		b.MustSetPos(pos)
-		return b.WriteString(val.(*PCPString).val)
-	}
-
-	return errors.New("Invalid Type")
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
 // MetricUnit defines the interface for a unit type for speed
@@ -381,8 +356,14 @@ type updateClosure func(interface{}) error
 // newupdateClosure creates a new update closure for an offset, type and buffer
 func newupdateClosure(offset int, buffer bytebuffer.Buffer, t MetricType) updateClosure {
 	return func(val interface{}) error {
+		if t == StringType {
+			buffer.MustSetPos(offset)
+			buffer.MustWrite(make([]byte, StringLength))
+			val = val.(*PCPString).val
+		}
+
 		buffer.MustSetPos(offset)
-		return t.WriteVal(val, buffer)
+		return buffer.WriteVal(val)
 	}
 }
 
