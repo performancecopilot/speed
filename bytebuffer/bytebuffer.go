@@ -89,6 +89,10 @@ func (b *ByteBuffer) MustWrite(data []byte) {
 
 // WriteVal writes an arbitrary value to the buffer
 func (b *ByteBuffer) WriteVal(val interface{}) error {
+	if s, isString := val.(string); isString {
+		return b.WriteString(s)
+	}
+
 	return binary.Write(b, byteOrder, val)
 }
 
