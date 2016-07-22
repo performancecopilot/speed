@@ -354,14 +354,12 @@ func (md *PCPMetricDesc) Description() string {
 type updateClosure func(interface{}) error
 
 // newupdateClosure creates a new update closure for an offset, type and buffer
-func newupdateClosure(offset int, buffer bytebuffer.Buffer, t MetricType) updateClosure {
+func newupdateClosure(offset int, buffer bytebuffer.Buffer) updateClosure {
 	return func(val interface{}) error {
-		if t == StringType {
+		if _, isString := val.(string); isString {
 			buffer.MustSetPos(offset)
 			buffer.MustWrite(make([]byte, StringLength))
-			val = val.(*PCPString).val
 		}
-
 		buffer.MustSetPos(offset)
 		return buffer.WriteVal(val)
 	}
@@ -410,8 +408,6 @@ func (m *PCPSingletonMetric) Set(val interface{}) error {
 	if !m.t.IsCompatible(val) {
 		return errors.New("the value is incompatible with this metrics MetricType")
 	}
-
-	val = m.t.resolve(val)
 
 	if val != m.val {
 		m.Lock()
@@ -516,22 +512,28 @@ func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
 
 // SetInstance sets the value for a particular instance of the metric
 func (m *PCPInstanceMetric) SetInstance(instance string, val interface{}) error {
+	if !m.t.IsCompatible(val) {
+		return errors.New("the value is incompatible with this metrics MetricType")
+	}
+
 	if !m.indom.HasInstance(instance) {
 		return fmt.Errorf("%v is not an instance of this metric", instance)
 	}
 
-	m.Lock()
-	defer m.Unlock()
+	if m.vals[instance].val != val {
+		m.Lock()
+		defer m.Unlock()
 
-	val = m.t.resolve(val)
-	if m.vals[instance].update != nil {
-		err := m.vals[instance].update(val)
-		if err != nil {
-			return err
+		if m.vals[instance].update != nil {
+			err := m.vals[instance].update(val)
+			if err != nil {
+				return err
+			}
 		}
+
+		m.vals[instance].val = val
 	}
 
-	m.vals[instance].val = val
 	return nil
 }
 

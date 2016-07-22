@@ -184,6 +184,11 @@ func (c *PCPClient) initializeSingletonMetricOffsets(metric *PCPSingletonMetric,
 	metric.valueoffset = *valuesoffset
 	*valuesoffset += ValueLength
 
+	if metric.t == StringType {
+		metric.val.(*PCPString).offset = *stringsoffset
+		*stringsoffset += StringLength
+	}
+
 	if metric.shortDescription.val != "" {
 		metric.shortDescription.offset = *stringsoffset
 		*stringsoffset += StringLength
@@ -202,6 +207,11 @@ func (c *PCPClient) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, m
 	for name := range metric.indom.instances {
 		metric.vals[name].offset = *valuesoffset
 		*valuesoffset += ValueLength
+
+		if metric.t == StringType {
+			metric.vals[name].val.(*PCPString).offset = *stringsoffset
+			*stringsoffset += StringLength
+		}
 	}
 
 	if metric.shortDescription.val != "" {
@@ -388,7 +398,7 @@ func (c *PCPClient) writeInstance(t MetricType, val interface{}, valueoffset int
 		c.buffer.MustWriteUint64(uint64(offset))
 	}
 
-	update := newupdateClosure(offset, c.buffer, t)
+	update := newupdateClosure(offset, c.buffer)
 	_ = update(val)
 
 	c.buffer.MustSetPos(valueoffset + MaxDataValueSize)
