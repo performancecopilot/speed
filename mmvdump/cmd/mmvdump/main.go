@@ -1,0 +1,149 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+
+	"github.com/performancecopilot/speed/mmvdump"
+)
+
+var (
+	header    *mmvdump.Header
+	tocs      map[int32]*mmvdump.Toc
+	metrics   map[uint64]*mmvdump.Metric
+	values    map[uint64]*mmvdump.Value
+	instances map[uint64]*mmvdump.Instance
+	indoms    map[uint32]*mmvdump.InstanceDomain
+	strings   map[uint64]*mmvdump.String
+)
+
+func printMetric(offset uint64) {
+	m := metrics[offset]
+
+	fmt.Printf("\t[%v/%v] %v\n", m.Item, offset, string(m.Name[:]))
+	fmt.Printf("\t\ttype=%v (0x%x), sem=%v (0x%x), pad=0x%x\n", m.Typ, int(m.Typ), m.Sem, int(m.Sem), m.Padding)
+	fmt.Printf("\t\tunits=%v\n", m.Unit)
+
+	if m.Indom == mmvdump.NO_INDOM {
+		fmt.Printf("\t\t(no indom)\n")
+	} else {
+		fmt.Printf("\t\tindom=%d\n", m.Indom)
+	}
+
+	if m.Shorttext == 0 {
+		fmt.Printf("\t\t(no shorttext)\n")
+	} else {
+		fmt.Printf("\t\tshorttext=%v\n", string(strings[m.Shorttext].Payload[:]))
+	}
+
+	if m.Longtext == 0 {
+		fmt.Printf("\t\t(no longtext)\n")
+	} else {
+		fmt.Printf("\t\tlongtext=%v\n", string(strings[m.Longtext].Payload[:]))
+	}
+}
+
+func printValue(offset uint64) {
+	v := values[offset]
+	m := metrics[v.Metric]
+
+	fmt.Printf("\t[%v/%v] %v", m.Item, offset, string(m.Name[:]))
+
+	var (
+		a   interface{}
+		err error
+	)
+
+	if m.Typ != mmvdump.StringType {
+		a, err = mmvdump.FixedVal(v.Val, m.Typ)
+	} else {
+		a, err = mmvdump.StringVal(v.Val, strings)
+	}
+
+	if m.Indom != mmvdump.NO_INDOM {
+		i := instances[v.Instance]
+		fmt.Printf("[%d or \"%s\"]", i.Internal, string(i.External[:]))
+	}
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf(" = %v\n", a)
+}
+
+func printString(offset uint64) {
+	fmt.Printf("\t[%v] %v\n", offset, string(strings[offset].Payload[:]))
+}
+
+func main() {
+	flag.Parse()
+
+	if flag.NArg() < 1 {
+		panic("Usage: mmvdump <file>")
+	}
+
+	file := flag.Arg(0)
+
+	f, err := os.Open(file)
+	if err != nil {
+		panic(err)
+	}
+
+	fi, err := os.Stat(file)
+	if err != nil {
+		panic(err)
+	}
+
+	len := fi.Size()
+	data := make([]byte, len)
+
+	_, err = f.Read(data)
+	if err != nil {
+		panic(err)
+	}
+
+	header, tocs, metrics, values, instances, indoms, strings, err = mmvdump.Dump(data)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Printf(`
+File      = %v
+Version   = %v
+Generated = %v
+Toc Count = %v
+Cluster   = %v
+Process   = %v
+Flags     = 0x%x
+
+`, file, header.Version, header.G1, header.Toc, header.Cluster, header.Process, int(header.Flag))
+
+	offset := mmvdump.HeaderLength
+
+	for _, toc := range tocs {
+		switch toc.Type {
+		case mmvdump.TocMetrics:
+			fmt.Printf("TOC[%v], offset: %v, metrics offset: %v (%v entries)\n", int(toc.Type), offset, toc.Offset, toc.Count)
+			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+mmvdump.MetricLength {
+				printMetric(offset)
+			}
+
+		case mmvdump.TocValues:
+			fmt.Printf("TOC[%v], offset: %v, values offset: %v (%v entries)\n", int(toc.Type), offset, toc.Offset, toc.Count)
+			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+mmvdump.ValueLength {
+				printValue(offset)
+			}
+
+		case mmvdump.TocStrings:
+			fmt.Printf("TOC[%v], offset: %v, strings offset: %v (%v entries)\n", int(toc.Type), offset, toc.Offset, toc.Count)
+			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+mmvdump.StringLength {
+				printString(offset)
+			}
+		}
+
+		fmt.Println()
+		offset += mmvdump.TocLength
+	}
+}

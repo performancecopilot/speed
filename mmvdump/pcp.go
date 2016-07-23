@@ -2,7 +2,11 @@ package mmvdump
 
 const MMVVersion = 1
 
-const NAMEMAX = 256
+const (
+	NAMEMAX   = 64
+	STRINGMAX = 256
+	NO_INDOM  = -1
+)
 
 // Header describes the data in a MMV header
 type Header struct {
@@ -11,7 +15,7 @@ type Header struct {
 	G1, G2           uint64
 	Toc              int32
 	Flag             int32
-	Cluster, Process int32
+	Process, Cluster int32
 }
 
 // TocType is an enumerated type with different types as values
@@ -63,7 +67,7 @@ type Metric struct {
 // Value defines the contents in a PCP Value
 type Value struct {
 	// uint64 is a holder type here, while printing it is expected that
-	// the user will infer the value using the Metric Type
+	// the user will infer the value using the Val functions
 	Val uint64
 
 	Extra    int64
@@ -73,7 +77,7 @@ type Value struct {
 
 // String wraps the payload for a PCP String
 type String struct {
-	Payload [NAMEMAX]byte
+	Payload [STRINGMAX]byte
 }
 
 // Type is an enumerated type representing all valid types for a metric

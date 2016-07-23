@@ -5,6 +5,7 @@ package mmvdump
 import (
 	"errors"
 	"fmt"
+	"math"
 	"unsafe"
 )
 
@@ -74,14 +75,15 @@ func readString(data []byte, offset uint64) (*String, error) {
 	return (*String)(unsafe.Pointer(&data[offset])), nil
 }
 
+// Dump creates a data dump from the passed data
 func Dump(data []byte) (
 	h *Header,
 	ts map[int32]*Toc,
-	metrics map[uint32]*Metric,
-	values []*Value,
-	instances map[int32]*Instance,
+	metrics map[uint64]*Metric,
+	values map[uint64]*Value,
+	instances map[uint64]*Instance,
 	indoms map[uint32]*InstanceDomain,
-	strings []*String,
+	strings map[uint64]*String,
 	err error,
 ) {
 	h, err = readHeader(data)
@@ -101,13 +103,13 @@ func Dump(data []byte) (
 	for _, toc := range ts {
 		switch toc.Type {
 		case TocInstances:
-			instances = make(map[int32]*Instance)
+			instances = make(map[uint64]*Instance)
 			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+InstanceLength {
 				instance, err := readInstance(data, offset)
 				if err != nil {
 					return nil, nil, nil, nil, nil, nil, nil, err
 				}
-				instances[instance.Internal] = instance
+				instances[offset] = instance
 			}
 		case TocIndoms:
 			indoms := make(map[uint32]*InstanceDomain)
@@ -119,34 +121,64 @@ func Dump(data []byte) (
 				indoms[indom.Serial] = indom
 			}
 		case TocMetrics:
-			metrics = make(map[uint32]*Metric)
+			metrics = make(map[uint64]*Metric)
 			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+MetricLength {
 				metric, err := readMetric(data, offset)
 				if err != nil {
 					return nil, nil, nil, nil, nil, nil, nil, err
 				}
-				metrics[metric.Item] = metric
+				metrics[offset] = metric
 			}
 		case TocValues:
-			values = make([]*Value, toc.Count)
+			values = make(map[uint64]*Value)
 			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+ValueLength {
 				value, err := readValue(data, offset)
 				if err != nil {
 					return nil, nil, nil, nil, nil, nil, nil, err
 				}
-				values[i] = value
+				values[offset] = value
 			}
 		case TocStrings:
-			strings = make([]*String, toc.Count)
+			strings = make(map[uint64]*String)
 			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+StringLength {
 				str, err := readString(data, offset)
 				if err != nil {
 					return nil, nil, nil, nil, nil, nil, nil, err
 				}
-				strings[i] = str
+				strings[offset] = str
 			}
 		}
 	}
 
 	return
+}
+
+// FixedVal will infer a fixed size value from the passed data
+func FixedVal(data uint64, t Type) (interface{}, error) {
+	switch t {
+	case Int32Type:
+		return int32(data), nil
+	case Uint32Type:
+		return uint32(data), nil
+	case Int64Type:
+		return int64(data), nil
+	case Uint64Type:
+		return data, nil
+	case FloatType:
+		return math.Float32frombits(uint32(data)), nil
+	case DoubleType:
+		return math.Float64frombits(data), nil
+	}
+
+	return nil, errors.New("invalid type")
+}
+
+// StringVal will infer the string corresponding to an address
+func StringVal(data uint64, strings map[uint64]*String) (string, error) {
+	str, ok := strings[data]
+	if !ok {
+		return "", errors.New("invalid string address")
+	}
+
+	return string(str.Payload[:]), nil
 }
