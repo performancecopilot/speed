@@ -1,11 +1,17 @@
 package mmvdump
 
+// MMVVersion is the current mmv format version
 const MMVVersion = 1
 
 const (
-	NAMEMAX   = 64
-	STRINGMAX = 256
-	NO_INDOM  = -1
+	// Maximum allowed length of a name
+	NameMax = 64
+
+	// Maximum allowed length of a string
+	StringMax = 256
+
+	// Constant used to indicate abscence of an indom from a metric
+	NoIndom = -1
 )
 
 // Header describes the data in a MMV header
@@ -21,6 +27,7 @@ type Header struct {
 // TocType is an enumerated type with different types as values
 type TocType int32
 
+// Values for TocType
 const (
 	TocIndoms TocType = iota + 1
 	TocInstances
@@ -43,18 +50,18 @@ type Instance struct {
 	Indom    uint64
 	Padding  uint32
 	Internal int32
-	External [NAMEMAX]byte
+	External [NameMax]byte
 }
 
 // InstanceDomain defines the contents in a valid instance domain
 type InstanceDomain struct {
 	Serial, Count               uint32
-	offset, shorttext, longtext uint64
+	Offset, Shorttext, Longtext uint64
 }
 
 // Metric defines the contents in a valid Metric
 type Metric struct {
-	Name                [NAMEMAX]byte
+	Name                [NameMax]byte
 	Item                uint32
 	Typ                 Type
 	Sem                 Semantics
@@ -77,7 +84,7 @@ type Value struct {
 
 // String wraps the payload for a PCP String
 type String struct {
-	Payload [STRINGMAX]byte
+	Payload [StringMax]byte
 }
 
 // Type is an enumerated type representing all valid types for a metric
@@ -101,6 +108,7 @@ const (
 // Unit is an enumerated type with all possible units as values
 type Unit uint32
 
+// Values for Space Units
 const (
 	ByteUnit Unit = 1<<28 | iota<<16
 	KilobyteUnit
@@ -111,6 +119,7 @@ const (
 	ExabyteUnit
 )
 
+// Values for Time Units
 const (
 	NanosecondUnit Unit = 1<<24 | iota<<12
 	MicrosecondUnit
@@ -120,6 +129,7 @@ const (
 	HourUnit
 )
 
+// Values for Count Units
 const OneUnit Unit = 1<<20 | iota<<8
 
 //go:generate stringer --type=Unit
@@ -136,6 +146,7 @@ const (
 
 //go:generate stringer -type=Semantics
 
+// Byte Lengths for Different Components
 const (
 	HeaderLength         uint64 = 40
 	TocLength                   = 16
