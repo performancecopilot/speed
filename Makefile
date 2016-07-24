@@ -14,7 +14,7 @@ deps:
 	gometalinter --install --update
 
 lint:
-	gometalinter ./... --vendor --deadline=10000s	
+	gometalinter ./... --vendor --deadline=10000s --dupl-threshold=80	
 
 test: 
 	go test ./...
