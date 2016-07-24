@@ -100,15 +100,15 @@ func printString(offset uint64) {
 	fmt.Printf("\t[%v] %v\n", offset, string(strings[offset].Payload[:]))
 }
 
-func data(file string) ([]byte, error) {
+func data(file string) []byte {
 	f, err := os.Open(file)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	fi, err := os.Stat(file)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
 	len := fi.Size()
@@ -116,25 +116,24 @@ func data(file string) ([]byte, error) {
 
 	_, err = f.Read(data)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	return data, nil
+	return data
 }
 
 func main() {
 	flag.Parse()
 
 	if flag.NArg() < 1 {
-		panic("Usage: mmvdump <file>")
+		fmt.Println("usage: mmvdump <file>")
+		return
 	}
 
 	file := flag.Arg(0)
-	d, err := data(file)
-	if err != nil {
-		panic(err)
-	}
+	d := data(file)
 
+	var err error
 	header, tocs, metrics, values, instances, indoms, strings, err = mmvdump.Dump(d)
 	if err != nil {
 		panic(err)

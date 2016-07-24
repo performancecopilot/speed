@@ -75,10 +75,89 @@ func readString(data []byte, offset uint64) (*String, error) {
 	return (*String)(unsafe.Pointer(&data[offset])), nil
 }
 
+func readTocs(data []byte, count int32) ([]*Toc, error) {
+	tocs := make([]*Toc, count)
+
+	for i := int32(0); i < count; i++ {
+		t, err := readToc(data, HeaderLength+uint64(i)*TocLength)
+		if err != nil {
+			return nil, err
+		}
+		tocs[i] = t
+	}
+
+	return tocs, nil
+}
+
+func readInstances(data []byte, offset uint64, count int32) (map[uint64]*Instance, error) {
+	instances := make(map[uint64]*Instance)
+	for i := int32(0); i < count; i, offset = i+1, offset+InstanceLength {
+		instance, err := readInstance(data, offset)
+		if err != nil {
+			return nil, err
+		}
+		instances[offset] = instance
+	}
+
+	return instances, nil
+}
+
+func readInstanceDomains(data []byte, offset uint64, count int32) (map[uint64]*InstanceDomain, error) {
+	indoms := make(map[uint64]*InstanceDomain)
+	for i := int32(0); i < count; i, offset = i+1, offset+InstanceDomainLength {
+		indom, err := readInstanceDomain(data, offset)
+		if err != nil {
+			return nil, err
+		}
+		indoms[offset] = indom
+	}
+
+	return indoms, nil
+}
+
+func readMetrics(data []byte, offset uint64, count int32) (map[uint64]*Metric, error) {
+	metrics := make(map[uint64]*Metric)
+	for i := int32(0); i < count; i, offset = i+1, offset+MetricLength {
+		metric, err := readMetric(data, offset)
+		if err != nil {
+			return nil, err
+		}
+		metrics[offset] = metric
+	}
+
+	return metrics, nil
+}
+
+func readValues(data []byte, offset uint64, count int32) (map[uint64]*Value, error) {
+	values := make(map[uint64]*Value)
+	for i := int32(0); i < count; i, offset = i+1, offset+ValueLength {
+		value, err := readValue(data, offset)
+		if err != nil {
+			return nil, err
+		}
+		values[offset] = value
+	}
+
+	return values, nil
+}
+
+func readStrings(data []byte, offset uint64, count int32) (map[uint64]*String, error) {
+	strings := make(map[uint64]*String)
+	for i := int32(0); i < count; i, offset = i+1, offset+StringLength {
+		str, err := readString(data, offset)
+		if err != nil {
+			return nil, err
+		}
+		strings[offset] = str
+	}
+
+	return strings, nil
+}
+
 // Dump creates a data dump from the passed data
 func Dump(data []byte) (
 	h *Header,
-	ts []*Toc,
+	tocs []*Toc,
 	metrics map[uint64]*Metric,
 	values map[uint64]*Value,
 	instances map[uint64]*Instance,
@@ -91,62 +170,26 @@ func Dump(data []byte) (
 		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
-	ts = make([]*Toc, h.Toc)
-	for i := 0; i < int(h.Toc); i++ {
-		t, err := readToc(data, HeaderLength+uint64(i)*TocLength)
-		if err != nil {
-			return nil, nil, nil, nil, nil, nil, nil, err
-		}
-		ts[i] = t
+	tocs, err = readTocs(data, h.Toc)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
-	for _, toc := range ts {
+	for _, toc := range tocs {
 		switch toc.Type {
 		case TocInstances:
-			instances = make(map[uint64]*Instance)
-			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+InstanceLength {
-				instance, err := readInstance(data, offset)
-				if err != nil {
-					return nil, nil, nil, nil, nil, nil, nil, err
-				}
-				instances[offset] = instance
-			}
+			instances, err = readInstances(data, toc.Offset, toc.Count)
 		case TocIndoms:
-			indoms = make(map[uint64]*InstanceDomain)
-			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+InstanceDomainLength {
-				indom, err := readInstanceDomain(data, offset)
-				if err != nil {
-					return nil, nil, nil, nil, nil, nil, nil, err
-				}
-				indoms[offset] = indom
-			}
+			indoms, err = readInstanceDomains(data, toc.Offset, toc.Count)
 		case TocMetrics:
-			metrics = make(map[uint64]*Metric)
-			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+MetricLength {
-				metric, err := readMetric(data, offset)
-				if err != nil {
-					return nil, nil, nil, nil, nil, nil, nil, err
-				}
-				metrics[offset] = metric
-			}
+			metrics, err = readMetrics(data, toc.Offset, toc.Count)
 		case TocValues:
-			values = make(map[uint64]*Value)
-			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+ValueLength {
-				value, err := readValue(data, offset)
-				if err != nil {
-					return nil, nil, nil, nil, nil, nil, nil, err
-				}
-				values[offset] = value
-			}
+			values, err = readValues(data, toc.Offset, toc.Count)
 		case TocStrings:
-			strings = make(map[uint64]*String)
-			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+StringLength {
-				str, err := readString(data, offset)
-				if err != nil {
-					return nil, nil, nil, nil, nil, nil, nil, err
-				}
-				strings[offset] = str
-			}
+			strings, err = readStrings(data, toc.Offset, toc.Count)
+		}
+		if err != nil {
+			return nil, nil, nil, nil, nil, nil, nil, err
 		}
 	}
 
