@@ -78,11 +78,11 @@ func readString(data []byte, offset uint64) (*String, error) {
 // Dump creates a data dump from the passed data
 func Dump(data []byte) (
 	h *Header,
-	ts map[int32]*Toc,
+	ts []*Toc,
 	metrics map[uint64]*Metric,
 	values map[uint64]*Value,
 	instances map[uint64]*Instance,
-	indoms map[uint32]*InstanceDomain,
+	indoms map[uint64]*InstanceDomain,
 	strings map[uint64]*String,
 	err error,
 ) {
@@ -91,13 +91,13 @@ func Dump(data []byte) (
 		return nil, nil, nil, nil, nil, nil, nil, err
 	}
 
-	ts = make(map[int32]*Toc)
+	ts = make([]*Toc, h.Toc)
 	for i := 0; i < int(h.Toc); i++ {
 		t, err := readToc(data, HeaderLength+uint64(i)*TocLength)
 		if err != nil {
 			return nil, nil, nil, nil, nil, nil, nil, err
 		}
-		ts[int32(t.Type)] = t
+		ts[i] = t
 	}
 
 	for _, toc := range ts {
@@ -112,13 +112,13 @@ func Dump(data []byte) (
 				instances[offset] = instance
 			}
 		case TocIndoms:
-			indoms := make(map[uint32]*InstanceDomain)
+			indoms := make(map[uint64]*InstanceDomain)
 			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+InstanceDomainLength {
 				indom, err := readInstanceDomain(data, offset)
 				if err != nil {
 					return nil, nil, nil, nil, nil, nil, nil, err
 				}
-				indoms[indom.Serial] = indom
+				indoms[offset] = indom
 			}
 		case TocMetrics:
 			metrics = make(map[uint64]*Metric)

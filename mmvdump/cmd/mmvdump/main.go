@@ -10,11 +10,11 @@ import (
 
 var (
 	header    *mmvdump.Header
-	tocs      map[int32]*mmvdump.Toc
+	tocs      []*mmvdump.Toc
 	metrics   map[uint64]*mmvdump.Metric
 	values    map[uint64]*mmvdump.Value
 	instances map[uint64]*mmvdump.Instance
-	indoms    map[uint32]*mmvdump.InstanceDomain
+	indoms    map[uint64]*mmvdump.InstanceDomain
 	strings   map[uint64]*mmvdump.String
 )
 
@@ -126,29 +126,36 @@ Flags     = 0x%x
 `, file, header.Version, header.G1, header.Toc, header.Cluster, header.Process, int(header.Flag))
 
 	toff := mmvdump.HeaderLength
+	var (
+		itemtype  string
+		itemsize  uint64
+		printItem func(uint64)
+	)
 
-	for _, toc := range tocs {
+	for ti, toc := range tocs {
 		switch toc.Type {
 		case mmvdump.TocMetrics:
-			fmt.Printf("TOC[%v], offset: %v, metrics offset: %v (%v entries)\n", int(toc.Type), toff, toc.Offset, toc.Count)
-			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+mmvdump.MetricLength {
-				printMetric(offset)
-			}
+			itemtype = "metric"
+			itemsize = mmvdump.MetricLength
+			printItem = printMetric
 
 		case mmvdump.TocValues:
-			fmt.Printf("TOC[%v], offset: %v, values offset: %v (%v entries)\n", int(toc.Type), toff, toc.Offset, toc.Count)
-			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+mmvdump.ValueLength {
-				printValue(offset)
-			}
+			itemtype = "values"
+			itemsize = mmvdump.ValueLength
+			printItem = printValue
 
 		case mmvdump.TocStrings:
-			fmt.Printf("TOC[%v], offset: %v, strings offset: %v (%v entries)\n", int(toc.Type), toff, toc.Offset, toc.Count)
-			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+mmvdump.StringLength {
-				printString(offset)
-			}
+			itemtype = "strings"
+			itemsize = mmvdump.StringLength
+			printItem = printString
 		}
 
+		fmt.Printf("TOC[%v], offset: %v, %v offset: %v (%v entries)\n", ti, toff, itemtype, toc.Offset, toc.Count)
+		for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+itemsize {
+			printItem(offset)
+		}
 		fmt.Println()
+
 		toff += mmvdump.TocLength
 	}
 }

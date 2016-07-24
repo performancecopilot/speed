@@ -4,13 +4,13 @@ package mmvdump
 const MMVVersion = 1
 
 const (
-	// Maximum allowed length of a name
+	// NameMax is the maximum allowed length of a name
 	NameMax = 64
 
-	// Maximum allowed length of a string
+	// StringMax is the maximum allowed length of a string
 	StringMax = 256
 
-	// Constant used to indicate abscence of an indom from a metric
+	// NoIndom is a constant used to indicate abscence of an indom from a metric
 	NoIndom = -1
 )
 
@@ -130,13 +130,16 @@ const (
 )
 
 // Values for Count Units
-const OneUnit Unit = 1<<20 | iota<<8
+const (
+	OneUnit Unit = 1<<20 | iota<<8
+)
 
 //go:generate stringer --type=Unit
 
 // Semantics represents an enumerated type representing all possible semantics of a metric
 type Semantics int32
 
+// Values for Semantics
 const (
 	NoSemantics       Semantics = 0
 	CounterSemantics  Semantics = 1
