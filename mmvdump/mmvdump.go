@@ -112,7 +112,7 @@ func Dump(data []byte) (
 				instances[offset] = instance
 			}
 		case TocIndoms:
-			indoms := make(map[uint64]*InstanceDomain)
+			indoms = make(map[uint64]*InstanceDomain)
 			for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+InstanceDomainLength {
 				indom, err := readInstanceDomain(data, offset)
 				if err != nil {

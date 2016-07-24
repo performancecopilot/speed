@@ -18,6 +18,29 @@ var (
 	strings   map[uint64]*mmvdump.String
 )
 
+func printInstance(offset uint64) {
+	i := instances[offset]
+	indom := indoms[i.Indom]
+	fmt.Printf("\t[%v/%v] instance = [%v/%v]\n", indom.Serial, offset, i.Internal, string(i.External[:]))
+}
+
+func printInstanceDomain(offset uint64) {
+	indom := indoms[offset]
+	fmt.Printf("\t[%v/%v] %d instances, starting at offset %d\n", indom.Serial, offset, indom.Count, indom.Offset)
+
+	if indom.Shorttext == 0 {
+		fmt.Printf("\t\t(no shorttext)\n")
+	} else {
+		fmt.Printf("\t\tshorttext=%v\n", string(strings[indom.Shorttext].Payload[:]))
+	}
+
+	if indom.Longtext == 0 {
+		fmt.Printf("\t\t(no longtext)\n")
+	} else {
+		fmt.Printf("\t\tlongtext=%v\n", string(strings[indom.Longtext].Payload[:]))
+	}
+}
+
 func printMetric(offset uint64) {
 	m := metrics[offset]
 
@@ -108,6 +131,9 @@ func main() {
 
 	file := flag.Arg(0)
 	d, err := data(file)
+	if err != nil {
+		panic(err)
+	}
 
 	header, tocs, metrics, values, instances, indoms, strings, err = mmvdump.Dump(d)
 	if err != nil {
@@ -134,16 +160,22 @@ Flags     = 0x%x
 
 	for ti, toc := range tocs {
 		switch toc.Type {
+		case mmvdump.TocInstances:
+			itemtype = "instances"
+			itemsize = mmvdump.InstanceLength
+			printItem = printInstance
+		case mmvdump.TocIndoms:
+			itemtype = "indoms"
+			itemsize = mmvdump.InstanceDomainLength
+			printItem = printInstanceDomain
 		case mmvdump.TocMetrics:
 			itemtype = "metric"
 			itemsize = mmvdump.MetricLength
 			printItem = printMetric
-
 		case mmvdump.TocValues:
 			itemtype = "values"
 			itemsize = mmvdump.ValueLength
 			printItem = printValue
-
 		case mmvdump.TocStrings:
 			itemtype = "strings"
 			itemsize = mmvdump.StringLength
