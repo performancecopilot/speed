@@ -5,21 +5,34 @@ import (
 	"testing"
 )
 
-func TestMmvDump1(t *testing.T) {
-	f, err := os.Open("testdata/test1.mmv")
+func data(filename string) []byte {
+	f, err := os.Open(filename)
 	if err != nil {
 		panic(err)
 	}
 
-	s, err := os.Stat("testdata/test1.mmv")
+	s, err := os.Stat(filename)
 	if err != nil {
 		panic(err)
 	}
 
 	data := make([]byte, s.Size())
-	f.Read(data)
+	n, err := f.Read(data)
+	if err != nil {
+		panic(err)
+	}
 
-	h, tocs, metrics, values, instances, indoms, strings, err := Dump(data)
+	if int64(n) != s.Size() {
+		panic("Could not read complete file" + filename + " into memory")
+	}
+
+	return data
+}
+
+func TestMmvDump1(t *testing.T) {
+	d := data("testdata/test1.mmv")
+
+	h, tocs, metrics, values, instances, indoms, strings, err := Dump(d)
 	if err != nil {
 		t.Error(err)
 		return
