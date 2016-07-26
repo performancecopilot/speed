@@ -120,6 +120,85 @@ func TestMapping(t *testing.T) {
 	EraseFileOnStop = false
 }
 
+func matchSingletonMetric(m *PCPSingletonMetric, metric *mmvdump.Metric, t *testing.T) {
+	if metric.Indom != mmvdump.NoIndom {
+		t.Error("expected indom to be null")
+	}
+
+	if int32(metric.Sem) != int32(m.sem) {
+		t.Errorf("expected semantics to be %v, got %v", m.sem, MetricSemantics(metric.Sem))
+	}
+
+	if int32(metric.Typ) != int32(m.t) {
+		t.Errorf("expected type to be %v, got %v", m.t, MetricType(metric.Typ))
+	}
+
+	if int32(metric.Unit) != int32(m.u.PMAPI()) {
+		t.Errorf("expected unit to be %v, got %v", m.u, metric.Unit)
+	}
+
+	if metric.Shorttext != uint64(m.shortDescription.offset) {
+		t.Errorf("expected shorttext to be %v, got %v", m.shortDescription.offset, metric.Shorttext)
+	}
+
+	if metric.Longtext != uint64(m.longDescription.offset) {
+		t.Errorf("expected longtext to be %v, got %v", m.longDescription.offset, metric.Longtext)
+	}
+}
+
+func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, t *testing.T) {
+	if value.Metric != uint64(m.descoffset) {
+		t.Errorf("expected value's metric to be at %v", m.descoffset)
+	}
+
+	if av, err := mmvdump.FixedVal(value.Val, mmvdump.Int32Type); err != nil || av.(int32) != m.val.(int32) {
+		t.Errorf("expected the value to be %v, got %v", 10, av)
+	}
+
+	if value.Instance != 0 {
+		t.Errorf("expected value instance to be 0")
+	}
+}
+
+func matchString(s *PCPString, str *mmvdump.String, t *testing.T) {
+	if s == nil {
+		t.Error("expected PCPString to not be nil")
+	}
+	sv := string(str.Payload[:len(s.val)])
+	if sv != s.val {
+		t.Errorf("expected %v, got %v", s.val, sv)
+	}
+}
+
+func matchMetricsAndValues(metrics map[uint64]*mmvdump.Metric, values map[uint64]*mmvdump.Value, c *PCPClient, t *testing.T) {
+	if c.Registry().MetricCount() != len(metrics) {
+		t.Errorf("expected %v metrics, got %v", c.Registry().MetricCount(), len(metrics))
+	}
+
+	if c.Registry().ValuesCount() != len(values) {
+		t.Errorf("expected %v values, got %v", c.Registry().ValuesCount(), len(values))
+	}
+
+	for _, m := range c.r.metrics {
+		switch met := m.(type) {
+		case *PCPSingletonMetric:
+			metric, ok := metrics[uint64(met.descoffset)]
+			if !ok {
+				t.Errorf("expected a metric at offset %v", met.descoffset)
+				continue
+			}
+			matchSingletonMetric(met, metric, t)
+
+			mv, ok := values[uint64(met.valueoffset)]
+			if !ok {
+				t.Errorf("expected a value at offset %v", met.valueoffset)
+				continue
+			}
+			matchSingletonValue(met, mv, t)
+		}
+	}
+}
+
 func TestWritingSingletonMetric(t *testing.T) {
 	c, err := NewPCPClient("test", ProcessFlag)
 	if err != nil {
@@ -138,6 +217,10 @@ func TestWritingSingletonMetric(t *testing.T) {
 	defer c.MustStop()
 
 	h, toc, m, v, i, ind, s, err := mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Error(err)
+		return
+	}
 
 	if int(h.Toc) != len(toc) {
 		t.Errorf("expected the number of tocs specified in the header and the number of tocs in the toc array to be the same, h.Toc = %d, len(tocs) = %d", h.Toc, len(toc))
@@ -151,64 +234,7 @@ func TestWritingSingletonMetric(t *testing.T) {
 		t.Errorf("expected client to write a ProcessFlag, writing %v", MMVFlag(h.Flag))
 	}
 
-	if len(m) != 1 {
-		t.Errorf("expected to write %d metrics, writing %d", 1, len(m))
-	}
-
-	// metrics
-
-	off := c.r.metricsoffset
-	metric, ok := m[uint64(off)]
-	if !ok {
-		t.Errorf("expected the metric to exist at offset %v", off)
-	}
-
-	if metric.Indom != mmvdump.NoIndom {
-		t.Error("expected indom to be null")
-	}
-
-	if int32(metric.Sem) != int32(CounterSemantics) {
-		t.Errorf("expected semantics to be %v, got %v", CounterSemantics, MetricSemantics(metric.Sem))
-	}
-
-	if int32(metric.Typ) != int32(Int32Type) {
-		t.Errorf("expected type to be %v, got %v", Int32Type, MetricType(metric.Typ))
-	}
-
-	if int32(metric.Unit) != int32(OneUnit) {
-		t.Errorf("expected unit to be %v, got %v", OneUnit, metric.Unit)
-	}
-
-	if metric.Shorttext == 0 {
-		t.Error("expected shorttext offset to not be 0")
-	}
-
-	if metric.Shorttext != uint64(c.r.stringsoffset) {
-		t.Errorf("expected shorttext offset to be %v", c.r.stringsoffset)
-	}
-
-	if metric.Longtext != 0 {
-		t.Errorf("expected longtext offset to be 0")
-	}
-
-	// values
-
-	mv, ok := v[uint64(c.r.valuesoffset)]
-	if !ok {
-		t.Errorf("expected a value to be written at offset %v", c.r.valuesoffset)
-	}
-
-	if mv.Metric != uint64(off) {
-		t.Errorf("expected value's metric to be at %v", off)
-	}
-
-	if av, err := mmvdump.FixedVal(mv.Val, mmvdump.Int32Type); err != nil || av.(int32) != 10 {
-		t.Errorf("expected the value to be %v, got %v", 10, av)
-	}
-
-	if mv.Instance != 0 {
-		t.Errorf("expected value instance to be 0")
-	}
+	matchMetricsAndValues(m, v, c, t)
 
 	// strings
 
@@ -216,15 +242,7 @@ func TestWritingSingletonMetric(t *testing.T) {
 		t.Error("expected one string")
 	}
 
-	str, ok := s[uint64(c.r.stringsoffset)]
-	if !ok {
-		t.Errorf("expected a string to be written at offset %v", c.r.stringsoffset)
-	}
-
-	sv := string(str.Payload[:4])
-	if sv != "test" {
-		t.Errorf("expected payload to be %v, got %v", "test", sv)
-	}
+	matchString(met.shortDescription, s[uint64(met.shortDescription.offset)], t)
 
 	// instances
 
@@ -236,5 +254,126 @@ func TestWritingSingletonMetric(t *testing.T) {
 
 	if len(ind) != 0 {
 		t.Error("expected no indoms when writing a singleton metric")
+	}
+}
+
+func matchInstance(i *mmvdump.Instance, pi *pcpInstance, id *PCPInstanceDomain, t *testing.T) {
+	if i.Indom != uint64(id.offset) {
+		t.Errorf("expected indom offset to be %d, got %d", i.Indom, id.offset)
+	}
+
+	if in := i.External[:len(pi.name)]; pi.name != string(in) {
+		t.Errorf("expected instance name to be %v, got %v", pi.name, in)
+	}
+}
+
+func matchInstanceDomain(id *mmvdump.InstanceDomain, pid *PCPInstanceDomain, t *testing.T) {
+	if pid.InstanceCount() != int(id.Count) {
+		t.Errorf("expected %d instances in instance domain %v, got %d", pid.InstanceCount(), pid.Name(), id.Count)
+	}
+
+	if id.Offset != uint64(pid.instanceOffset) {
+		t.Errorf("expected instance offset to be %d, got %d", pid.instanceOffset, id.Offset)
+	}
+
+	if id.Shorttext != uint64(pid.shortDescription.offset) {
+		t.Errorf("expected short description to be %d, got %d", pid.shortDescription.offset, id.Shorttext)
+	}
+
+	if id.Longtext != uint64(pid.longDescription.offset) {
+		t.Errorf("expected long description to be %d, got %d", pid.longDescription.offset, id.Longtext)
+	}
+}
+
+func matchInstancesAndInstanceDomains(
+	ins map[uint64]*mmvdump.Instance,
+	ids map[uint64]*mmvdump.InstanceDomain,
+	c *PCPClient,
+	t *testing.T,
+) {
+	if len(ins) != c.r.InstanceCount() {
+		t.Errorf("expected %d instances, got %d", c.r.InstanceCount(), len(ins))
+	}
+
+	for _, id := range c.r.instanceDomains {
+		if off := uint64(id.offset); ids[off] == nil {
+			t.Errorf("expected an instance domain at %d", id.offset)
+		} else {
+			matchInstanceDomain(ids[off], id, t)
+		}
+
+		for _, i := range id.instances {
+			if ioff := uint64(i.offset); ins[ioff] == nil {
+				t.Errorf("expected an instance domain at %d", ioff)
+			} else {
+				matchInstance(ins[ioff], i, id, t)
+			}
+		}
+	}
+}
+
+func TestWritingInstanceMetric(t *testing.T) {
+	c, err := NewPCPClient("test", ProcessFlag)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	id, err := NewPCPInstanceDomain("testid", []string{"a", "b", "c"}, "testid", "")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+	c.MustRegisterIndom(id)
+
+	m, err := NewPCPInstanceMetric(Instances{
+		"a": 1,
+		"b": 2,
+		"c": 3,
+	}, "test.1", id, Uint32Type, CounterSemantics, OneUnit, "", "test long description")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	c.MustRegister(m)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	h, tocs, mets, vals, ins, ids, ss, err := mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if int(h.Toc) != len(tocs) {
+		t.Errorf("expected the number of tocs specified in the header and the number of tocs in the toc array to be the same, h.Toc = %d, len(tocs) = %d", h.Toc, len(tocs))
+	}
+
+	if h.Toc != 5 {
+		t.Errorf("expected client to write %d tocs, written %d", 5, h.Toc)
+	}
+
+	if h.Flag != int32(ProcessFlag) {
+		t.Errorf("expected client to write a ProcessFlag, writing %v", MMVFlag(h.Flag))
+	}
+
+	matchMetricsAndValues(mets, vals, c, t)
+
+	matchInstancesAndInstanceDomains(ins, ids, c, t)
+
+	// strings
+
+	if off := id.shortDescription.offset; ss[uint64(off)] != nil {
+		matchString(id.shortDescription, ss[uint64(off)], t)
+	} else {
+		t.Errorf("expected a string at offset %v", off)
+	}
+
+	if off := m.longDescription.offset; ss[uint64(off)] != nil {
+		matchString(m.longDescription, ss[uint64(off)], t)
+	} else {
+		t.Errorf("expected a string at offset %v", off)
 	}
 }
