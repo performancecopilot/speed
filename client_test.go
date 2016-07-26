@@ -120,30 +120,34 @@ func TestMapping(t *testing.T) {
 	EraseFileOnStop = false
 }
 
+func matchMetricDesc(m PCPMetric, metric *mmvdump.Metric, t *testing.T) {
+	if int32(metric.Sem) != int32(m.Semantics()) {
+		t.Errorf("expected semantics to be %v, got %v", m.Semantics(), MetricSemantics(metric.Sem))
+	}
+
+	if int32(metric.Typ) != int32(m.Type()) {
+		t.Errorf("expected type to be %v, got %v", m.Type(), MetricType(metric.Typ))
+	}
+
+	if int32(metric.Unit) != int32(m.Unit().PMAPI()) {
+		t.Errorf("expected unit to be %v, got %v", m.Unit(), metric.Unit)
+	}
+
+	if metric.Shorttext != uint64(m.ShortDescription().offset) {
+		t.Errorf("expected shorttext to be %v, got %v", m.ShortDescription().offset, metric.Shorttext)
+	}
+
+	if metric.Longtext != uint64(m.LongDescription().offset) {
+		t.Errorf("expected longtext to be %v, got %v", m.LongDescription().offset, metric.Longtext)
+	}
+}
+
 func matchSingletonMetric(m *PCPSingletonMetric, metric *mmvdump.Metric, t *testing.T) {
 	if metric.Indom != mmvdump.NoIndom {
 		t.Error("expected indom to be null")
 	}
 
-	if int32(metric.Sem) != int32(m.sem) {
-		t.Errorf("expected semantics to be %v, got %v", m.sem, MetricSemantics(metric.Sem))
-	}
-
-	if int32(metric.Typ) != int32(m.t) {
-		t.Errorf("expected type to be %v, got %v", m.t, MetricType(metric.Typ))
-	}
-
-	if int32(metric.Unit) != int32(m.u.PMAPI()) {
-		t.Errorf("expected unit to be %v, got %v", m.u, metric.Unit)
-	}
-
-	if metric.Shorttext != uint64(m.shortDescription.offset) {
-		t.Errorf("expected shorttext to be %v, got %v", m.shortDescription.offset, metric.Shorttext)
-	}
-
-	if metric.Longtext != uint64(m.longDescription.offset) {
-		t.Errorf("expected longtext to be %v, got %v", m.longDescription.offset, metric.Longtext)
-	}
+	matchMetricDesc(m, metric, t)
 }
 
 func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, t *testing.T) {
@@ -164,9 +168,74 @@ func matchString(s *PCPString, str *mmvdump.String, t *testing.T) {
 	if s == nil {
 		t.Error("expected PCPString to not be nil")
 	}
+
 	sv := string(str.Payload[:len(s.val)])
 	if sv != s.val {
 		t.Errorf("expected %v, got %v", s.val, sv)
+	}
+}
+
+func matchInstanceMetric(m *PCPInstanceMetric, met *mmvdump.Metric, t *testing.T) {
+	if uint32(met.Indom) != m.indom.id {
+		t.Errorf("expected indom id to be %d, got %d", m.indom.id, met.Indom)
+	}
+
+	matchMetricDesc(m, met, t)
+}
+
+func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCPInstanceMetric, t *testing.T) {
+	if v.Metric != uint64(met.descoffset) {
+		t.Errorf("expected value's metric to be at %v", met.descoffset)
+	}
+
+	if v.Instance == 0 {
+		t.Errorf("expected instance offset to not be 0")
+	}
+
+	if met.indom == nil {
+		t.Errorf("expected indom to be non nil")
+	} else if in := met.indom.instances[ins]; in == nil {
+		t.Errorf("expected the instance domain to have an instance %v", ins)
+	} else if in.offset != int(v.Instance) {
+		t.Errorf("expected the value's instance to be at offset %v, found at %v", in.offset, v.Instance)
+	}
+
+	if av, err := mmvdump.FixedVal(v.Val, mmvdump.Uint32Type); err != nil || av.(uint32) != i.val.(uint32) {
+		t.Errorf("expected the value to be %v, got %v", i.val, av)
+	}
+}
+
+func matchSingletonMetricAndValue(met *PCPSingletonMetric, metrics map[uint64]*mmvdump.Metric, values map[uint64]*mmvdump.Value, t *testing.T) {
+	metric, ok := metrics[uint64(met.descoffset)]
+	if !ok {
+		t.Errorf("expected a metric at offset %v", met.descoffset)
+	} else {
+		matchSingletonMetric(met, metric, t)
+	}
+
+	mv, ok := values[uint64(met.valueoffset)]
+	if !ok {
+		t.Errorf("expected a value at offset %v", met.valueoffset)
+	} else {
+		matchSingletonValue(met, mv, t)
+	}
+}
+
+func matchInstanceMetricAndValues(met *PCPInstanceMetric, metrics map[uint64]*mmvdump.Metric, values map[uint64]*mmvdump.Value, t *testing.T) {
+	metric, ok := metrics[uint64(met.descoffset)]
+	if !ok {
+		t.Errorf("expected a metric at offset %v", met.descoffset)
+	} else {
+		matchInstanceMetric(met, metric, t)
+	}
+
+	for n, i := range met.vals {
+		mv, ok := values[uint64(i.offset)]
+		if !ok {
+			t.Errorf("expected a value at offset %v", i.offset)
+		} else {
+			matchInstanceValue(mv, i, n, met, t)
+		}
 	}
 }
 
@@ -182,19 +251,9 @@ func matchMetricsAndValues(metrics map[uint64]*mmvdump.Metric, values map[uint64
 	for _, m := range c.r.metrics {
 		switch met := m.(type) {
 		case *PCPSingletonMetric:
-			metric, ok := metrics[uint64(met.descoffset)]
-			if !ok {
-				t.Errorf("expected a metric at offset %v", met.descoffset)
-				continue
-			}
-			matchSingletonMetric(met, metric, t)
-
-			mv, ok := values[uint64(met.valueoffset)]
-			if !ok {
-				t.Errorf("expected a value at offset %v", met.valueoffset)
-				continue
-			}
-			matchSingletonValue(met, mv, t)
+			matchSingletonMetricAndValue(met, metrics, values, t)
+		case *PCPInstanceMetric:
+			matchInstanceMetricAndValues(met, metrics, values, t)
 		}
 	}
 }
