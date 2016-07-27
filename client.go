@@ -396,6 +396,7 @@ func (c *PCPClient) writeInstance(t MetricType, val interface{}, valueoffset int
 		c.buffer.MustWriteUint64(StringLength - 1)
 		offset = val.(*PCPString).offset
 		c.buffer.MustWriteUint64(uint64(offset))
+		val = val.(*PCPString).val
 	}
 
 	update := newupdateClosure(offset, c.buffer)
