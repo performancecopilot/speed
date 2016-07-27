@@ -55,14 +55,14 @@ func TestMmvDump1(t *testing.T) {
 	}
 
 	if len(metrics) != 1 {
-		t.Errorf("expected number of strings %d, got %d", 1, len(metrics))
+		t.Errorf("expected number of metrics %d, got %d", 1, len(metrics))
 	}
 
 	if len(values) != 1 {
-		t.Errorf("expected number of strings %d, got %d", 1, len(values))
+		t.Errorf("expected number of values %d, got %d", 1, len(values))
 	}
 
 	if len(instances) != 0 {
-		t.Errorf("expected number of strings %d, got %d", 0, len(instances))
+		t.Errorf("expected number of instances %d, got %d", 0, len(instances))
 	}
 }
