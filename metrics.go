@@ -400,6 +400,11 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 func (m *PCPSingletonMetric) Val() interface{} {
 	m.RLock()
 	defer m.RUnlock()
+
+	if m.t == StringType {
+		return m.val.(*PCPString).val
+	}
+
 	return m.val
 }
 
@@ -507,7 +512,13 @@ func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
 	m.RLock()
 	defer m.RUnlock()
 
-	return m.vals[instance].val, nil
+	ans := m.vals[instance].val
+
+	if m.t == StringType {
+		return ans.(*PCPString).val, nil
+	}
+
+	return ans, nil
 }
 
 // SetInstance sets the value for a particular instance of the metric
