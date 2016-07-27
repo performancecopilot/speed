@@ -436,3 +436,58 @@ func TestWritingInstanceMetric(t *testing.T) {
 		t.Errorf("expected a string at offset %v", off)
 	}
 }
+
+func TestStringValueWriting(t *testing.T) {
+	c, err := NewPCPClient("test", ProcessFlag)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	metric := c.MustRegisterString("test.str", "kirk", CounterSemantics, StringType, OneUnit)
+	c.MustStart()
+	defer c.MustStop()
+
+	h, _, _, v, _, _, s, err := mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	if h.Toc != 3 {
+		t.Errorf("expected toc to be 3, not %v", h.Toc)
+	}
+
+	sm := metric.(*PCPSingletonMetric)
+
+	if val, ok := v[uint64(sm.valueoffset)]; !ok {
+		t.Errorf("expected value at %v", sm.valueoffset)
+	} else {
+		add := uint64(val.Extra)
+		if str, ok := s[add]; !ok {
+			t.Errorf("expected a string at address %v", add)
+		} else {
+			if v := string(str.Payload[:4]); v != "kirk" {
+				t.Errorf("expected metric value to be kirk, not %v", v)
+			}
+		}
+	}
+
+	sm.Set("spock")
+
+	_, _, _, v, _, _, s, err = mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	val := v[uint64(sm.valueoffset)]
+	add := uint64(val.Extra)
+	if str, ok := s[add]; !ok {
+		t.Errorf("expected a string at address %v", add)
+	} else {
+		if v := string(str.Payload[:5]); v != "spock" {
+			t.Errorf("expected metric value to be spock, not %v", v)
+		}
+	}
+}
