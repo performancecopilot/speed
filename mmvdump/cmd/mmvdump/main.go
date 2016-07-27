@@ -81,7 +81,11 @@ func printValue(offset uint64) {
 	if m.Typ != mmvdump.StringType {
 		a, err = mmvdump.FixedVal(v.Val, m.Typ)
 	} else {
-		a, err = mmvdump.StringVal(v.Val, strings)
+		v, ok := strings[uint64(v.Extra)]
+		if !ok {
+			panic("invalid string address")
+		}
+		a = string(v.Payload[:])
 	}
 
 	if m.Indom != mmvdump.NoIndom {

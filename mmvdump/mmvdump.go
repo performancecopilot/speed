@@ -226,13 +226,3 @@ func FixedVal(data uint64, t Type) (interface{}, error) {
 
 	return nil, errors.New("invalid type")
 }
-
-// StringVal will infer the string corresponding to an address
-func StringVal(data uint64, strings map[uint64]*String) (string, error) {
-	str, ok := strings[data]
-	if !ok {
-		return "", errors.New("invalid string address")
-	}
-
-	return string(str.Payload[:]), nil
-}
