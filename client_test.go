@@ -473,7 +473,7 @@ func TestStringValueWriting(t *testing.T) {
 		}
 	}
 
-	sm.Set("spock")
+	sm.MustSet("spock")
 
 	_, _, _, v, _, _, s, err = mmvdump.Dump(c.buffer.Bytes())
 	if err != nil {
