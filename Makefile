@@ -11,10 +11,10 @@ clean:
 deps:
 	go get -u golang.org/x/tools/cmd/stringer
 	go get -u github.com/alecthomas/gometalinter
-	gometalinter --install --update
+	gometalinter --install
 
 lint:
-	gometalinter ./... --vendor --deadline=10000s --dupl-threshold=150	
+	gometalinter ./... --vendor --deadline=10000s --dupl-threshold=150 --disable=gas	
 
 test: 
 	go test ./...
