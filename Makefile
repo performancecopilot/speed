@@ -19,6 +19,9 @@ lint:
 test: 
 	go test ./...
 
+race:
+	go test -race ./...
+
 cover: coverage
 coverage:
 	go test -coverprofile=speed.coverage
