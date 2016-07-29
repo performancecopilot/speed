@@ -108,18 +108,21 @@ func readInstances(data []byte, offset uint64, count int32) (map[uint64]*Instanc
 	instances := make(map[uint64]*Instance)
 
 	var (
-		instance *Instance
-		err      error
-		m        sync.Mutex
+		err error
+		m   sync.Mutex
 	)
 
 	for i := int32(0); i < count; i, offset = i+1, offset+InstanceLength {
 		go func(offset uint64) {
-			instance, err = readInstance(data, offset)
 			if err == nil {
-				m.Lock()
-				instances[offset] = instance
-				m.Unlock()
+				instance, ierr := readInstance(data, offset)
+				if ierr == nil {
+					m.Lock()
+					instances[offset] = instance
+					m.Unlock()
+				} else {
+					err = ierr
+				}
 			}
 			wg.Done()
 		}(offset)
@@ -141,18 +144,21 @@ func readInstanceDomains(data []byte, offset uint64, count int32) (map[uint64]*I
 	indoms := make(map[uint64]*InstanceDomain)
 
 	var (
-		indom *InstanceDomain
-		err   error
-		m     sync.Mutex
+		err error
+		m   sync.Mutex
 	)
 
 	for i := int32(0); i < count; i, offset = i+1, offset+InstanceDomainLength {
 		go func(offset uint64) {
-			indom, err = readInstanceDomain(data, offset)
 			if err == nil {
-				m.Lock()
-				indoms[offset] = indom
-				m.Unlock()
+				indom, ierr := readInstanceDomain(data, offset)
+				if ierr == nil {
+					m.Lock()
+					indoms[offset] = indom
+					m.Unlock()
+				} else {
+					err = ierr
+				}
 			}
 			wg.Done()
 		}(offset)
@@ -174,18 +180,21 @@ func readMetrics(data []byte, offset uint64, count int32) (map[uint64]*Metric, e
 	metrics := make(map[uint64]*Metric)
 
 	var (
-		metric *Metric
-		err    error
-		m      sync.Mutex
+		err error
+		m   sync.Mutex
 	)
 
 	for i := int32(0); i < count; i, offset = i+1, offset+MetricLength {
 		go func(offset uint64) {
-			metric, err = readMetric(data, offset)
 			if err == nil {
-				m.Lock()
-				metrics[offset] = metric
-				m.Unlock()
+				metric, merr := readMetric(data, offset)
+				if merr == nil {
+					m.Lock()
+					metrics[offset] = metric
+					m.Unlock()
+				} else {
+					err = merr
+				}
 			}
 			wg.Done()
 		}(offset)
@@ -207,18 +216,21 @@ func readValues(data []byte, offset uint64, count int32) (map[uint64]*Value, err
 	values := make(map[uint64]*Value)
 
 	var (
-		value *Value
-		err   error
-		m     sync.Mutex
+		err error
+		m   sync.Mutex
 	)
 
 	for i := int32(0); i < count; i, offset = i+1, offset+ValueLength {
 		go func(offset uint64) {
-			value, err = readValue(data, offset)
 			if err == nil {
-				m.Lock()
-				values[offset] = value
-				m.Unlock()
+				value, verr := readValue(data, offset)
+				if verr == nil {
+					m.Lock()
+					values[offset] = value
+					m.Unlock()
+				} else {
+					err = verr
+				}
 			}
 			wg.Done()
 		}(offset)
@@ -240,18 +252,21 @@ func readStrings(data []byte, offset uint64, count int32) (map[uint64]*String, e
 	strings := make(map[uint64]*String)
 
 	var (
-		str *String
 		err error
 		m   sync.Mutex
 	)
 
 	for i := int32(0); i < count; i, offset = i+1, offset+StringLength {
 		go func(offset uint64) {
-			str, err = readString(data, offset)
 			if err == nil {
-				m.Lock()
-				strings[offset] = str
-				m.Unlock()
+				str, serr := readString(data, offset)
+				if serr == nil {
+					m.Lock()
+					strings[offset] = str
+					m.Unlock()
+				} else {
+					err = serr
+				}
 			}
 			wg.Done()
 		}(offset)
@@ -290,31 +305,33 @@ func Dump(data []byte) (
 	var wg sync.WaitGroup
 	wg.Add(len(tocs))
 
+	var ierr, inerr, merr, verr, serr error
+
 	for _, toc := range tocs {
 		switch toc.Type {
 		case TocInstances:
 			go func(offset uint64, count int32) {
-				instances, err = readInstances(data, offset, count)
+				instances, ierr = readInstances(data, offset, count)
 				wg.Done()
 			}(toc.Offset, toc.Count)
 		case TocIndoms:
 			go func(offset uint64, count int32) {
-				indoms, err = readInstanceDomains(data, offset, count)
+				indoms, inerr = readInstanceDomains(data, offset, count)
 				wg.Done()
 			}(toc.Offset, toc.Count)
 		case TocMetrics:
 			go func(offset uint64, count int32) {
-				metrics, err = readMetrics(data, offset, count)
+				metrics, merr = readMetrics(data, offset, count)
 				wg.Done()
 			}(toc.Offset, toc.Count)
 		case TocValues:
 			go func(offset uint64, count int32) {
-				values, err = readValues(data, offset, count)
+				values, verr = readValues(data, offset, count)
 				wg.Done()
 			}(toc.Offset, toc.Count)
 		case TocStrings:
 			go func(offset uint64, count int32) {
-				strings, err = readStrings(data, offset, count)
+				strings, serr = readStrings(data, offset, count)
 				wg.Done()
 			}(toc.Offset, toc.Count)
 		}
@@ -322,8 +339,8 @@ func Dump(data []byte) (
 
 	wg.Wait()
 
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
+	if ierr != nil {
+		return nil, nil, nil, nil, nil, nil, nil, ierr
 	}
 
 	return
