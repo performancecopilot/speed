@@ -281,31 +281,16 @@ func readStrings(data []byte, offset uint64, count int32) (map[uint64]*String, e
 	return strings, nil
 }
 
-// Dump creates a data dump from the passed data
-func Dump(data []byte) (
-	h *Header,
-	tocs []*Toc,
+func readComponents(data []byte, tocs []*Toc) (
 	metrics map[uint64]*Metric,
 	values map[uint64]*Value,
 	instances map[uint64]*Instance,
 	indoms map[uint64]*InstanceDomain,
 	strings map[uint64]*String,
-	err error,
+	ierr, inerr, merr, verr, serr error,
 ) {
-	h, err = readHeader(data)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
-	tocs, err = readTocs(data, h.Toc)
-	if err != nil {
-		return nil, nil, nil, nil, nil, nil, nil, err
-	}
-
 	var wg sync.WaitGroup
 	wg.Add(len(tocs))
-
-	var ierr, inerr, merr, verr, serr error
 
 	for _, toc := range tocs {
 		switch toc.Type {
@@ -338,6 +323,34 @@ func Dump(data []byte) (
 	}
 
 	wg.Wait()
+
+	return
+}
+
+// Dump creates a data dump from the passed data
+func Dump(data []byte) (
+	h *Header,
+	tocs []*Toc,
+	metrics map[uint64]*Metric,
+	values map[uint64]*Value,
+	instances map[uint64]*Instance,
+	indoms map[uint64]*InstanceDomain,
+	strings map[uint64]*String,
+	err error,
+) {
+	h, err = readHeader(data)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, err
+	}
+
+	tocs, err = readTocs(data, h.Toc)
+	if err != nil {
+		return nil, nil, nil, nil, nil, nil, nil, err
+	}
+
+	var ierr, inerr, merr, verr, serr error
+
+	metrics, values, instances, indoms, strings, ierr, inerr, merr, verr, serr = readComponents(data, tocs)
 
 	switch {
 	case ierr != nil:
