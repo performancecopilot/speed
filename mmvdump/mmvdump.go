@@ -339,8 +339,17 @@ func Dump(data []byte) (
 
 	wg.Wait()
 
-	if ierr != nil {
+	switch {
+	case ierr != nil:
 		return nil, nil, nil, nil, nil, nil, nil, ierr
+	case inerr != nil:
+		return nil, nil, nil, nil, nil, nil, nil, inerr
+	case merr != nil:
+		return nil, nil, nil, nil, nil, nil, nil, merr
+	case verr != nil:
+		return nil, nil, nil, nil, nil, nil, nil, verr
+	case serr != nil:
+		return nil, nil, nil, nil, nil, nil, nil, serr
 	}
 
 	return
