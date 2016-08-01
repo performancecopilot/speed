@@ -288,9 +288,15 @@ func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSem
 		return nil, errors.New("to define an instance metric, a Instances type is required")
 	}
 
-	id, err := r.AddInstanceDomainByName(indom, instances)
-	if err != nil {
-		return nil, err
+	var id InstanceDomain
+
+	if !r.HasInstanceDomain(indom) {
+		id, err = r.AddInstanceDomainByName(indom, instances)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		id = r.instanceDomains[indom]
 	}
 
 	m, err = NewPCPInstanceMetric(mp, metric, id.(*PCPInstanceDomain), t, s, u)
