@@ -347,9 +347,13 @@ func TestUpdatingSingletonMetric(t *testing.T) {
 		t.Errorf("expected metric value to be 10")
 	}
 
-	m.(SingletonMetric).Set(42)
+	m.(SingletonMetric).MustSet(42)
 
 	_, _, metrics, values, _, _, _, err = mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Errorf("cannot get dump, error: %v", err)
+	}
+
 	matchMetricsAndValues(metrics, values, c, t)
 
 	if m.(SingletonMetric).Val().(int32) != 42 {
@@ -491,41 +495,48 @@ func TestUpdatingInstanceMetric(t *testing.T) {
 	defer c.MustStop()
 
 	_, _, metrics, values, instances, indoms, _, err := mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Errorf("cannot get dump, error: %v", err)
+	}
+
 	matchMetricsAndValues(metrics, values, c, t)
 	matchInstancesAndInstanceDomains(instances, indoms, c, t)
 
 	im := m.(InstanceMetric)
 
-	if v, err := im.ValInstance("a"); err != nil {
-		t.Errorf("cannot retrieve instance a value, error: %v", err)
-	} else if v.(int32) != 21 {
-		t.Errorf("expected instance a's value to be 21")
+	valmatcher := func(v interface{}, val int32, err error, ins string) {
+		if err != nil {
+			t.Errorf("cannot retrieve instance a value, error: %v", err)
+			return
+		}
+
+		if v.(int32) != val {
+			t.Errorf("expected instance %v's value to be %v", ins, val)
+		}
 	}
 
-	if v, err := im.ValInstance("b"); err != nil {
-		t.Errorf("cannot retrieve instance b value, error: %v", err)
-	} else if v.(int32) != 42 {
-		t.Errorf("expected instance b's value to be 42")
-	}
+	v, err := im.ValInstance("a")
+	valmatcher(v, 21, err, "a")
+
+	v, err = im.ValInstance("b")
+	valmatcher(v, 42, err, "b")
 
 	im.MustSetInstance("a", 63)
 	im.MustSetInstance("b", 84)
 
 	_, _, metrics, values, instances, indoms, _, err = mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Errorf("cannot get dump, error: %v", err)
+	}
+
 	matchMetricsAndValues(metrics, values, c, t)
 	matchInstancesAndInstanceDomains(instances, indoms, c, t)
 
-	if v, err := im.ValInstance("a"); err != nil {
-		t.Errorf("cannot retrieve instance a value, error: %v", err)
-	} else if v.(int32) != 63 {
-		t.Errorf("expected instance a's value to be 63")
-	}
+	v, err = im.ValInstance("a")
+	valmatcher(v, 63, err, "a")
 
-	if v, err := im.ValInstance("b"); err != nil {
-		t.Errorf("cannot retrieve instance b value, error: %v", err)
-	} else if v.(int32) != 84 {
-		t.Errorf("expected instance b's value to be 84")
-	}
+	v, err = im.ValInstance("b")
+	valmatcher(v, 84, err, "b")
 }
 
 func TestStringValueWriting(t *testing.T) {
@@ -603,13 +614,14 @@ func TestWritingDifferentSemantics(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	_, _, metrics, values, _, _, _, err := mmvdump.Dump(c.buffer.Bytes())
+	_, _, metrics, values, instances, indoms, _, err := mmvdump.Dump(c.buffer.Bytes())
 
 	if err != nil {
 		t.Errorf("cannot create dump: %v", err)
 	}
 
 	matchMetricsAndValues(metrics, values, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, c, t)
 }
 
 func TestWritingDifferentUnits(t *testing.T) {
@@ -656,13 +668,14 @@ func TestWritingDifferentUnits(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	_, _, metrics, values, _, _, _, err := mmvdump.Dump(c.buffer.Bytes())
+	_, _, metrics, values, instances, indoms, _, err := mmvdump.Dump(c.buffer.Bytes())
 	if err != nil {
 		t.Errorf("cannot get dump: %v", err)
 		return
 	}
 
 	matchMetricsAndValues(metrics, values, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, c, t)
 }
 
 func TestWritingDifferentTypes(t *testing.T) {
@@ -691,11 +704,12 @@ func TestWritingDifferentTypes(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	_, _, metrics, values, _, _, _, err := mmvdump.Dump(c.buffer.Bytes())
+	_, _, metrics, values, instances, indoms, _, err := mmvdump.Dump(c.buffer.Bytes())
 	if err != nil {
 		t.Errorf("cannot get dump: %v", err)
 		return
 	}
 
 	matchMetricsAndValues(metrics, values, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, c, t)
 }
