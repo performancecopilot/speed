@@ -23,7 +23,7 @@ type PCPInstanceDomain struct {
 	instances                         map[string]*pcpInstance
 	offset                            int
 	instanceOffset                    int
-	shortDescription, longDescription *PCPString
+	shortDescription, longDescription *pcpString
 }
 
 // NewPCPInstanceDomain creates a new instance domain or returns an already created one for the passed name
@@ -45,8 +45,8 @@ func NewPCPInstanceDomain(name string, instances []string, shortDescription, lon
 		id:               hash(name, PCPInstanceDomainBitLength),
 		name:             name,
 		instances:        imap,
-		shortDescription: NewPCPString(shortDescription),
-		longDescription:  NewPCPString(longDescription),
+		shortDescription: newpcpString(shortDescription),
+		longDescription:  newpcpString(longDescription),
 	}, nil
 }
 

@@ -1,15 +1,15 @@
 package speed
 
-// PCPString defines a string that also has a memory offset containing
+// pcpString defines a string that also has a memory offset containing
 // the location where it will be written
-type PCPString struct {
+type pcpString struct {
 	val    string
 	offset int
 }
 
-// NewPCPString creates a new instance of a PCPString from a raw string
-func NewPCPString(s string) *PCPString {
-	return &PCPString{s, 0}
+// newpcpString creates a new instance of a pcpString from a raw string
+func newpcpString(s string) *pcpString {
+	return &pcpString{s, 0}
 }
 
-func (s *PCPString) String() string { return s.val }
+func (s *pcpString) String() string { return s.val }

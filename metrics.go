@@ -124,7 +124,7 @@ func (m MetricType) resolve(val interface{}) interface{} {
 		if len(sval) > StringLength {
 			sval = sval[:StringLength]
 		}
-		return NewPCPString(sval)
+		return newpcpString(sval)
 	}
 
 	val = m.resolveInt(val)
@@ -207,10 +207,11 @@ type MetricSemantics int32
 
 // Possible values for MetricSemantics
 const (
-	NoSemantics       MetricSemantics = 0
-	CounterSemantics  MetricSemantics = 1
-	InstantSemantics  MetricSemantics = 3
-	DiscreteSemantics MetricSemantics = 4
+	NoSemantics MetricSemantics = iota
+	CounterSemantics
+	_
+	InstantSemantics
+	DiscreteSemantics
 )
 
 //go:generate stringer -type=MetricSemantics
@@ -281,9 +282,9 @@ type PCPMetric interface {
 	// a PCPMetric will always have an instance domain, even if it is nil
 	Indom() *PCPInstanceDomain
 
-	ShortDescription() *PCPString
+	ShortDescription() string
 
-	LongDescription() *PCPString
+	LongDescription() string
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -305,7 +306,7 @@ type PCPMetricDesc struct {
 	sem                               MetricSemantics // the semantics
 	u                                 MetricUnit      // the unit
 	descoffset                        int             // memory storage offset for the metric description
-	shortDescription, longDescription *PCPString
+	shortDescription, longDescription *pcpString
 }
 
 // newPCPMetricDesc creates a new Metric Description wrapper type
@@ -313,7 +314,7 @@ func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, s
 	return &PCPMetricDesc{
 		hash(n, PCPMetricItemBitLength),
 		n, t, s, u, 0,
-		NewPCPString(shortdesc), NewPCPString(longdesc),
+		newpcpString(shortdesc), newpcpString(longdesc),
 	}
 }
 
@@ -333,10 +334,10 @@ func (md *PCPMetricDesc) Unit() MetricUnit { return md.u }
 func (md *PCPMetricDesc) Type() MetricType { return md.t }
 
 // ShortDescription returns the shortdesc value
-func (md *PCPMetricDesc) ShortDescription() *PCPString { return md.shortDescription }
+func (md *PCPMetricDesc) ShortDescription() string { return md.shortDescription.val }
 
 // LongDescription returns the longdesc value
-func (md *PCPMetricDesc) LongDescription() *PCPString { return md.longDescription }
+func (md *PCPMetricDesc) LongDescription() string { return md.longDescription.val }
 
 // Description returns the description for PCPMetric
 func (md *PCPMetricDesc) Description() string {
@@ -402,7 +403,7 @@ func (m *PCPSingletonMetric) Val() interface{} {
 	defer m.RUnlock()
 
 	if m.t == StringType {
-		return m.val.(*PCPString).val
+		return m.val.(*pcpString).val
 	}
 
 	return m.val
@@ -515,7 +516,7 @@ func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
 	ans := m.vals[instance].val
 
 	if m.t == StringType {
-		return ans.(*PCPString).val, nil
+		return ans.(*pcpString).val, nil
 	}
 
 	return ans, nil

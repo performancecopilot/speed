@@ -198,11 +198,11 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 		r.stringcount += currentValues
 	}
 
-	if pcpm.ShortDescription().String() != "" {
+	if pcpm.ShortDescription() != "" {
 		r.stringcount++
 	}
 
-	if pcpm.LongDescription().String() != "" {
+	if pcpm.LongDescription() != "" {
 		r.stringcount++
 	}
 

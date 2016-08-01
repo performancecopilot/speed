@@ -185,7 +185,7 @@ func (c *PCPClient) initializeSingletonMetricOffsets(metric *PCPSingletonMetric,
 	*valuesoffset += ValueLength
 
 	if metric.t == StringType {
-		metric.val.(*PCPString).offset = *stringsoffset
+		metric.val.(*pcpString).offset = *stringsoffset
 		*stringsoffset += StringLength
 	}
 
@@ -209,7 +209,7 @@ func (c *PCPClient) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, m
 		*valuesoffset += ValueLength
 
 		if metric.t == StringType {
-			metric.vals[name].val.(*PCPString).offset = *stringsoffset
+			metric.vals[name].val.(*pcpString).offset = *stringsoffset
 			*stringsoffset += StringLength
 		}
 	}
@@ -357,34 +357,34 @@ func (c *PCPClient) writeInstanceAndInstanceDomainBlock() {
 	}
 }
 
-func (c *PCPClient) writeMetricDesc(m PCPMetric, pos int) {
-	c.buffer.MustSetPos(pos)
+func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomain) {
+	c.buffer.MustSetPos(desc.descoffset)
 
-	c.buffer.MustWriteString(m.Name())
-	c.buffer.MustSetPos(pos + MaxMetricNameLength + 1)
-	c.buffer.MustWriteUint32(m.ID())
-	c.buffer.MustWriteInt32(int32(m.Type()))
-	c.buffer.MustWriteInt32(int32(m.Semantics()))
-	c.buffer.MustWriteUint32(m.Unit().PMAPI())
-	if m.Indom() != nil {
-		c.buffer.MustWriteUint32(m.Indom().ID())
+	c.buffer.MustWriteString(desc.name)
+	c.buffer.MustSetPos(desc.descoffset + MaxMetricNameLength + 1)
+	c.buffer.MustWriteUint32(desc.id)
+	c.buffer.MustWriteInt32(int32(desc.t))
+	c.buffer.MustWriteInt32(int32(desc.sem))
+	c.buffer.MustWriteUint32(desc.u.PMAPI())
+	if indom != nil {
+		c.buffer.MustWriteUint32(indom.ID())
 	} else {
 		c.buffer.MustWriteInt32(-1)
 	}
 	c.buffer.MustWriteInt32(0)
 
-	so, lo := m.ShortDescription().offset, m.LongDescription().offset
+	so, lo := desc.shortDescription.offset, desc.longDescription.offset
 	c.buffer.MustWriteInt64(int64(so))
 	c.buffer.MustWriteInt64(int64(lo))
 
 	if so != 0 {
 		c.buffer.MustSetPos(so)
-		c.buffer.MustWriteString(m.ShortDescription().val)
+		c.buffer.MustWriteString(desc.shortDescription.val)
 	}
 
 	if lo != 0 {
 		c.buffer.MustSetPos(lo)
-		c.buffer.MustWriteString(m.LongDescription().val)
+		c.buffer.MustWriteString(desc.longDescription.val)
 	}
 }
 
@@ -394,9 +394,9 @@ func (c *PCPClient) writeInstance(t MetricType, val interface{}, valueoffset int
 	if t == StringType {
 		c.buffer.MustSetPos(offset)
 		c.buffer.MustWriteUint64(StringLength - 1)
-		offset = val.(*PCPString).offset
+		offset = val.(*pcpString).offset
 		c.buffer.MustWriteUint64(uint64(offset))
-		val = val.(*PCPString).val
+		val = val.(*pcpString).val
 	}
 
 	update := newupdateClosure(offset, c.buffer)
@@ -408,14 +408,14 @@ func (c *PCPClient) writeInstance(t MetricType, val interface{}, valueoffset int
 }
 
 func (c *PCPClient) writeSingletonMetric(m *PCPSingletonMetric) {
-	c.writeMetricDesc(m, m.descoffset)
+	c.writeMetricDesc(m.PCPMetricDesc, m.Indom())
 	m.update = c.writeInstance(m.t, m.val, m.valueoffset)
 	c.buffer.MustWriteInt64(int64(m.descoffset))
 	c.buffer.MustWriteInt64(0)
 }
 
 func (c *PCPClient) writeInstanceMetric(m *PCPInstanceMetric) {
-	c.writeMetricDesc(m, m.descoffset)
+	c.writeMetricDesc(m.PCPMetricDesc, m.Indom())
 
 	for name, i := range m.indom.instances {
 		ival := m.vals[name]
@@ -427,11 +427,11 @@ func (c *PCPClient) writeInstanceMetric(m *PCPInstanceMetric) {
 
 func (c *PCPClient) writeMetricsAndValuesBlock() {
 	for _, metric := range c.r.metrics {
-		switch metric.(type) {
+		switch m := metric.(type) {
 		case *PCPSingletonMetric:
-			c.writeSingletonMetric(metric.(*PCPSingletonMetric))
+			c.writeSingletonMetric(m)
 		case *PCPInstanceMetric:
-			c.writeInstanceMetric(metric.(*PCPInstanceMetric))
+			c.writeInstanceMetric(m)
 		}
 	}
 }

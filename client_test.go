@@ -120,25 +120,25 @@ func TestMapping(t *testing.T) {
 	EraseFileOnStop = false
 }
 
-func matchMetricDesc(m PCPMetric, metric *mmvdump.Metric, t *testing.T) {
-	if int32(metric.Sem) != int32(m.Semantics()) {
-		t.Errorf("expected semantics to be %v, got %v", m.Semantics(), MetricSemantics(metric.Sem))
+func matchMetricDesc(desc *PCPMetricDesc, metric *mmvdump.Metric, t *testing.T) {
+	if int32(metric.Sem) != int32(desc.sem) {
+		t.Errorf("expected semantics to be %v, got %v", desc.sem, MetricSemantics(metric.Sem))
 	}
 
-	if int32(metric.Typ) != int32(m.Type()) {
-		t.Errorf("expected type to be %v, got %v", m.Type(), MetricType(metric.Typ))
+	if int32(metric.Typ) != int32(desc.t) {
+		t.Errorf("expected type to be %v, got %v", desc.t, MetricType(metric.Typ))
 	}
 
-	if int32(metric.Unit) != int32(m.Unit().PMAPI()) {
-		t.Errorf("expected unit to be %v, got %v", m.Unit(), metric.Unit)
+	if int32(metric.Unit) != int32(desc.u.PMAPI()) {
+		t.Errorf("expected unit to be %v, got %v", desc.u, metric.Unit)
 	}
 
-	if metric.Shorttext != uint64(m.ShortDescription().offset) {
-		t.Errorf("expected shorttext to be %v, got %v", m.ShortDescription().offset, metric.Shorttext)
+	if metric.Shorttext != uint64(desc.shortDescription.offset) {
+		t.Errorf("expected shorttext to be %v, got %v", desc.shortDescription.offset, metric.Shorttext)
 	}
 
-	if metric.Longtext != uint64(m.LongDescription().offset) {
-		t.Errorf("expected longtext to be %v, got %v", m.LongDescription().offset, metric.Longtext)
+	if metric.Longtext != uint64(desc.longDescription.offset) {
+		t.Errorf("expected longtext to be %v, got %v", desc.longDescription.offset, metric.Longtext)
 	}
 }
 
@@ -147,7 +147,7 @@ func matchSingletonMetric(m *PCPSingletonMetric, metric *mmvdump.Metric, t *test
 		t.Error("expected indom to be null")
 	}
 
-	matchMetricDesc(m, metric, t)
+	matchMetricDesc(m.PCPMetricDesc, metric, t)
 }
 
 func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, t *testing.T) {
@@ -164,7 +164,7 @@ func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, t *testing
 	}
 }
 
-func matchString(s *PCPString, str *mmvdump.String, t *testing.T) {
+func matchString(s *pcpString, str *mmvdump.String, t *testing.T) {
 	if s == nil {
 		t.Error("expected PCPString to not be nil")
 	}
@@ -180,7 +180,7 @@ func matchInstanceMetric(m *PCPInstanceMetric, met *mmvdump.Metric, t *testing.T
 		t.Errorf("expected indom id to be %d, got %d", m.indom.id, met.Indom)
 	}
 
-	matchMetricDesc(m, met, t)
+	matchMetricDesc(m.PCPMetricDesc, met, t)
 }
 
 func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCPInstanceMetric, t *testing.T) {
