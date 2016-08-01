@@ -328,6 +328,35 @@ func TestWritingSingletonMetric(t *testing.T) {
 	}
 }
 
+func TestUpdatingSingletonMetric(t *testing.T) {
+	c, err := NewPCPClient("test", ProcessFlag)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	m := c.MustRegisterString("met.1", 10, CounterSemantics, Int32Type, OneUnit)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	_, _, metrics, values, _, _, _, err := mmvdump.Dump(c.buffer.Bytes())
+	matchMetricsAndValues(metrics, values, c, t)
+
+	if m.(SingletonMetric).Val().(int32) != 10 {
+		t.Errorf("expected metric value to be 10")
+	}
+
+	m.(SingletonMetric).Set(42)
+
+	_, _, metrics, values, _, _, _, err = mmvdump.Dump(c.buffer.Bytes())
+	matchMetricsAndValues(metrics, values, c, t)
+
+	if m.(SingletonMetric).Val().(int32) != 42 {
+		t.Errorf("expected metric value to be 42")
+	}
+}
+
 func matchInstance(i *mmvdump.Instance, pi *pcpInstance, id *PCPInstanceDomain, t *testing.T) {
 	if i.Indom != uint64(id.offset) {
 		t.Errorf("expected indom offset to be %d, got %d", i.Indom, id.offset)
@@ -446,6 +475,56 @@ func TestWritingInstanceMetric(t *testing.T) {
 		matchString(m.longDescription, ss[uint64(off)], t)
 	} else {
 		t.Errorf("expected a string at offset %v", off)
+	}
+}
+
+func TestUpdatingInstanceMetric(t *testing.T) {
+	c, err := NewPCPClient("test", ProcessFlag)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	m := c.MustRegisterString("met[a, b].1", Instances{"a": 21, "b": 42}, CounterSemantics, Int32Type, OneUnit)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	_, _, metrics, values, instances, indoms, _, err := mmvdump.Dump(c.buffer.Bytes())
+	matchMetricsAndValues(metrics, values, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+
+	im := m.(InstanceMetric)
+
+	if v, err := im.ValInstance("a"); err != nil {
+		t.Errorf("cannot retrieve instance a value, error: %v", err)
+	} else if v.(int32) != 21 {
+		t.Errorf("expected instance a's value to be 21")
+	}
+
+	if v, err := im.ValInstance("b"); err != nil {
+		t.Errorf("cannot retrieve instance b value, error: %v", err)
+	} else if v.(int32) != 42 {
+		t.Errorf("expected instance b's value to be 42")
+	}
+
+	im.MustSetInstance("a", 63)
+	im.MustSetInstance("b", 84)
+
+	_, _, metrics, values, instances, indoms, _, err = mmvdump.Dump(c.buffer.Bytes())
+	matchMetricsAndValues(metrics, values, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+
+	if v, err := im.ValInstance("a"); err != nil {
+		t.Errorf("cannot retrieve instance a value, error: %v", err)
+	} else if v.(int32) != 63 {
+		t.Errorf("expected instance a's value to be 63")
+	}
+
+	if v, err := im.ValInstance("b"); err != nil {
+		t.Errorf("cannot retrieve instance b value, error: %v", err)
+	} else if v.(int32) != 84 {
+		t.Errorf("expected instance b's value to be 84")
 	}
 }
 
