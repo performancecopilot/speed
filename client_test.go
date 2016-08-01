@@ -155,8 +155,14 @@ func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, t *testing
 		t.Errorf("expected value's metric to be at %v", m.descoffset)
 	}
 
-	if av, err := mmvdump.FixedVal(value.Val, mmvdump.Int32Type); err != nil || av.(int32) != m.val.(int32) {
-		t.Errorf("expected the value to be %v, got %v", 10, av)
+	if m.t == StringType {
+		if int64(m.val.(*pcpString).offset) != value.Extra {
+			t.Errorf("expected the string value to be written at %v, got %v", value.Extra, m.val.(*pcpString).offset)
+		}
+	} else {
+		if av, err := mmvdump.FixedVal(value.Val, mmvdump.Type(m.t)); err != nil || av != m.val {
+			t.Errorf("expected the value to be %v, got %v", m.val, av)
+		}
 	}
 
 	if value.Instance != 0 {
@@ -200,8 +206,14 @@ func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCP
 		t.Errorf("expected the value's instance to be at offset %v, found at %v", in.offset, v.Instance)
 	}
 
-	if av, err := mmvdump.FixedVal(v.Val, mmvdump.Uint32Type); err != nil || av.(uint32) != i.val.(uint32) {
-		t.Errorf("expected the value to be %v, got %v", i.val, av)
+	if met.t == StringType {
+		if int64(i.val.(*pcpString).offset) != v.Extra {
+			t.Errorf("expected the string value to be written at %v, got %v", v.Extra, i.val.(*pcpString).offset)
+		}
+	} else {
+		if av, err := mmvdump.FixedVal(v.Val, mmvdump.Type(met.t)); err != nil || av != i.val {
+			t.Errorf("expected the value to be %v, got %v", i.val, av)
+		}
 	}
 }
 
@@ -490,4 +502,121 @@ func TestStringValueWriting(t *testing.T) {
 			t.Errorf("expected metric value to be spock, not %v", v)
 		}
 	}
+}
+
+func TestWritingDifferentSemantics(t *testing.T) {
+	c, err := NewPCPClient("test", ProcessFlag)
+	if err != nil {
+		t.Errorf("cannot create client: %v", err)
+		return
+	}
+
+	c.MustRegisterString("m.1", 10, NoSemantics, Int32Type, OneUnit)
+	c.MustRegisterString("m.2", 10, CounterSemantics, Int32Type, OneUnit)
+	c.MustRegisterString("m.3", 10, InstantSemantics, Int32Type, OneUnit)
+	c.MustRegisterString("m.4", 10, DiscreteSemantics, Int32Type, OneUnit)
+
+	c.MustRegisterString("m[a, b].5", Instances{"a": 1, "b": 2}, NoSemantics, Int32Type, OneUnit)
+	c.MustRegisterString("m[a, b].6", Instances{"a": 3, "b": 4}, NoSemantics, Int32Type, OneUnit)
+	c.MustRegisterString("m[a, b].7", Instances{"a": 5, "b": 6}, NoSemantics, Int32Type, OneUnit)
+	c.MustRegisterString("m[a, b].8", Instances{"a": 7, "b": 8}, NoSemantics, Int32Type, OneUnit)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	_, _, metrics, values, _, _, _, err := mmvdump.Dump(c.buffer.Bytes())
+
+	if err != nil {
+		t.Errorf("cannot create dump: %v", err)
+	}
+
+	matchMetricsAndValues(metrics, values, c, t)
+}
+
+func TestWritingDifferentUnits(t *testing.T) {
+	c, err := NewPCPClient("test", ProcessFlag)
+	if err != nil {
+		t.Errorf("cannot create client: %v", err)
+		return
+	}
+
+	c.MustRegisterString("m.0", 10, CounterSemantics, Uint64Type, NanosecondUnit)
+	c.MustRegisterString("m.1", 10, CounterSemantics, Uint64Type, MicrosecondUnit)
+	c.MustRegisterString("m.2", 10, CounterSemantics, Uint64Type, MillisecondUnit)
+	c.MustRegisterString("m.3", 10, CounterSemantics, Uint64Type, SecondUnit)
+	c.MustRegisterString("m.4", 10, CounterSemantics, Uint64Type, MinuteUnit)
+	c.MustRegisterString("m.5", 10, CounterSemantics, Uint64Type, HourUnit)
+
+	c.MustRegisterString("m.6", 10, CounterSemantics, Uint64Type, ByteUnit)
+	c.MustRegisterString("m.7", 10, CounterSemantics, Uint64Type, KilobyteUnit)
+	c.MustRegisterString("m.8", 10, CounterSemantics, Uint64Type, MegabyteUnit)
+	c.MustRegisterString("m.9", 10, CounterSemantics, Uint64Type, GigabyteUnit)
+	c.MustRegisterString("m.10", 10, CounterSemantics, Uint64Type, TerabyteUnit)
+	c.MustRegisterString("m.11", 10, CounterSemantics, Uint64Type, PetabyteUnit)
+	c.MustRegisterString("m.12", 10, CounterSemantics, Uint64Type, ExabyteUnit)
+
+	c.MustRegisterString("m.13", 10, CounterSemantics, Uint64Type, OneUnit)
+
+	c.MustRegisterString("m[a, b].14", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, NanosecondUnit)
+	c.MustRegisterString("m[a, b].15", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, MicrosecondUnit)
+	c.MustRegisterString("m[a, b].16", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, MillisecondUnit)
+	c.MustRegisterString("m[a, b].17", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, SecondUnit)
+	c.MustRegisterString("m[a, b].18", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, MinuteUnit)
+	c.MustRegisterString("m[a, b].19", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, HourUnit)
+
+	c.MustRegisterString("m[a, b].20", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, ByteUnit)
+	c.MustRegisterString("m[a, b].21", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, KilobyteUnit)
+	c.MustRegisterString("m[a, b].22", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, MegabyteUnit)
+	c.MustRegisterString("m[a, b].23", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, GigabyteUnit)
+	c.MustRegisterString("m[a, b].24", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, TerabyteUnit)
+	c.MustRegisterString("m[a, b].25", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, PetabyteUnit)
+	c.MustRegisterString("m[a, b].26", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, ExabyteUnit)
+
+	c.MustRegisterString("m[a, b].27", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, OneUnit)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	_, _, metrics, values, _, _, _, err := mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Errorf("cannot get dump: %v", err)
+		return
+	}
+
+	matchMetricsAndValues(metrics, values, c, t)
+}
+
+func TestWritingDifferentTypes(t *testing.T) {
+	c, err := NewPCPClient("test", ProcessFlag)
+	if err != nil {
+		t.Errorf("cannot create client: %v", err)
+		return
+	}
+
+	c.MustRegisterString("m.1", 2147483647, CounterSemantics, Int32Type, OneUnit)
+	c.MustRegisterString("m.2", 2147483647, CounterSemantics, Int64Type, OneUnit)
+	c.MustRegisterString("m.3", 4294967295, CounterSemantics, Uint32Type, OneUnit)
+	c.MustRegisterString("m.4", 4294967295, CounterSemantics, Uint64Type, OneUnit)
+	c.MustRegisterString("m.5", 3.14, CounterSemantics, FloatType, OneUnit)
+	c.MustRegisterString("m.6", 6.28, CounterSemantics, DoubleType, OneUnit)
+	c.MustRegisterString("m.7", "luke", CounterSemantics, StringType, OneUnit)
+
+	c.MustRegisterString("m[a, b].8", Instances{"a": 2147483647, "b": -2147483648}, CounterSemantics, Int32Type, OneUnit)
+	c.MustRegisterString("m[a, b].9", Instances{"a": 2147483647, "b": -2147483648}, CounterSemantics, Int64Type, OneUnit)
+	c.MustRegisterString("m[a, b].10", Instances{"a": 4294967295, "b": 0}, CounterSemantics, Uint32Type, OneUnit)
+	c.MustRegisterString("m[a, b].11", Instances{"a": 4294967295, "b": 0}, CounterSemantics, Uint64Type, OneUnit)
+	c.MustRegisterString("m[a, b].12", Instances{"a": 3.14, "b": -3.14}, CounterSemantics, FloatType, OneUnit)
+	c.MustRegisterString("m[a, b].13", Instances{"a": 6.28, "b": -6.28}, CounterSemantics, DoubleType, OneUnit)
+	c.MustRegisterString("m[a, b].14", Instances{"a": "luke", "b": "skywalker"}, CounterSemantics, StringType, OneUnit)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	_, _, metrics, values, _, _, _, err := mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Errorf("cannot get dump: %v", err)
+		return
+	}
+
+	matchMetricsAndValues(metrics, values, c, t)
 }
