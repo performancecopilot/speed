@@ -431,6 +431,8 @@ func (m *PCPSingletonMetric) Set(val interface{}) error {
 		return errors.New("the value is incompatible with this metrics MetricType")
 	}
 
+	val = m.t.resolveFloat(m.t.resolveInt(val))
+
 	if val != m.val {
 		m.Lock()
 		defer m.Unlock()
@@ -563,6 +565,8 @@ func (m *PCPInstanceMetric) SetInstance(instance string, val interface{}) error 
 	if !m.indom.HasInstance(instance) {
 		return fmt.Errorf("%v is not an instance of this metric", instance)
 	}
+
+	val = m.t.resolveFloat(m.t.resolveInt(val))
 
 	if m.vals[instance].val != val {
 		m.Lock()
