@@ -21,7 +21,6 @@ func main() {
 		speed.CounterSemantics,
 		speed.OneUnit,
 		"Number of Requests",
-		"Counter that increments every request",
 	)
 	if err != nil {
 		panic(err)

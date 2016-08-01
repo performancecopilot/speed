@@ -52,7 +52,6 @@ func main() {
 		speed.CounterSemantics,
 		speed.MicrosecondUnit,
 		"Machine time spent producing Acme products",
-		"",
 	)
 	if err != nil {
 		panic(err)
