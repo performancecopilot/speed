@@ -51,7 +51,7 @@ func TestTocCountAndLength(t *testing.T) {
 		t.Errorf("expected Length to be %v, got %v", expectedLength, c.Length())
 	}
 
-	m, err := NewPCPSingletonMetric(10, "test", Int32Type, CounterSemantics, OneUnit, "test", "")
+	m, err := NewPCPSingletonMetric(10, "test", Int32Type, CounterSemantics, OneUnit, "test")
 	if err != nil {
 		t.Error("Cannot create a metric")
 	}
@@ -66,14 +66,14 @@ func TestTocCountAndLength(t *testing.T) {
 		t.Errorf("expected Length to be %v, got %v", expectedLength, c.Length())
 	}
 
-	indom, _ := NewPCPInstanceDomain("testindom", []string{"test"}, "", "")
+	indom, _ := NewPCPInstanceDomain("testindom", []string{"test"})
 	c.MustRegisterIndom(indom)
 
 	m2, err := NewPCPInstanceMetric(
 		Instances{
 			"test": 1,
 		},
-		"test2", indom, Int32Type, CounterSemantics, OneUnit, "", "",
+		"test2", indom, Int32Type, CounterSemantics, OneUnit,
 	)
 	if err != nil {
 		t.Error("Cannot create a metric")
@@ -265,7 +265,7 @@ func TestWritingSingletonMetric(t *testing.T) {
 		return
 	}
 
-	met, err := NewPCPSingletonMetric(10, "test.1", Int32Type, CounterSemantics, OneUnit, "test", "")
+	met, err := NewPCPSingletonMetric(10, "test.1", Int32Type, CounterSemantics, OneUnit, "test")
 	if err != nil {
 		t.Error(err)
 		return
@@ -378,7 +378,7 @@ func TestWritingInstanceMetric(t *testing.T) {
 		return
 	}
 
-	id, err := NewPCPInstanceDomain("testid", []string{"a", "b", "c"}, "testid", "")
+	id, err := NewPCPInstanceDomain("testid", []string{"a", "b", "c"}, "testid")
 	if err != nil {
 		t.Error(err)
 		return

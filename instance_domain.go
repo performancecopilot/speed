@@ -30,9 +30,23 @@ type PCPInstanceDomain struct {
 // NOTE: this is different from parfait's idea of generating ids for InstanceDomains
 // We simply generate a unique 32 bit hash for an instance domain name, and if it has not
 // already been created, we create it, otherwise we return the already created version
-func NewPCPInstanceDomain(name string, instances []string, shortDescription, longDescription string) (*PCPInstanceDomain, error) {
+func NewPCPInstanceDomain(name string, instances []string, desc ...string) (*PCPInstanceDomain, error) {
 	if name == "" {
 		return nil, errors.New("Instance Domain name cannot be empty")
+	}
+
+	if len(desc) > 2 {
+		return nil, errors.New("Only 2 description strings allowed to define an instance domain")
+	}
+
+	shortDescription, longDescription := "", ""
+
+	if len(desc) > 0 {
+		shortDescription = desc[0]
+	}
+
+	if len(desc) > 1 {
+		longDescription = desc[1]
 	}
 
 	imap := make(map[string]*pcpInstance)

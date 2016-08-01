@@ -215,7 +215,7 @@ func (r *PCPRegistry) AddInstanceDomainByName(name string, instances []string) (
 		return nil, errors.New("The InstanceDomain already exists for this registry")
 	}
 
-	indom, err := NewPCPInstanceDomain(name, instances, "", "")
+	indom, err := NewPCPInstanceDomain(name, instances)
 	if err != nil {
 		return nil, err
 	}
@@ -269,7 +269,7 @@ func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSem
 
 	if instances == nil {
 		// singleton metric
-		m, err = NewPCPSingletonMetric(val, metric, t, s, u, "", "")
+		m, err = NewPCPSingletonMetric(val, metric, t, s, u)
 		if err != nil {
 			return nil, err
 		}
@@ -293,7 +293,7 @@ func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSem
 		return nil, err
 	}
 
-	m, err = NewPCPInstanceMetric(mp, metric, id.(*PCPInstanceDomain), t, s, u, "", "")
+	m, err = NewPCPInstanceMetric(mp, metric, id.(*PCPInstanceDomain), t, s, u)
 	if err != nil {
 		return nil, err
 	}

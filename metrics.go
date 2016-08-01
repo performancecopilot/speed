@@ -379,13 +379,29 @@ type PCPSingletonMetric struct {
 }
 
 // NewPCPSingletonMetric creates a new instance of PCPSingletonMetric
-func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) (*PCPSingletonMetric, error) {
+// it takes 2 extra optional strings as short and long description parameters,
+// which on not being present are set blank
+func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPSingletonMetric, error) {
 	if name == "" {
 		return nil, errors.New("Metric name cannot be empty")
 	}
 
 	if !t.IsCompatible(val) {
 		return nil, fmt.Errorf("type %v is not compatible with value %v", t, val)
+	}
+
+	if len(desc) > 2 {
+		return nil, errors.New("only 2 optional strings allowed, short and long descriptions")
+	}
+
+	shortdesc, longdesc := "", ""
+
+	if len(desc) > 0 {
+		shortdesc = desc[0]
+	}
+
+	if len(desc) > 1 {
+		longdesc = desc[1]
 	}
 
 	val = t.resolve(val)
@@ -468,13 +484,29 @@ type PCPInstanceMetric struct {
 }
 
 // NewPCPInstanceMetric creates a new instance of PCPSingletonMetric
-func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) (*PCPInstanceMetric, error) {
+// it takes 2 extra optional strings as short and long description parameters,
+// which on not being present are set blank
+func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPInstanceMetric, error) {
 	if name == "" {
 		return nil, errors.New("Metric name cannot be empty")
 	}
 
 	if len(vals) != indom.InstanceCount() {
 		return nil, errors.New("values for all instances in the instance domain only should be passed")
+	}
+
+	if len(desc) > 2 {
+		return nil, errors.New("only 2 optional strings allowed, short and long descriptions")
+	}
+
+	shortdesc, longdesc := "", ""
+
+	if len(desc) > 0 {
+		shortdesc = desc[0]
+	}
+
+	if len(desc) > 1 {
+		longdesc = desc[1]
 	}
 
 	mvals := make(map[string]*instanceValue)
