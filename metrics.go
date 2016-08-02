@@ -308,12 +308,26 @@ type PCPMetricDesc struct {
 }
 
 // newPCPMetricDesc creates a new Metric Description wrapper type
-func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, shortdesc, longdesc string) *PCPMetricDesc {
+func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPMetricDesc, error) {
+	if len(desc) > 2 {
+		return nil, errors.New("only 2 optional strings allowed, short and long descriptions")
+	}
+
+	shortdesc, longdesc := "", ""
+
+	if len(desc) > 0 {
+		shortdesc = desc[0]
+	}
+
+	if len(desc) > 1 {
+		longdesc = desc[1]
+	}
+
 	return &PCPMetricDesc{
 		hash(n, PCPMetricItemBitLength),
 		n, t, s, u, 0,
 		newpcpString(shortdesc), newpcpString(longdesc),
-	}
+	}, nil
 }
 
 // ID returns the generated id for PCPMetric
@@ -388,26 +402,16 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 		return nil, fmt.Errorf("type %v is not compatible with value %v", t, val)
 	}
 
-	if len(desc) > 2 {
-		return nil, errors.New("only 2 optional strings allowed, short and long descriptions")
-	}
-
-	shortdesc, longdesc := "", ""
-
-	if len(desc) > 0 {
-		shortdesc = desc[0]
-	}
-
-	if len(desc) > 1 {
-		longdesc = desc[1]
+	d, err := newPCPMetricDesc(name, t, s, u, desc...)
+	if err != nil {
+		return nil, err
 	}
 
 	val = t.resolve(val)
 
 	return &PCPSingletonMetric{
 		sync.RWMutex{},
-		newPCPMetricDesc(name, t, s, u, shortdesc, longdesc),
-		val, 0, nil,
+		d, val, 0, nil,
 	}, nil
 }
 
@@ -495,18 +499,9 @@ func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain,
 		return nil, errors.New("values for all instances in the instance domain only should be passed")
 	}
 
-	if len(desc) > 2 {
-		return nil, errors.New("only 2 optional strings allowed, short and long descriptions")
-	}
-
-	shortdesc, longdesc := "", ""
-
-	if len(desc) > 0 {
-		shortdesc = desc[0]
-	}
-
-	if len(desc) > 1 {
-		longdesc = desc[1]
+	d, err := newPCPMetricDesc(name, t, s, u, desc...)
+	if err != nil {
+		return nil, err
 	}
 
 	mvals := make(map[string]*instanceValue)
@@ -527,7 +522,7 @@ func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain,
 
 	return &PCPInstanceMetric{
 		sync.RWMutex{},
-		newPCPMetricDesc(name, t, s, u, shortdesc, longdesc),
+		d,
 		indom,
 		mvals,
 	}, nil
