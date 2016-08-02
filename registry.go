@@ -295,8 +295,10 @@ func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSem
 		if err != nil {
 			return nil, err
 		}
-	} else {
+	} else if r.instanceDomains[indom].MatchInstances(instances) {
 		id = r.instanceDomains[indom]
+	} else {
+		return nil, fmt.Errorf("a different instance domain under the name %v already exists in the registry", indom)
 	}
 
 	m, err = NewPCPInstanceMetric(mp, metric, id.(*PCPInstanceDomain), t, s, u)
