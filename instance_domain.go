@@ -81,6 +81,22 @@ func (indom *PCPInstanceDomain) InstanceCount() int {
 	return len(indom.instances)
 }
 
+// MatchInstances returns true if the passed InstanceDomain
+// has exactly the same instances as the passed array
+func (indom *PCPInstanceDomain) MatchInstances(ins []string) bool {
+	if len(ins) != len(indom.instances) {
+		return false
+	}
+
+	for _, i := range ins {
+		if _, ok := indom.instances[i]; !ok {
+			return false
+		}
+	}
+
+	return true
+}
+
 // Description returns the description for PCPInstanceDomain
 func (indom *PCPInstanceDomain) Description() string {
 	s, l := indom.shortDescription.val, indom.longDescription.val
