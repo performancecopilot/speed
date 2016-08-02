@@ -47,6 +47,25 @@ func TestIsCompatible(t *testing.T) {
 
 		{Uint32Type, math.MaxUint32, true},
 		{Uint64Type, uint64(math.MaxUint64), true},
+
+		{FloatType, math.MaxFloat32, true},
+		{DoubleType, math.MaxFloat32, true},
+		{FloatType, -math.MaxFloat32, true},
+		{DoubleType, -math.MaxFloat32, true},
+
+		{FloatType, float32(math.MaxFloat32), true},
+		{DoubleType, float32(math.MaxFloat32), false},
+		{FloatType, float32(-math.MaxFloat32), true},
+		{DoubleType, float32(-math.MaxFloat32), false},
+
+		{FloatType, float64(math.MaxFloat32), true},
+		{DoubleType, float64(math.MaxFloat32), true},
+		{FloatType, float64(-math.MaxFloat32), true},
+		{DoubleType, float64(-math.MaxFloat32), true},
+
+		{StringType, 10, false},
+		{StringType, 10.10, false},
+		{StringType, "10", true},
 	}
 
 	for _, c := range cases {
