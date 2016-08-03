@@ -258,37 +258,31 @@ func parseString(s string) (metric string, indom string, instances []string, err
 	return
 }
 
-// AddMetricByString dynamically creates a PCPMetric
-func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
-	metric, indom, instances, err := parseString(str)
+func (r *PCPRegistry) addSingletonMetricByString(name string, val interface{}, t MetricType, s MetricSemantics, u MetricUnit) (Metric, error) {
+	m, err := NewPCPSingletonMetric(val, name, t, s, u)
 	if err != nil {
 		return nil, err
 	}
 
-	var m Metric
-
-	if instances == nil {
-		// singleton metric
-		m, err = NewPCPSingletonMetric(val, metric, t, s, u)
-		if err != nil {
-			return nil, err
-		}
-
-		err = r.AddMetric(m)
-		if err != nil {
-			return nil, err
-		}
-
-		return m, nil
+	err = r.AddMetric(m)
+	if err != nil {
+		return nil, err
 	}
 
+	return m, nil
+}
+
+func (r *PCPRegistry) addInstanceMetricByString(name string, val interface{}, indom string, instances []string, t MetricType, s MetricSemantics, u MetricUnit) (Metric, error) {
 	// instance metric
 	mp, ok := val.(Instances)
 	if !ok {
 		return nil, errors.New("to define an instance metric, a Instances type is required")
 	}
 
-	var id InstanceDomain
+	var (
+		id  InstanceDomain
+		err error
+	)
 
 	if !r.HasInstanceDomain(indom) {
 		id, err = r.AddInstanceDomainByName(indom, instances)
@@ -301,7 +295,7 @@ func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSem
 		return nil, fmt.Errorf("a different instance domain under the name %v already exists in the registry", indom)
 	}
 
-	m, err = NewPCPInstanceMetric(mp, metric, id.(*PCPInstanceDomain), t, s, u)
+	m, err := NewPCPInstanceMetric(mp, name, id.(*PCPInstanceDomain), t, s, u)
 	if err != nil {
 		return nil, err
 	}
@@ -312,4 +306,18 @@ func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSem
 	}
 
 	return m, nil
+}
+
+// AddMetricByString dynamically creates a PCPMetric
+func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
+	metric, indom, instances, err := parseString(str)
+	if err != nil {
+		return nil, err
+	}
+
+	if instances == nil {
+		return r.addSingletonMetricByString(metric, val, t, s, u)
+	}
+
+	return r.addInstanceMetricByString(metric, val, indom, instances, t, s, u)
 }
