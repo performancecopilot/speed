@@ -284,6 +284,9 @@ type PCPMetric interface {
 type Counter interface {
 	Metric
 
+	Val() int64
+	Set(int64) error
+
 	Inc(int64) error
 	MustInc(int64)
 
