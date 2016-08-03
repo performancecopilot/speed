@@ -843,3 +843,29 @@ func TestMMV2InstanceWriting(t *testing.T) {
 		t.Errorf("expected two strings in the dump")
 	}
 }
+
+func TestCounter(t *testing.T) {
+	c, err := NewPCPClient("test", ProcessFlag)
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+	}
+
+	m, err := NewPCPCounter(0, "c.1")
+	if err != nil {
+		t.Errorf("cannot create counter, error: %v", err)
+	}
+
+	c.MustRegister(m)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	_, _, metrics, values, _, _, _, err := mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Errorf("cannot get dump: %v", err)
+		return
+	}
+
+	matchMetricsAndValues(metrics, values, c, t)
+}
+
