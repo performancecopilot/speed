@@ -280,6 +280,22 @@ type PCPMetric interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+// Counter defines a metric that holds a single value that can be incremented or decremented
+type Counter interface {
+	Metric
+
+	Inc(int64) error
+	MustInc(int64)
+
+	Dec(int64) error
+	MustDec(int64)
+
+	Up()   // same as MustInc(1)
+	Down() // same as MustDec(1)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
 // PCPMetricItemBitLength is the maximum bit size of a PCP Metric id
 //
 // see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
@@ -562,3 +578,60 @@ func (m *PCPInstanceMetric) MustSetInstance(instance string, val interface{}) {
 		panic(err)
 	}
 }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPCounter implements a PCP compatible Counter Metric
+type PCPCounter struct {
+	*PCPSingletonMetric
+}
+
+// NewPCPCounter creates a new PCPCounter instance
+func NewPCPCounter(val int64, name string, desc ...string) (*PCPCounter, error) {
+	m, err := NewPCPSingletonMetric(val, name, Int64Type, CounterSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPCounter{m}, nil
+}
+
+// Val returns the current value of the counter
+func (c *PCPCounter) Val() int64 {
+	return c.PCPSingletonMetric.Val().(int64)
+}
+
+// Set sets the value of the counter
+func (c *PCPCounter) Set(val int64) error {
+	return c.PCPSingletonMetric.Set(val)
+}
+
+// Inc increases the stored counter's value by the passed increment
+func (c *PCPCounter) Inc(val int64) error {
+	v := c.Val()
+	v += val
+	return c.Set(v)
+}
+
+// MustInc is Inc that panics
+func (c *PCPCounter) MustInc(val int64) {
+	if err := c.Inc(val); err != nil {
+		panic(err)
+	}
+}
+
+// Dec decreases the stored counter's value by the passed decrement
+func (c *PCPCounter) Dec(val int64) error { return c.Inc(-val) }
+
+// MustDec is Dec that panics
+func (c *PCPCounter) MustDec(val int64) {
+	if err := c.Dec(val); err != nil {
+		panic(err)
+	}
+}
+
+// Up increases the counter by 1
+func (c *PCPCounter) Up() { c.MustInc(1) }
+
+// Down decreases the counter by 1
+func (c *PCPCounter) Down() { c.MustDec(1) }
