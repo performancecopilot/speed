@@ -290,11 +290,7 @@ type Counter interface {
 	Inc(int64) error
 	MustInc(int64)
 
-	Dec(int64) error
-	MustDec(int64)
-
-	Up()   // same as MustInc(1)
-	Down() // same as MustDec(1)
+	Up() // same as MustInc(1)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -606,6 +602,16 @@ func (c *PCPCounter) Val() int64 {
 
 // Set sets the value of the counter
 func (c *PCPCounter) Set(val int64) error {
+	v := c.Val()
+
+	if val < v {
+		return fmt.Errorf("cannot set counter to %v, current value is %v and PCP counters cannot go backwards", val, v)
+	}
+
+	if val == v {
+		return nil
+	}
+
 	return c.PCPSingletonMetric.Set(val)
 }
 
@@ -623,18 +629,5 @@ func (c *PCPCounter) MustInc(val int64) {
 	}
 }
 
-// Dec decreases the stored counter's value by the passed decrement
-func (c *PCPCounter) Dec(val int64) error { return c.Inc(-val) }
-
-// MustDec is Dec that panics
-func (c *PCPCounter) MustDec(val int64) {
-	if err := c.Dec(val); err != nil {
-		panic(err)
-	}
-}
-
 // Up increases the counter by 1
 func (c *PCPCounter) Up() { c.MustInc(1) }
-
-// Down decreases the counter by 1
-func (c *PCPCounter) Down() { c.MustDec(1) }
