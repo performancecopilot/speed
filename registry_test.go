@@ -128,3 +128,19 @@ func TestStringInstanceConstruction(t *testing.T) {
 		t.Errorf("Expected Value Count to be 3, got %v", r.ValuesCount())
 	}
 }
+
+func TestMMVV2MetricRegistration(t *testing.T) {
+	r := NewPCPRegistry()
+
+	m, err := NewPCPSingletonMetric(10, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz", Int32Type, CounterSemantics, OneUnit)
+	if err != nil {
+		t.Errorf("cannot create metric, error: %v", err)
+		return
+	}
+
+	r.AddMetric(m)
+
+	if r.stringcount != 1 {
+		t.Errorf("expected the metric name to be registered in the strings section")
+	}
+}
