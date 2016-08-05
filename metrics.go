@@ -309,6 +309,14 @@ type PCPMetricDesc struct {
 
 // newPCPMetricDesc creates a new Metric Description wrapper type
 func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPMetricDesc, error) {
+	if n == "" {
+		return nil, errors.New("Metric name cannot be empty")
+	}
+
+	if len(n) > StringLength {
+		return nil, errors.New("metric name is too long")
+	}
+
 	if len(desc) > 2 {
 		return nil, errors.New("only 2 optional strings allowed, short and long descriptions")
 	}
@@ -396,10 +404,6 @@ type PCPSingletonMetric struct {
 // it takes 2 extra optional strings as short and long description parameters,
 // which on not being present are set blank
 func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPSingletonMetric, error) {
-	if name == "" {
-		return nil, errors.New("Metric name cannot be empty")
-	}
-
 	if !t.IsCompatible(val) {
 		return nil, fmt.Errorf("type %v is not compatible with value %v", t, val)
 	}
@@ -493,10 +497,6 @@ type PCPInstanceMetric struct {
 // it takes 2 extra optional strings as short and long description parameters,
 // which on not being present are set blank
 func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPInstanceMetric, error) {
-	if name == "" {
-		return nil, errors.New("Metric name cannot be empty")
-	}
-
 	if len(vals) != indom.InstanceCount() {
 		return nil, errors.New("values for all instances in the instance domain only should be passed")
 	}
