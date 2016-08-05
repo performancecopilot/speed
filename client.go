@@ -22,8 +22,9 @@ const (
 	StringLength         = 256
 )
 
-// MaxMetricNameLength is the maximum length for a metric name
-const MaxMetricNameLength = 63
+// MaxV1MetricNameLength is the maximum length for a metric name
+// under MMV format 1
+const MaxV1MetricNameLength = 63
 
 // MaxDataValueSize is the maximum byte length for a stored metric value, unless it is a string
 const MaxDataValueSize = 16
@@ -184,6 +185,11 @@ func (c *PCPClient) initializeSingletonMetricOffsets(metric *PCPSingletonMetric,
 	metric.valueoffset = *valuesoffset
 	*valuesoffset += ValueLength
 
+	if c.r.version2 {
+		metric.name.offset = *stringsoffset
+		*stringsoffset += StringLength
+	}
+
 	if metric.t == StringType {
 		metric.val.(*pcpString).offset = *stringsoffset
 		*stringsoffset += StringLength
@@ -203,6 +209,11 @@ func (c *PCPClient) initializeSingletonMetricOffsets(metric *PCPSingletonMetric,
 func (c *PCPClient) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, metricsoffset, valuesoffset, stringsoffset *int) {
 	metric.descoffset = *metricsoffset
 	*metricsoffset += MetricLength
+
+	if c.r.version2 {
+		metric.name.offset = *stringsoffset
+		*stringsoffset += StringLength
+	}
 
 	for name := range metric.indom.instances {
 		metric.vals[name].offset = *valuesoffset
@@ -256,7 +267,11 @@ func (c *PCPClient) writeHeaderBlock() (generation2offset int, generation int64)
 	c.buffer.MustSetPos(c.buffer.Pos() + 1) // extra null byte is needed and \0 isn't a valid escape character in go
 
 	// version
-	c.buffer.MustWriteUint32(1)
+	if c.r.version2 {
+		c.buffer.MustWriteUint32(2)
+	} else {
+		c.buffer.MustWriteUint32(1)
+	}
 
 	// generation
 	generation = time.Now().Unix()
@@ -360,8 +375,18 @@ func (c *PCPClient) writeInstanceAndInstanceDomainBlock() {
 func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomain) {
 	c.buffer.MustSetPos(desc.descoffset)
 
-	c.buffer.MustWriteString(desc.name)
-	c.buffer.MustSetPos(desc.descoffset + MaxMetricNameLength + 1)
+	if c.r.version2 {
+		c.buffer.MustWriteUint64(uint64(desc.name.offset))
+
+		pos := c.buffer.Pos()
+		c.buffer.MustSetPos(desc.name.offset)
+		c.buffer.MustWriteString(desc.name.val)
+		c.buffer.SetPos(pos)
+	} else {
+		c.buffer.MustWriteString(desc.name.val)
+		c.buffer.MustSetPos(desc.descoffset + MaxV1MetricNameLength + 1)
+	}
+
 	c.buffer.MustWriteUint32(desc.id)
 	c.buffer.MustWriteInt32(int32(desc.t))
 	c.buffer.MustWriteInt32(int32(desc.sem))
