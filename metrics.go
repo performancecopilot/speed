@@ -299,7 +299,7 @@ const PCPMetricItemBitLength = 10
 // when writing, this type is supposed to map directly to the pmDesc struct as defined in PCP core
 type PCPMetricDesc struct {
 	id                                uint32          // unique metric id
-	name                              string          // the name
+	name                              *pcpString      // the name
 	t                                 MetricType      // the type of a metric
 	sem                               MetricSemantics // the semantics
 	u                                 MetricUnit      // the unit
@@ -325,7 +325,7 @@ func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, d
 
 	return &PCPMetricDesc{
 		hash(n, PCPMetricItemBitLength),
-		n, t, s, u, 0,
+		newpcpString(n), t, s, u, 0,
 		newpcpString(shortdesc), newpcpString(longdesc),
 	}, nil
 }
@@ -334,7 +334,9 @@ func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, d
 func (md *PCPMetricDesc) ID() uint32 { return md.id }
 
 // Name returns the generated id for PCPMetric
-func (md *PCPMetricDesc) Name() string { return md.name }
+func (md *PCPMetricDesc) Name() string {
+	return md.name.val
+}
 
 // Semantics returns the current stored value for PCPMetric
 func (md *PCPMetricDesc) Semantics() MetricSemantics { return md.sem }
