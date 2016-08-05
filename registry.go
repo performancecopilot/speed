@@ -66,7 +66,8 @@ type PCPRegistry struct {
 	valueCount    int
 	stringcount   int
 
-	mapped bool
+	mapped   bool
+	version2 bool // a flag that maintains whether we need to write mmv version 2
 }
 
 // NewPCPRegistry creates a new PCPRegistry object
@@ -187,6 +188,13 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 	}).Info("added new metric")
 
 	r.metrics[m.Name()] = pcpm
+
+	if r.version2 {
+		r.stringcount++
+	} else if len(m.Name()) > MaxV1MetricNameLength {
+		r.stringcount += len(r.metrics)
+		r.version2 = true
+	}
 
 	currentValues := 1
 	if pcpm.Indom() != nil {
