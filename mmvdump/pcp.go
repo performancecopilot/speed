@@ -45,12 +45,35 @@ type Toc struct {
 	Offset uint64
 }
 
-// Instance defines the contents in a valid instance
-type Instance struct {
-	Indom    uint64
-	Padding  uint32
-	Internal int32
+// Instance is the base type for all instances
+type Instance interface {
+	Indom() uint64
+	Internal() int32
+}
+
+// InstanceBase defines the common contents in a valid instance
+type InstanceBase struct {
+	indom    uint64
+	padding  uint32
+	internal int32
+}
+
+// Indom returns the indom offset
+func (i InstanceBase) Indom() uint64 { return i.indom }
+
+// Internal returns the internal id
+func (i InstanceBase) Internal() int32 { return i.internal }
+
+// Instance1 defines the contents in a valid mmv1 instance
+type Instance1 struct {
+	InstanceBase
 	External [NameMax]byte
+}
+
+// Instance2 defines the contents in a valid mmv2 instance
+type Instance2 struct {
+	InstanceBase
+	External uint64
 }
 
 // InstanceDomain defines the contents in a valid instance domain
@@ -59,16 +82,63 @@ type InstanceDomain struct {
 	Offset, Shorttext, Longtext uint64
 }
 
-// Metric defines the contents in a valid Metric
-type Metric struct {
-	Name                [NameMax]byte
-	Item                uint32
-	Typ                 Type
-	Sem                 Semantics
-	Unit                Unit
-	Indom               int32
-	Padding             uint32
-	Shorttext, Longtext uint64
+// Metric is the base type for all metrics
+type Metric interface {
+	Item() uint32
+	Typ() Type
+	Sem() Semantics
+	Unit() Unit
+	Indom() int32
+	Padding() uint32
+	ShortText() uint64
+	LongText() uint64
+}
+
+// MetricBase defines the common contents in a valid Metric
+type MetricBase struct {
+	item                uint32
+	typ                 Type
+	sem                 Semantics
+	unit                Unit
+	indom               int32
+	padding             uint32
+	shorttext, longtext uint64
+}
+
+// Item returns the item id
+func (m MetricBase) Item() uint32 { return m.item }
+
+// Typ returns the type
+func (m MetricBase) Typ() Type { return m.typ }
+
+// Sem returns the semantics
+func (m MetricBase) Sem() Semantics { return m.sem }
+
+// Unit returns the unit
+func (m MetricBase) Unit() Unit { return m.unit }
+
+// Indom returns the indom id
+func (m MetricBase) Indom() int32 { return m.indom }
+
+// Padding returns the padding value
+func (m MetricBase) Padding() uint32 { return m.padding }
+
+// ShortText returns the shorttext offset
+func (m MetricBase) ShortText() uint64 { return m.shorttext }
+
+// LongText returns the longtext offset
+func (m MetricBase) LongText() uint64 { return m.longtext }
+
+// Metric1 defines the contents in a valid Metric
+type Metric1 struct {
+	Name [NameMax]byte
+	MetricBase
+}
+
+// Metric2 defines the contents in a valid Metric
+type Metric2 struct {
+	Name uint64
+	MetricBase
 }
 
 // Value defines the contents in a PCP Value
@@ -141,10 +211,11 @@ type Semantics int32
 
 // Values for Semantics
 const (
-	NoSemantics       Semantics = 0
-	CounterSemantics  Semantics = 1
-	InstantSemantics  Semantics = 3
-	DiscreteSemantics Semantics = 4
+	NoSemantics Semantics = 0
+	CounterSemantics
+	_
+	InstantSemantics
+	DiscreteSemantics
 )
 
 //go:generate stringer -type=Semantics
@@ -152,10 +223,12 @@ const (
 // Byte Lengths for Different Components
 const (
 	HeaderLength         uint64 = 40
-	TocLength                   = 16
-	MetricLength                = 104
-	ValueLength                 = 32
-	InstanceLength              = 80
-	InstanceDomainLength        = 32
-	StringLength                = 256
+	TocLength            uint64 = 16
+	Metric1Length        uint64 = 104
+	Metric2Length        uint64 = 48
+	ValueLength          uint64 = 32
+	Instance1Length      uint64 = 80
+	Instance2Length      uint64 = 24
+	InstanceDomainLength uint64 = 32
+	StringLength         uint64 = 256
 )
