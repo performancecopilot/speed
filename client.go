@@ -134,11 +134,11 @@ func (c *PCPClient) Registry() Registry {
 func (c *PCPClient) tocCount() int {
 	ans := 2
 
-	if c.Registry().InstanceCount() > 0 {
+	if c.r.InstanceCount() > 0 {
 		ans += 2
 	}
 
-	if c.Registry().StringCount() > 0 {
+	if c.r.StringCount() > 0 {
 		ans++
 	}
 
@@ -149,11 +149,11 @@ func (c *PCPClient) tocCount() int {
 func (c *PCPClient) Length() int {
 	return HeaderLength +
 		(c.tocCount() * TocLength) +
-		(c.Registry().InstanceCount() * InstanceLength) +
-		(c.Registry().InstanceDomainCount() * InstanceDomainLength) +
-		(c.Registry().MetricCount() * MetricLength) +
-		(c.Registry().ValuesCount() * ValueLength) +
-		(c.Registry().StringCount() * StringLength)
+		(c.r.InstanceCount() * InstanceLength) +
+		(c.r.InstanceDomainCount() * InstanceDomainLength) +
+		(c.r.MetricCount() * MetricLength) +
+		(c.r.ValuesCount() * ValueLength) +
+		(c.r.StringCount() * StringLength)
 }
 
 func (c *PCPClient) initializeInstanceAndInstanceDomainOffsets(instanceoffset, indomoffset int, stringsoffset *int) {
@@ -307,14 +307,14 @@ func (c *PCPClient) writeTocBlock() {
 	tocpos := HeaderLength
 
 	// instance domains toc
-	if c.Registry().InstanceDomainCount() > 0 {
+	if c.r.InstanceDomainCount() > 0 {
 		// 1 is the identifier for instance domains
 		c.writeSingleToc(tocpos, 1, c.r.InstanceDomainCount(), c.r.indomoffset)
 		tocpos += TocLength
 	}
 
 	// instances toc
-	if c.Registry().InstanceCount() > 0 {
+	if c.r.InstanceCount() > 0 {
 		// 2 is the identifier for instances
 		c.writeSingleToc(tocpos, 2, c.r.InstanceCount(), c.r.instanceoffset)
 		tocpos += TocLength
@@ -322,7 +322,7 @@ func (c *PCPClient) writeTocBlock() {
 
 	// metrics and values toc
 	metricsoffset, valuesoffset := c.r.metricsoffset, c.r.valuesoffset
-	if c.Registry().MetricCount() == 0 {
+	if c.r.MetricCount() == 0 {
 		metricsoffset, valuesoffset = 0, 0
 	}
 
@@ -335,7 +335,7 @@ func (c *PCPClient) writeTocBlock() {
 	tocpos += TocLength
 
 	// strings toc
-	if c.Registry().StringCount() > 0 {
+	if c.r.StringCount() > 0 {
 		// 5 is the identifier for strings
 		c.writeSingleToc(tocpos, 5, c.r.StringCount(), c.r.stringsoffset)
 	}
@@ -381,7 +381,7 @@ func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomai
 		pos := c.buffer.Pos()
 		c.buffer.MustSetPos(desc.name.offset)
 		c.buffer.MustWriteString(desc.name.val)
-		c.buffer.SetPos(pos)
+		c.buffer.MustSetPos(pos)
 	} else {
 		c.buffer.MustWriteString(desc.name.val)
 		c.buffer.MustSetPos(desc.descoffset + MaxV1MetricNameLength + 1)
@@ -546,7 +546,7 @@ func (c *PCPClient) MustStop() {
 }
 
 // Register is simply a shorthand for Registry().AddMetric
-func (c *PCPClient) Register(m Metric) error { return c.Registry().AddMetric(m) }
+func (c *PCPClient) Register(m Metric) error { return c.r.AddMetric(m) }
 
 // MustRegister is simply a Register that can panic
 func (c *PCPClient) MustRegister(m Metric) {
@@ -557,7 +557,7 @@ func (c *PCPClient) MustRegister(m Metric) {
 
 // RegisterIndom is simply a shorthand for Registry().AddInstanceDomain
 func (c *PCPClient) RegisterIndom(indom InstanceDomain) error {
-	return c.Registry().AddInstanceDomain(indom)
+	return c.r.AddInstanceDomain(indom)
 }
 
 // MustRegisterIndom is simply a RegisterIndom that can panic
@@ -569,7 +569,7 @@ func (c *PCPClient) MustRegisterIndom(indom InstanceDomain) {
 
 // RegisterString is simply a shorthand for Registry().AddMetricByString
 func (c *PCPClient) RegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
-	return c.Registry().AddMetricByString(str, val, s, t, u)
+	return c.r.AddMetricByString(str, val, s, t, u)
 }
 
 // MustRegisterString is simply a RegisterString that panics
