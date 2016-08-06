@@ -11,5 +11,3 @@ type pcpString struct {
 func newpcpString(s string) *pcpString {
 	return &pcpString{s, 0}
 }
-
-func (s *pcpString) String() string { return s.val }
