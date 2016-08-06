@@ -366,8 +366,8 @@ func matchInstance(i *mmvdump.Instance, pi *pcpInstance, id *PCPInstanceDomain, 
 		t.Errorf("expected indom offset to be %d, got %d", i.Indom, id.offset)
 	}
 
-	if in := i.External[:len(pi.name)]; pi.name != string(in) {
-		t.Errorf("expected instance name to be %v, got %v", pi.name, in)
+	if in := i.External[:len(pi.name.val)]; pi.name.val != string(in) {
+		t.Errorf("expected instance name to be %v, got %v", pi.name.val, in)
 	}
 }
 
