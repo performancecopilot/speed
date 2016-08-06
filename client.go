@@ -165,6 +165,11 @@ func (c *PCPClient) initializeInstanceAndInstanceDomainOffsets(instanceoffset, i
 		for _, i := range indom.instances {
 			i.offset = instanceoffset
 			instanceoffset += InstanceLength
+
+			if c.r.version2 {
+				i.name.offset = *stringsoffset
+				*stringsoffset += StringLength
+			}
 		}
 
 		if indom.shortDescription.val != "" {
@@ -367,7 +372,17 @@ func (c *PCPClient) writeInstanceAndInstanceDomainBlock() {
 			c.buffer.MustWriteInt64(int64(indom.offset))
 			c.buffer.MustWriteInt32(0)
 			c.buffer.MustWriteUint32(i.id)
-			c.buffer.MustWriteString(i.name)
+
+			if c.r.version2 {
+				c.buffer.MustWriteUint64(uint64(i.name.offset))
+
+				pos := c.buffer.Pos()
+				c.buffer.MustSetPos(i.name.offset)
+				c.buffer.MustWriteString(i.name.val)
+				c.buffer.MustSetPos(pos)
+			} else {
+				c.buffer.MustWriteString(i.name.val)
+			}
 		}
 	}
 }
