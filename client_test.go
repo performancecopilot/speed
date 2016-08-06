@@ -731,3 +731,82 @@ func TestWritingDifferentTypes(t *testing.T) {
 	matchMetricsAndValues(metrics, values, c, t)
 	matchInstancesAndInstanceDomains(instances, indoms, c, t)
 }
+
+func TestMMV2MetricWriting(t *testing.T) {
+	c, err := NewPCPClient("test", ProcessFlag)
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+		return
+	}
+
+	m := c.MustRegisterString("it_takes_a_big_man_to_cry_but_it_takes_a_bigger_man_to_laugh_at_that_man",
+		21, CounterSemantics, Int32Type, OneUnit)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	h, _, metrics, values, instances, indoms, strings, err := mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Errorf("cannot create dump, error: %v", err)
+	}
+
+	if h.Version != 2 {
+		t.Error("expected mmv version to be 2")
+	}
+
+	if h.Toc != 3 {
+		t.Error("expected tocs to be 3")
+	}
+
+	matchMetricsAndValues(metrics, values, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+
+	if len(strings) != 1 {
+		t.Error("expected one string in the dump")
+	}
+
+	off := m.(*PCPSingletonMetric).name.offset
+	if str, ok := strings[uint64(off)]; !ok {
+		t.Errorf("expected a string at offset %v", off)
+	} else if (string(str.Payload[:len(m.Name())])) != m.Name() {
+		t.Error("the metric name in strings section doesn't match the registered metric name")
+	}
+}
+
+func TestMMV2InstanceWriting(t *testing.T) {
+	c, err := NewPCPClient("test", ProcessFlag)
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+		return
+	}
+
+	c.MustRegisterString(
+		"a[it_takes_a_big_man_to_cry_but_it_takes_a_bigger_man_to_laugh_at_that_man].b",
+		Instances{
+			"it_takes_a_big_man_to_cry_but_it_takes_a_bigger_man_to_laugh_at_that_man": 32,
+		}, CounterSemantics, Int32Type, OneUnit,
+	)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	h, _, metrics, values, instances, indoms, strings, err := mmvdump.Dump(c.buffer.Bytes())
+	if err != nil {
+		t.Errorf("cannot create dump, error: %v", err)
+	}
+
+	if h.Version != 2 {
+		t.Error("expected mmv version to be 2")
+	}
+
+	if h.Toc != 5 {
+		t.Error("expected tocs to be 3")
+	}
+
+	matchMetricsAndValues(metrics, values, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+
+	if len(strings) != 2 {
+		t.Errorf("expected two strings in the dump")
+	}
+}
