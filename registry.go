@@ -251,7 +251,7 @@ func (r *PCPRegistry) AddInstanceDomainByName(name string, instances []string) (
 	return indom, nil
 }
 
-const id = "[\\p{L}\\p{N}]+"
+const id = "[\\p{L}\\p{N}_]+"
 
 var instancesPattern = fmt.Sprintf("(%v)((,\\s?(%v))*)", id, id)
 var pattern = fmt.Sprintf("\\A((%v)(\\.%v)*?)(\\[(%v)\\])?((\\.%v)*)\\z", id, id, instancesPattern, id)

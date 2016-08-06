@@ -11,13 +11,17 @@ func TestIdentifierRegex(t *testing.T) {
 		{"sheep[limpy].legs.available", "sheep", "sheep.legs.available", []string{"limpy"}},
 		{"cow.how.now", "", "cow.how.now", nil},
 		{"sheep[limpy,grumpy,chumpy].legs.available", "sheep", "sheep.legs.available", []string{"limpy", "grumpy", "chumpy"}},
+		{"a", "", "a", []string{}},
+		{"a_b", "", "a_b", []string{}},
+		{"a_b._i", "", "a_b._i", []string{}},
+		{"a_b[c_d, e_f, g_h]._i", "a_b", "a_b._i", []string{"c_d", "e_f", "g_h"}},
 	}
 
 	for _, c := range cases {
 		m, id, i, err := parseString(c.val)
 
 		if err != nil {
-			t.Errorf("Error %v while parsing %v", err, c.val)
+			t.Errorf("Error: '%v' while parsing %v", err, c.val)
 			continue
 		}
 
