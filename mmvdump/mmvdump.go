@@ -47,7 +47,7 @@ func readToc(data []byte, offset uint64) (*Toc, error) {
 	return (*Toc)(unsafe.Pointer(&data[offset])), nil
 }
 
-func readInstance(data []byte, offset uint64) (*Instance, error) {
+func readInstance(data []byte, offset uint64) (interface{}, error) {
 	if uint64(len(data)) < offset+InstanceLength {
 		return nil, errors.New("Incomplete/Partially Written Instance")
 	}
@@ -55,7 +55,7 @@ func readInstance(data []byte, offset uint64) (*Instance, error) {
 	return (*Instance)(unsafe.Pointer(&data[offset])), nil
 }
 
-func readInstanceDomain(data []byte, offset uint64) (*InstanceDomain, error) {
+func readInstanceDomain(data []byte, offset uint64) (interface{}, error) {
 	if uint64(len(data)) < offset+InstanceDomainLength {
 		return nil, errors.New("Incomplete/Partially Written InstanceDomain")
 	}
@@ -63,7 +63,7 @@ func readInstanceDomain(data []byte, offset uint64) (*InstanceDomain, error) {
 	return (*InstanceDomain)(unsafe.Pointer(&data[offset])), nil
 }
 
-func readMetric(data []byte, offset uint64) (*Metric, error) {
+func readMetric(data []byte, offset uint64) (interface{}, error) {
 	if uint64(len(data)) < offset+MetricLength {
 		return nil, errors.New("Incomplete/Partially Written Metric")
 	}
@@ -71,7 +71,7 @@ func readMetric(data []byte, offset uint64) (*Metric, error) {
 	return (*Metric)(unsafe.Pointer(&data[offset])), nil
 }
 
-func readValue(data []byte, offset uint64) (*Value, error) {
+func readValue(data []byte, offset uint64) (interface{}, error) {
 	if uint64(len(data)) < offset+ValueLength {
 		return nil, errors.New("Incomplete/Partially Written Value")
 	}
@@ -79,7 +79,7 @@ func readValue(data []byte, offset uint64) (*Value, error) {
 	return (*Value)(unsafe.Pointer(&data[offset])), nil
 }
 
-func readString(data []byte, offset uint64) (*String, error) {
+func readString(data []byte, offset uint64) (interface{}, error) {
 	if uint64(len(data)) < offset+StringLength {
 		return nil, errors.New("Incomplete/Partially Written String")
 	}
@@ -101,24 +101,24 @@ func readTocs(data []byte, count int32) ([]*Toc, error) {
 	return tocs, nil
 }
 
-func readInstances(data []byte, offset uint64, count int32) (map[uint64]*Instance, error) {
+func readItems(data []byte, offset uint64, count int32, itemlength uint64, readItem func([]byte, uint64) (interface{}, error)) (map[uint64]interface{}, error) {
 	var wg sync.WaitGroup
 	wg.Add(int(count))
 
-	instances := make(map[uint64]*Instance)
+	items := make(map[uint64]interface{})
 
 	var (
 		err error
 		m   sync.Mutex
 	)
 
-	for i := int32(0); i < count; i, offset = i+1, offset+InstanceLength {
+	for i := int32(0); i < count; i, offset = i+1, offset+itemlength {
 		go func(offset uint64) {
 			if err == nil {
-				instance, ierr := readInstance(data, offset)
+				item, ierr := readItem(data, offset)
 				if ierr == nil {
 					m.Lock()
-					instances[offset] = instance
+					items[offset] = item
 					m.Unlock()
 				} else {
 					err = ierr
@@ -132,150 +132,76 @@ func readInstances(data []byte, offset uint64, count int32) (map[uint64]*Instanc
 
 	if err != nil {
 		return nil, err
+	}
+
+	return items, nil
+}
+
+func readInstances(data []byte, offset uint64, count int32) (map[uint64]*Instance, error) {
+	i, err := readItems(data, offset, count, InstanceLength, readInstance)
+	if err != nil {
+		return nil, err
+	}
+
+	instances := make(map[uint64]*Instance)
+	for off, val := range i {
+		instances[off] = val.(*Instance)
 	}
 
 	return instances, nil
 }
 
 func readInstanceDomains(data []byte, offset uint64, count int32) (map[uint64]*InstanceDomain, error) {
-	var wg sync.WaitGroup
-	wg.Add(int(count))
-
-	indoms := make(map[uint64]*InstanceDomain)
-
-	var (
-		err error
-		m   sync.Mutex
-	)
-
-	for i := int32(0); i < count; i, offset = i+1, offset+InstanceDomainLength {
-		go func(offset uint64) {
-			if err == nil {
-				indom, ierr := readInstanceDomain(data, offset)
-				if ierr == nil {
-					m.Lock()
-					indoms[offset] = indom
-					m.Unlock()
-				} else {
-					err = ierr
-				}
-			}
-			wg.Done()
-		}(offset)
-	}
-
-	wg.Wait()
-
+	i, err := readItems(data, offset, count, InstanceDomainLength, readInstanceDomain)
 	if err != nil {
 		return nil, err
+	}
+
+	indoms := make(map[uint64]*InstanceDomain)
+	for off, val := range i {
+		indoms[off] = val.(*InstanceDomain)
 	}
 
 	return indoms, nil
 }
 
 func readMetrics(data []byte, offset uint64, count int32) (map[uint64]*Metric, error) {
-	var wg sync.WaitGroup
-	wg.Add(int(count))
-
-	metrics := make(map[uint64]*Metric)
-
-	var (
-		err error
-		m   sync.Mutex
-	)
-
-	for i := int32(0); i < count; i, offset = i+1, offset+MetricLength {
-		go func(offset uint64) {
-			if err == nil {
-				metric, merr := readMetric(data, offset)
-				if merr == nil {
-					m.Lock()
-					metrics[offset] = metric
-					m.Unlock()
-				} else {
-					err = merr
-				}
-			}
-			wg.Done()
-		}(offset)
-	}
-
-	wg.Wait()
-
+	m, err := readItems(data, offset, count, MetricLength, readMetric)
 	if err != nil {
 		return nil, err
+	}
+
+	metrics := make(map[uint64]*Metric)
+	for off, val := range m {
+		metrics[off] = val.(*Metric)
 	}
 
 	return metrics, nil
 }
 
 func readValues(data []byte, offset uint64, count int32) (map[uint64]*Value, error) {
-	var wg sync.WaitGroup
-	wg.Add(int(count))
-
-	values := make(map[uint64]*Value)
-
-	var (
-		err error
-		m   sync.Mutex
-	)
-
-	for i := int32(0); i < count; i, offset = i+1, offset+ValueLength {
-		go func(offset uint64) {
-			if err == nil {
-				value, verr := readValue(data, offset)
-				if verr == nil {
-					m.Lock()
-					values[offset] = value
-					m.Unlock()
-				} else {
-					err = verr
-				}
-			}
-			wg.Done()
-		}(offset)
-	}
-
-	wg.Wait()
-
+	v, err := readItems(data, offset, count, ValueLength, readValue)
 	if err != nil {
 		return nil, err
+	}
+
+	values := make(map[uint64]*Value)
+	for off, val := range v {
+		values[off] = val.(*Value)
 	}
 
 	return values, nil
 }
 
 func readStrings(data []byte, offset uint64, count int32) (map[uint64]*String, error) {
-	var wg sync.WaitGroup
-	wg.Add(int(count))
-
-	strings := make(map[uint64]*String)
-
-	var (
-		err error
-		m   sync.Mutex
-	)
-
-	for i := int32(0); i < count; i, offset = i+1, offset+StringLength {
-		go func(offset uint64) {
-			if err == nil {
-				str, serr := readString(data, offset)
-				if serr == nil {
-					m.Lock()
-					strings[offset] = str
-					m.Unlock()
-				} else {
-					err = serr
-				}
-			}
-			wg.Done()
-		}(offset)
-	}
-
-	wg.Wait()
-
+	s, err := readItems(data, offset, count, StringLength, readString)
 	if err != nil {
 		return nil, err
+	}
+
+	strings := make(map[uint64]*String)
+	for off, val := range s {
+		strings[off] = val.(*String)
 	}
 
 	return strings, nil
