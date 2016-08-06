@@ -122,30 +122,40 @@ func TestMapping(t *testing.T) {
 	EraseFileOnStop = false
 }
 
-func matchMetricDesc(desc *PCPMetricDesc, metric *mmvdump.Metric, t *testing.T) {
-	if int32(metric.Sem) != int32(desc.sem) {
-		t.Errorf("expected semantics to be %v, got %v", desc.sem, MetricSemantics(metric.Sem))
+func matchMetricDesc(desc *PCPMetricDesc, metric mmvdump.Metric, t *testing.T) {
+	if m, ok := metric.(*mmvdump.Metric1); ok {
+		if s := m.Name[:len(desc.name.val)]; desc.name.val != string(s) {
+			t.Errorf("expected metric name to be %v, got %v", desc.name.val, s)
+		}
+	} else {
+		if off := metric.(*mmvdump.Metric2).Name; off != uint64(desc.name.offset) {
+			t.Errorf("expected instance offset to be %v, got %v", desc.name.offset, off)
+		}
 	}
 
-	if int32(metric.Typ) != int32(desc.t) {
-		t.Errorf("expected type to be %v, got %v", desc.t, MetricType(metric.Typ))
+	if int32(metric.Sem()) != int32(desc.sem) {
+		t.Errorf("expected semantics to be %v, got %v", desc.sem, MetricSemantics(metric.Sem()))
 	}
 
-	if int32(metric.Unit) != int32(desc.u.PMAPI()) {
-		t.Errorf("expected unit to be %v, got %v", desc.u, metric.Unit)
+	if int32(metric.Typ()) != int32(desc.t) {
+		t.Errorf("expected type to be %v, got %v", desc.t, MetricType(metric.Typ()))
 	}
 
-	if metric.Shorttext != uint64(desc.shortDescription.offset) {
-		t.Errorf("expected shorttext to be %v, got %v", desc.shortDescription.offset, metric.Shorttext)
+	if int32(metric.Unit()) != int32(desc.u.PMAPI()) {
+		t.Errorf("expected unit to be %v, got %v", desc.u, metric.Unit())
 	}
 
-	if metric.Longtext != uint64(desc.longDescription.offset) {
-		t.Errorf("expected longtext to be %v, got %v", desc.longDescription.offset, metric.Longtext)
+	if metric.ShortText() != uint64(desc.shortDescription.offset) {
+		t.Errorf("expected shorttext to be %v, got %v", desc.shortDescription.offset, metric.ShortText())
+	}
+
+	if metric.LongText() != uint64(desc.longDescription.offset) {
+		t.Errorf("expected longtext to be %v, got %v", desc.longDescription.offset, metric.LongText())
 	}
 }
 
-func matchSingletonMetric(m *PCPSingletonMetric, metric *mmvdump.Metric, t *testing.T) {
-	if metric.Indom != mmvdump.NoIndom {
+func matchSingletonMetric(m *PCPSingletonMetric, metric mmvdump.Metric, t *testing.T) {
+	if metric.Indom() != mmvdump.NoIndom {
 		t.Error("expected indom to be null")
 	}
 
@@ -183,9 +193,9 @@ func matchString(s *pcpString, str *mmvdump.String, t *testing.T) {
 	}
 }
 
-func matchInstanceMetric(m *PCPInstanceMetric, met *mmvdump.Metric, t *testing.T) {
-	if uint32(met.Indom) != m.indom.id {
-		t.Errorf("expected indom id to be %d, got %d", m.indom.id, met.Indom)
+func matchInstanceMetric(m *PCPInstanceMetric, met mmvdump.Metric, t *testing.T) {
+	if uint32(met.Indom()) != m.indom.id {
+		t.Errorf("expected indom id to be %d, got %d", m.indom.id, met.Indom())
 	}
 
 	matchMetricDesc(m.PCPMetricDesc, met, t)
@@ -219,7 +229,7 @@ func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCP
 	}
 }
 
-func matchSingletonMetricAndValue(met *PCPSingletonMetric, metrics map[uint64]*mmvdump.Metric, values map[uint64]*mmvdump.Value, t *testing.T) {
+func matchSingletonMetricAndValue(met *PCPSingletonMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, t *testing.T) {
 	metric, ok := metrics[uint64(met.descoffset)]
 	if !ok {
 		t.Errorf("expected a metric at offset %v", met.descoffset)
@@ -235,7 +245,7 @@ func matchSingletonMetricAndValue(met *PCPSingletonMetric, metrics map[uint64]*m
 	}
 }
 
-func matchInstanceMetricAndValues(met *PCPInstanceMetric, metrics map[uint64]*mmvdump.Metric, values map[uint64]*mmvdump.Value, t *testing.T) {
+func matchInstanceMetricAndValues(met *PCPInstanceMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, t *testing.T) {
 	metric, ok := metrics[uint64(met.descoffset)]
 	if !ok {
 		t.Errorf("expected a metric at offset %v", met.descoffset)
@@ -253,7 +263,7 @@ func matchInstanceMetricAndValues(met *PCPInstanceMetric, metrics map[uint64]*mm
 	}
 }
 
-func matchMetricsAndValues(metrics map[uint64]*mmvdump.Metric, values map[uint64]*mmvdump.Value, c *PCPClient, t *testing.T) {
+func matchMetricsAndValues(metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, c *PCPClient, t *testing.T) {
 	if c.Registry().MetricCount() != len(metrics) {
 		t.Errorf("expected %v metrics, got %v", c.Registry().MetricCount(), len(metrics))
 	}
@@ -363,13 +373,19 @@ func TestUpdatingSingletonMetric(t *testing.T) {
 	}
 }
 
-func matchInstance(i *mmvdump.Instance, pi *pcpInstance, id *PCPInstanceDomain, t *testing.T) {
-	if i.Indom != uint64(id.offset) {
-		t.Errorf("expected indom offset to be %d, got %d", i.Indom, id.offset)
+func matchInstance(i mmvdump.Instance, pi *pcpInstance, id *PCPInstanceDomain, t *testing.T) {
+	if i.Indom() != uint64(id.offset) {
+		t.Errorf("expected indom offset to be %d, got %d", i.Indom(), id.offset)
 	}
 
-	if in := i.External[:len(pi.name.val)]; pi.name.val != string(in) {
-		t.Errorf("expected instance name to be %v, got %v", pi.name.val, in)
+	if in, ok := i.(*mmvdump.Instance1); ok {
+		if s := in.External[:len(pi.name.val)]; pi.name.val != string(s) {
+			t.Errorf("expected instance name to be %v, got %v", pi.name.val, s)
+		}
+	} else {
+		if off := i.(*mmvdump.Instance2).External; off != uint64(pi.name.offset) {
+			t.Errorf("expected instance offset to be %v, got %v", pi.name.val, off)
+		}
 	}
 }
 
@@ -392,7 +408,7 @@ func matchInstanceDomain(id *mmvdump.InstanceDomain, pid *PCPInstanceDomain, t *
 }
 
 func matchInstancesAndInstanceDomains(
-	ins map[uint64]*mmvdump.Instance,
+	ins map[uint64]mmvdump.Instance,
 	ids map[uint64]*mmvdump.InstanceDomain,
 	c *PCPClient,
 	t *testing.T,
