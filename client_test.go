@@ -61,6 +61,11 @@ func TestTocCountAndLength(t *testing.T) {
 		t.Errorf("expected tocCount to be 3, got %v", c.tocCount())
 	}
 
+	var MetricLength = Metric1Length
+	if c.r.version2 {
+		MetricLength = Metric2Length
+	}
+
 	expectedLength = HeaderLength + 3*TocLength + 1*MetricLength + 1*ValueLength + 1*StringLength
 	if c.Length() != expectedLength {
 		t.Errorf("expected Length to be %v, got %v", expectedLength, c.Length())
@@ -79,10 +84,7 @@ func TestTocCountAndLength(t *testing.T) {
 		t.Error("Cannot create a metric")
 	}
 
-	err = c.Register(m2)
-	if err != nil {
-		t.Error("Cannot register m2")
-	}
+	c.MustRegister(m2)
 
 	if c.tocCount() != 5 {
 		t.Errorf("expected tocCount to be 5, got %v", c.tocCount())
