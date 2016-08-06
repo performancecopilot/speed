@@ -1,6 +1,9 @@
 package speed
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 // InstanceDomain defines the interface for an instance domain
 type InstanceDomain interface {
@@ -9,6 +12,7 @@ type InstanceDomain interface {
 	Description() string          // description for the instance domain
 	HasInstance(name string) bool // checks if an instance is in the indom
 	InstanceCount() int           // returns the number of instances in the indom
+	Instances() []string          // returns a slice of instances in the instance domain
 }
 
 // PCPInstanceDomainBitLength is the maximum bit length of a PCP Instance Domain
@@ -52,6 +56,10 @@ func NewPCPInstanceDomain(name string, instances []string, desc ...string) (*PCP
 	imap := make(map[string]*pcpInstance)
 
 	for _, instance := range instances {
+		if len(instance) > StringLength {
+			return nil, fmt.Errorf("instance name %v is too long", instance)
+		}
+
 		imap[instance] = newpcpInstance(instance)
 	}
 
@@ -81,6 +89,15 @@ func (indom *PCPInstanceDomain) InstanceCount() int {
 	return len(indom.instances)
 }
 
+// Instances returns a slice of defined instances for the instance domain
+func (indom *PCPInstanceDomain) Instances() []string {
+	var ans []string
+	for k := range indom.instances {
+		ans = append(ans, k)
+	}
+	return ans
+}
+
 // MatchInstances returns true if the passed InstanceDomain
 // has exactly the same instances as the passed array
 func (indom *PCPInstanceDomain) MatchInstances(ins []string) bool {
@@ -107,13 +124,5 @@ func (indom *PCPInstanceDomain) Description() string {
 }
 
 func (indom *PCPInstanceDomain) String() string {
-	s := "InstanceDomain: " + indom.name
-	if len(indom.instances) > 0 {
-		s += "["
-		for _, i := range indom.instances {
-			s += i.name + ","
-		}
-		s += "]"
-	}
-	return s
+	return fmt.Sprintf("%s%v", indom.name, indom.Instances())
 }

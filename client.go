@@ -15,15 +15,18 @@ import (
 const (
 	HeaderLength         = 40
 	TocLength            = 16
-	MetricLength         = 104
+	Metric1Length        = 104
+	Metric2Length        = 48
 	ValueLength          = 32
-	InstanceLength       = 80
+	Instance1Length      = 80
+	Instance2Length      = 24
 	InstanceDomainLength = 32
 	StringLength         = 256
 )
 
-// MaxMetricNameLength is the maximum length for a metric name
-const MaxMetricNameLength = 63
+// MaxV1MetricNameLength is the maximum length for a metric name
+// under MMV format 1
+const MaxV1MetricNameLength = 63
 
 // MaxDataValueSize is the maximum byte length for a stored metric value, unless it is a string
 const MaxDataValueSize = 16
@@ -133,11 +136,11 @@ func (c *PCPClient) Registry() Registry {
 func (c *PCPClient) tocCount() int {
 	ans := 2
 
-	if c.Registry().InstanceCount() > 0 {
+	if c.r.InstanceCount() > 0 {
 		ans += 2
 	}
 
-	if c.Registry().StringCount() > 0 {
+	if c.r.StringCount() > 0 {
 		ans++
 	}
 
@@ -146,13 +149,23 @@ func (c *PCPClient) tocCount() int {
 
 // Length returns the byte length of data in the mmv file written by the current writer
 func (c *PCPClient) Length() int {
+	var (
+		InstanceLength = Instance1Length
+		MetricLength   = Metric1Length
+	)
+
+	if c.r.version2 {
+		InstanceLength = Instance2Length
+		MetricLength = Metric2Length
+	}
+
 	return HeaderLength +
 		(c.tocCount() * TocLength) +
-		(c.Registry().InstanceCount() * InstanceLength) +
-		(c.Registry().InstanceDomainCount() * InstanceDomainLength) +
-		(c.Registry().MetricCount() * MetricLength) +
-		(c.Registry().ValuesCount() * ValueLength) +
-		(c.Registry().StringCount() * StringLength)
+		(c.r.InstanceCount() * InstanceLength) +
+		(c.r.InstanceDomainCount() * InstanceDomainLength) +
+		(c.r.MetricCount() * MetricLength) +
+		(c.r.ValuesCount() * ValueLength) +
+		(c.r.StringCount() * StringLength)
 }
 
 func (c *PCPClient) initializeInstanceAndInstanceDomainOffsets(instanceoffset, indomoffset int, stringsoffset *int) {
@@ -163,7 +176,14 @@ func (c *PCPClient) initializeInstanceAndInstanceDomainOffsets(instanceoffset, i
 
 		for _, i := range indom.instances {
 			i.offset = instanceoffset
-			instanceoffset += InstanceLength
+
+			if c.r.version2 {
+				instanceoffset += Instance2Length
+				i.name.offset = *stringsoffset
+				*stringsoffset += StringLength
+			} else {
+				instanceoffset += Instance1Length
+			}
 		}
 
 		if indom.shortDescription.val != "" {
@@ -180,9 +200,16 @@ func (c *PCPClient) initializeInstanceAndInstanceDomainOffsets(instanceoffset, i
 
 func (c *PCPClient) initializeSingletonMetricOffsets(metric *PCPSingletonMetric, metricsoffset, valuesoffset, stringsoffset *int) {
 	metric.descoffset = *metricsoffset
-	*metricsoffset += MetricLength
 	metric.valueoffset = *valuesoffset
 	*valuesoffset += ValueLength
+
+	if c.r.version2 {
+		*metricsoffset += Metric2Length
+		metric.name.offset = *stringsoffset
+		*stringsoffset += StringLength
+	} else {
+		*metricsoffset += Metric1Length
+	}
 
 	if metric.t == StringType {
 		metric.val.(*pcpString).offset = *stringsoffset
@@ -202,7 +229,14 @@ func (c *PCPClient) initializeSingletonMetricOffsets(metric *PCPSingletonMetric,
 
 func (c *PCPClient) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, metricsoffset, valuesoffset, stringsoffset *int) {
 	metric.descoffset = *metricsoffset
-	*metricsoffset += MetricLength
+
+	if c.r.version2 {
+		*metricsoffset += Metric2Length
+		metric.name.offset = *stringsoffset
+		*stringsoffset += StringLength
+	} else {
+		*metricsoffset += Metric1Length
+	}
 
 	for name := range metric.indom.instances {
 		metric.vals[name].offset = *valuesoffset
@@ -226,6 +260,16 @@ func (c *PCPClient) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, m
 }
 
 func (c *PCPClient) initializeOffsets() {
+	var (
+		InstanceLength = Instance1Length
+		MetricLength   = Metric1Length
+	)
+
+	if c.r.version2 {
+		InstanceLength = Instance2Length
+		MetricLength = Metric2Length
+	}
+
 	indomoffset := HeaderLength + TocLength*c.tocCount()
 	instanceoffset := indomoffset + InstanceDomainLength*c.r.InstanceDomainCount()
 	metricsoffset := instanceoffset + InstanceLength*c.r.InstanceCount()
@@ -256,7 +300,11 @@ func (c *PCPClient) writeHeaderBlock() (generation2offset int, generation int64)
 	c.buffer.MustSetPos(c.buffer.Pos() + 1) // extra null byte is needed and \0 isn't a valid escape character in go
 
 	// version
-	c.buffer.MustWriteUint32(1)
+	if c.r.version2 {
+		c.buffer.MustWriteUint32(2)
+	} else {
+		c.buffer.MustWriteUint32(1)
+	}
 
 	// generation
 	generation = time.Now().Unix()
@@ -292,14 +340,14 @@ func (c *PCPClient) writeTocBlock() {
 	tocpos := HeaderLength
 
 	// instance domains toc
-	if c.Registry().InstanceDomainCount() > 0 {
+	if c.r.InstanceDomainCount() > 0 {
 		// 1 is the identifier for instance domains
 		c.writeSingleToc(tocpos, 1, c.r.InstanceDomainCount(), c.r.indomoffset)
 		tocpos += TocLength
 	}
 
 	// instances toc
-	if c.Registry().InstanceCount() > 0 {
+	if c.r.InstanceCount() > 0 {
 		// 2 is the identifier for instances
 		c.writeSingleToc(tocpos, 2, c.r.InstanceCount(), c.r.instanceoffset)
 		tocpos += TocLength
@@ -307,7 +355,7 @@ func (c *PCPClient) writeTocBlock() {
 
 	// metrics and values toc
 	metricsoffset, valuesoffset := c.r.metricsoffset, c.r.valuesoffset
-	if c.Registry().MetricCount() == 0 {
+	if c.r.MetricCount() == 0 {
 		metricsoffset, valuesoffset = 0, 0
 	}
 
@@ -320,7 +368,7 @@ func (c *PCPClient) writeTocBlock() {
 	tocpos += TocLength
 
 	// strings toc
-	if c.Registry().StringCount() > 0 {
+	if c.r.StringCount() > 0 {
 		// 5 is the identifier for strings
 		c.writeSingleToc(tocpos, 5, c.r.StringCount(), c.r.stringsoffset)
 	}
@@ -352,7 +400,17 @@ func (c *PCPClient) writeInstanceAndInstanceDomainBlock() {
 			c.buffer.MustWriteInt64(int64(indom.offset))
 			c.buffer.MustWriteInt32(0)
 			c.buffer.MustWriteUint32(i.id)
-			c.buffer.MustWriteString(i.name)
+
+			if c.r.version2 {
+				c.buffer.MustWriteUint64(uint64(i.name.offset))
+
+				pos := c.buffer.Pos()
+				c.buffer.MustSetPos(i.name.offset)
+				c.buffer.MustWriteString(i.name.val)
+				c.buffer.MustSetPos(pos)
+			} else {
+				c.buffer.MustWriteString(i.name.val)
+			}
 		}
 	}
 }
@@ -360,8 +418,18 @@ func (c *PCPClient) writeInstanceAndInstanceDomainBlock() {
 func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomain) {
 	c.buffer.MustSetPos(desc.descoffset)
 
-	c.buffer.MustWriteString(desc.name)
-	c.buffer.MustSetPos(desc.descoffset + MaxMetricNameLength + 1)
+	if c.r.version2 {
+		c.buffer.MustWriteUint64(uint64(desc.name.offset))
+
+		pos := c.buffer.Pos()
+		c.buffer.MustSetPos(desc.name.offset)
+		c.buffer.MustWriteString(desc.name.val)
+		c.buffer.MustSetPos(pos)
+	} else {
+		c.buffer.MustWriteString(desc.name.val)
+		c.buffer.MustSetPos(desc.descoffset + MaxV1MetricNameLength + 1)
+	}
+
 	c.buffer.MustWriteUint32(desc.id)
 	c.buffer.MustWriteInt32(int32(desc.t))
 	c.buffer.MustWriteInt32(int32(desc.sem))
@@ -521,7 +589,7 @@ func (c *PCPClient) MustStop() {
 }
 
 // Register is simply a shorthand for Registry().AddMetric
-func (c *PCPClient) Register(m Metric) error { return c.Registry().AddMetric(m) }
+func (c *PCPClient) Register(m Metric) error { return c.r.AddMetric(m) }
 
 // MustRegister is simply a Register that can panic
 func (c *PCPClient) MustRegister(m Metric) {
@@ -532,7 +600,7 @@ func (c *PCPClient) MustRegister(m Metric) {
 
 // RegisterIndom is simply a shorthand for Registry().AddInstanceDomain
 func (c *PCPClient) RegisterIndom(indom InstanceDomain) error {
-	return c.Registry().AddInstanceDomain(indom)
+	return c.r.AddInstanceDomain(indom)
 }
 
 // MustRegisterIndom is simply a RegisterIndom that can panic
@@ -544,7 +612,7 @@ func (c *PCPClient) MustRegisterIndom(indom InstanceDomain) {
 
 // RegisterString is simply a shorthand for Registry().AddMetricByString
 func (c *PCPClient) RegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
-	return c.Registry().AddMetricByString(str, val, s, t, u)
+	return c.r.AddMetricByString(str, val, s, t, u)
 }
 
 // MustRegisterString is simply a RegisterString that panics

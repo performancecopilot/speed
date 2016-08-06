@@ -11,17 +11,25 @@ import (
 var (
 	header    *mmvdump.Header
 	tocs      []*mmvdump.Toc
-	metrics   map[uint64]*mmvdump.Metric
+	metrics   map[uint64]mmvdump.Metric
 	values    map[uint64]*mmvdump.Value
-	instances map[uint64]*mmvdump.Instance
+	instances map[uint64]mmvdump.Instance
 	indoms    map[uint64]*mmvdump.InstanceDomain
 	strings   map[uint64]*mmvdump.String
 )
 
+func instanceName(m mmvdump.Instance) string {
+	if header.Version == 1 {
+		return string(m.(*mmvdump.Instance1).External[:])
+	}
+	return string(strings[m.(*mmvdump.Instance2).External].Payload[:])
+}
+
 func printInstance(offset uint64) {
 	i := instances[offset]
-	indom := indoms[i.Indom]
-	fmt.Printf("\t[%v/%v] instance = [%v/%v]\n", indom.Serial, offset, i.Internal, string(i.External[:]))
+	indom := indoms[i.Indom()]
+	Name := instanceName(i)
+	fmt.Printf("\t[%v/%v] instance = [%v/%v]\n", indom.Serial, offset, i.Internal(), Name)
 }
 
 func printInstanceDomain(offset uint64) {
@@ -41,29 +49,37 @@ func printInstanceDomain(offset uint64) {
 	}
 }
 
+func metricName(m mmvdump.Metric) string {
+	if header.Version == 1 {
+		return string(m.(*mmvdump.Metric1).Name[:])
+	}
+	return string(strings[m.(*mmvdump.Metric2).Name].Payload[:])
+}
+
 func printMetric(offset uint64) {
 	m := metrics[offset]
+	Name := metricName(m)
 
-	fmt.Printf("\t[%v/%v] %v\n", m.Item, offset, string(m.Name[:]))
-	fmt.Printf("\t\ttype=%v (0x%x), sem=%v (0x%x), pad=0x%x\n", m.Typ, int(m.Typ), m.Sem, int(m.Sem), m.Padding)
-	fmt.Printf("\t\tunits=%v\n", m.Unit)
+	fmt.Printf("\t[%v/%v] %v\n", m.Item(), offset, Name)
+	fmt.Printf("\t\ttype=%v (0x%x), sem=%v (0x%x), pad=0x%x\n", m.Typ(), int(m.Typ()), m.Sem(), int(m.Sem()), m.Padding())
+	fmt.Printf("\t\tunits=%v\n", m.Unit())
 
-	if m.Indom == mmvdump.NoIndom {
+	if m.Indom() == mmvdump.NoIndom {
 		fmt.Printf("\t\t(no indom)\n")
 	} else {
-		fmt.Printf("\t\tindom=%d\n", m.Indom)
+		fmt.Printf("\t\tindom=%d\n", m.Indom())
 	}
 
-	if m.Shorttext == 0 {
+	if m.ShortText() == 0 {
 		fmt.Printf("\t\t(no shorttext)\n")
 	} else {
-		fmt.Printf("\t\tshorttext=%v\n", string(strings[m.Shorttext].Payload[:]))
+		fmt.Printf("\t\tshorttext=%v\n", string(strings[m.ShortText()].Payload[:]))
 	}
 
-	if m.Longtext == 0 {
+	if m.LongText() == 0 {
 		fmt.Printf("\t\t(no longtext)\n")
 	} else {
-		fmt.Printf("\t\tlongtext=%v\n", string(strings[m.Longtext].Payload[:]))
+		fmt.Printf("\t\tlongtext=%v\n", string(strings[m.LongText()].Payload[:]))
 	}
 }
 
@@ -71,15 +87,15 @@ func printValue(offset uint64) {
 	v := values[offset]
 	m := metrics[v.Metric]
 
-	fmt.Printf("\t[%v/%v] %v", m.Item, offset, string(m.Name[:]))
+	fmt.Printf("\t[%v/%v] %v", m.Item(), offset, metricName(m))
 
 	var (
 		a   interface{}
 		err error
 	)
 
-	if m.Typ != mmvdump.StringType {
-		a, err = mmvdump.FixedVal(v.Val, m.Typ)
+	if m.Typ() != mmvdump.StringType {
+		a, err = mmvdump.FixedVal(v.Val, m.Typ())
 	} else {
 		v, ok := strings[uint64(v.Extra)]
 		if !ok {
@@ -88,9 +104,9 @@ func printValue(offset uint64) {
 		a = string(v.Payload[:])
 	}
 
-	if m.Indom != mmvdump.NoIndom {
+	if m.Indom() != mmvdump.NoIndom && m.Indom() != 0 {
 		i := instances[v.Instance]
-		fmt.Printf("[%d or \"%s\"]", i.Internal, string(i.External[:]))
+		fmt.Printf("[%d or \"%s\"]", i.Internal(), instanceName(i))
 	}
 
 	if err != nil {
@@ -126,6 +142,57 @@ func data(file string) []byte {
 	return data
 }
 
+func printComponents() {
+	var (
+		toff                         = mmvdump.HeaderLength
+		itemtype                     string
+		itemsize                     uint64
+		printItem                    func(uint64)
+		InstanceLength, MetricLength uint64
+	)
+
+	if header.Version == 1 {
+		InstanceLength = mmvdump.Instance1Length
+		MetricLength = mmvdump.Metric1Length
+	} else {
+		InstanceLength = mmvdump.Instance2Length
+		MetricLength = mmvdump.Metric2Length
+	}
+
+	for ti, toc := range tocs {
+		switch toc.Type {
+		case mmvdump.TocInstances:
+			itemtype = "instances"
+			itemsize = InstanceLength
+			printItem = printInstance
+		case mmvdump.TocIndoms:
+			itemtype = "indoms"
+			itemsize = mmvdump.InstanceDomainLength
+			printItem = printInstanceDomain
+		case mmvdump.TocMetrics:
+			itemtype = "metric"
+			itemsize = MetricLength
+			printItem = printMetric
+		case mmvdump.TocValues:
+			itemtype = "values"
+			itemsize = mmvdump.ValueLength
+			printItem = printValue
+		case mmvdump.TocStrings:
+			itemtype = "strings"
+			itemsize = mmvdump.StringLength
+			printItem = printString
+		}
+
+		fmt.Printf("TOC[%v], offset: %v, %v offset: %v (%v entries)\n", ti, toff, itemtype, toc.Offset, toc.Count)
+		for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+itemsize {
+			printItem(offset)
+		}
+		fmt.Println()
+
+		toff += mmvdump.TocLength
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -154,43 +221,5 @@ Flags     = 0x%x
 
 `, file, header.Version, header.G1, header.Toc, header.Cluster, header.Process, int(header.Flag))
 
-	toff := mmvdump.HeaderLength
-	var (
-		itemtype  string
-		itemsize  uint64
-		printItem func(uint64)
-	)
-
-	for ti, toc := range tocs {
-		switch toc.Type {
-		case mmvdump.TocInstances:
-			itemtype = "instances"
-			itemsize = mmvdump.InstanceLength
-			printItem = printInstance
-		case mmvdump.TocIndoms:
-			itemtype = "indoms"
-			itemsize = mmvdump.InstanceDomainLength
-			printItem = printInstanceDomain
-		case mmvdump.TocMetrics:
-			itemtype = "metric"
-			itemsize = mmvdump.MetricLength
-			printItem = printMetric
-		case mmvdump.TocValues:
-			itemtype = "values"
-			itemsize = mmvdump.ValueLength
-			printItem = printValue
-		case mmvdump.TocStrings:
-			itemtype = "strings"
-			itemsize = mmvdump.StringLength
-			printItem = printString
-		}
-
-		fmt.Printf("TOC[%v], offset: %v, %v offset: %v (%v entries)\n", ti, toff, itemtype, toc.Offset, toc.Count)
-		for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+itemsize {
-			printItem(offset)
-		}
-		fmt.Println()
-
-		toff += mmvdump.TocLength
-	}
+	printComponents()
 }
