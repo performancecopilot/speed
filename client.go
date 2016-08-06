@@ -15,9 +15,11 @@ import (
 const (
 	HeaderLength         = 40
 	TocLength            = 16
-	MetricLength         = 104
+	Metric1Length        = 104
+	Metric2Length        = 48
 	ValueLength          = 32
-	InstanceLength       = 80
+	Instance1Length      = 80
+	Instance2Length      = 24
 	InstanceDomainLength = 32
 	StringLength         = 256
 )
@@ -147,6 +149,16 @@ func (c *PCPClient) tocCount() int {
 
 // Length returns the byte length of data in the mmv file written by the current writer
 func (c *PCPClient) Length() int {
+	var (
+		InstanceLength = Instance1Length
+		MetricLength   = Metric1Length
+	)
+
+	if c.r.version2 {
+		InstanceLength = Instance2Length
+		MetricLength = Metric2Length
+	}
+
 	return HeaderLength +
 		(c.tocCount() * TocLength) +
 		(c.r.InstanceCount() * InstanceLength) +
@@ -164,11 +176,13 @@ func (c *PCPClient) initializeInstanceAndInstanceDomainOffsets(instanceoffset, i
 
 		for _, i := range indom.instances {
 			i.offset = instanceoffset
-			instanceoffset += InstanceLength
 
 			if c.r.version2 {
+				instanceoffset += Instance2Length
 				i.name.offset = *stringsoffset
 				*stringsoffset += StringLength
+			} else {
+				instanceoffset += Instance1Length
 			}
 		}
 
@@ -186,13 +200,15 @@ func (c *PCPClient) initializeInstanceAndInstanceDomainOffsets(instanceoffset, i
 
 func (c *PCPClient) initializeSingletonMetricOffsets(metric *PCPSingletonMetric, metricsoffset, valuesoffset, stringsoffset *int) {
 	metric.descoffset = *metricsoffset
-	*metricsoffset += MetricLength
 	metric.valueoffset = *valuesoffset
 	*valuesoffset += ValueLength
 
 	if c.r.version2 {
+		*metricsoffset += Metric2Length
 		metric.name.offset = *stringsoffset
 		*stringsoffset += StringLength
+	} else {
+		*metricsoffset += Metric1Length
 	}
 
 	if metric.t == StringType {
@@ -213,11 +229,13 @@ func (c *PCPClient) initializeSingletonMetricOffsets(metric *PCPSingletonMetric,
 
 func (c *PCPClient) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, metricsoffset, valuesoffset, stringsoffset *int) {
 	metric.descoffset = *metricsoffset
-	*metricsoffset += MetricLength
 
 	if c.r.version2 {
+		*metricsoffset += Metric2Length
 		metric.name.offset = *stringsoffset
 		*stringsoffset += StringLength
+	} else {
+		*metricsoffset += Metric1Length
 	}
 
 	for name := range metric.indom.instances {
@@ -242,6 +260,16 @@ func (c *PCPClient) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, m
 }
 
 func (c *PCPClient) initializeOffsets() {
+	var (
+		InstanceLength = Instance1Length
+		MetricLength   = Metric1Length
+	)
+
+	if c.r.version2 {
+		InstanceLength = Instance2Length
+		MetricLength = Metric2Length
+	}
+
 	indomoffset := HeaderLength + TocLength*c.tocCount()
 	instanceoffset := indomoffset + InstanceDomainLength*c.r.InstanceDomainCount()
 	metricsoffset := instanceoffset + InstanceLength*c.r.InstanceCount()
