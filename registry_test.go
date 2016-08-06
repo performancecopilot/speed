@@ -129,7 +129,7 @@ func TestStringInstanceConstruction(t *testing.T) {
 	}
 }
 
-func TestMMVV2MetricRegistration(t *testing.T) {
+func TestMMV2MetricRegistration(t *testing.T) {
 	r := NewPCPRegistry()
 
 	m, err := NewPCPSingletonMetric(10, "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz", Int32Type, CounterSemantics, OneUnit)
@@ -138,9 +138,13 @@ func TestMMVV2MetricRegistration(t *testing.T) {
 		return
 	}
 
-	r.AddMetric(m)
+	err = r.AddMetric(m)
+	if err != nil {
+		t.Errorf("cannot add metric to registry, error: %v", err)
+		return
+	}
 
-	if r.stringcount != 1 {
+	if r.StringCount() != 1 {
 		t.Errorf("expected the metric name to be registered in the strings section")
 	}
 }

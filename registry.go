@@ -106,7 +106,13 @@ func (r *PCPRegistry) MetricCount() int {
 func (r *PCPRegistry) ValuesCount() int { return r.valueCount }
 
 // StringCount returns the number of strings in the registry
-func (r *PCPRegistry) StringCount() int { return r.stringcount }
+func (r *PCPRegistry) StringCount() int {
+	if r.version2 {
+		return r.stringcount + r.MetricCount()
+	}
+
+	return r.stringcount
+}
 
 // HasInstanceDomain returns true if the registry already has an indom of the specified name
 func (r *PCPRegistry) HasInstanceDomain(name string) bool {
@@ -159,25 +165,53 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 	return nil
 }
 
+func (r *PCPRegistry) addMetric(m PCPMetric) {
+	r.metrics[m.Name()] = m
+
+	if len(m.Name()) > MaxV1MetricNameLength && !r.version2 {
+		r.version2 = true
+	}
+
+	currentValues := 1
+	if m.Indom() != nil {
+		currentValues = m.Indom().InstanceCount()
+	}
+
+	r.valueCount += currentValues
+	if m.Type() == StringType {
+		r.stringcount += currentValues
+	}
+
+	if m.ShortDescription() != "" {
+		r.stringcount++
+	}
+
+	if m.LongDescription() != "" {
+		r.stringcount++
+	}
+}
+
 // AddMetric will add a new metric to the current registry
 func (r *PCPRegistry) AddMetric(m Metric) error {
+	if r.mapped {
+		return errors.New("cannot add a metric when a mapping is active")
+	}
+
 	if r.HasMetric(m.Name()) {
-		return errors.New("Metric is already defined for the current registry")
+		return errors.New("metric is already defined for the current registry")
 	}
 
 	pcpm := m.(PCPMetric)
 
 	// if it is an indom metric
 	if pcpm.Indom() != nil && !r.HasInstanceDomain(pcpm.Indom().Name()) {
-		return errors.New("Instance Domain is not defined for current registry")
-	}
-
-	if r.mapped {
-		return errors.New("Cannot add a metric when a mapping is active")
+		return errors.New("the metric's instance domain is not defined for current registry")
 	}
 
 	r.metricslock.Lock()
 	defer r.metricslock.Unlock()
+
+	r.addMetric(pcpm)
 
 	log.WithFields(logrus.Fields{
 		"prefix":    "registry",
@@ -186,33 +220,6 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 		"unit":      m.Unit(),
 		"semantics": m.Semantics(),
 	}).Info("added new metric")
-
-	r.metrics[m.Name()] = pcpm
-
-	if r.version2 {
-		r.stringcount++
-	} else if len(m.Name()) > MaxV1MetricNameLength {
-		r.stringcount += len(r.metrics)
-		r.version2 = true
-	}
-
-	currentValues := 1
-	if pcpm.Indom() != nil {
-		currentValues = pcpm.Indom().InstanceCount()
-	}
-
-	r.valueCount += currentValues
-	if pcpm.Type() == StringType {
-		r.stringcount += currentValues
-	}
-
-	if pcpm.ShortDescription() != "" {
-		r.stringcount++
-	}
-
-	if pcpm.LongDescription() != "" {
-		r.stringcount++
-	}
 
 	return nil
 }
