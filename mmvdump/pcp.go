@@ -49,6 +49,7 @@ type Toc struct {
 type Instance interface {
 	Indom() uint64
 	Internal() int32
+	Padding() uint32
 }
 
 // InstanceBase defines the common contents in a valid instance
@@ -63,6 +64,9 @@ func (i InstanceBase) Indom() uint64 { return i.indom }
 
 // Internal returns the internal id
 func (i InstanceBase) Internal() int32 { return i.internal }
+
+// Padding returns the padding value
+func (i InstanceBase) Padding() uint32 { return i.padding }
 
 // Instance1 defines the contents in a valid mmv1 instance
 type Instance1 struct {

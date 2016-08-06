@@ -142,6 +142,57 @@ func data(file string) []byte {
 	return data
 }
 
+func printComponents() {
+	var (
+		toff                         = mmvdump.HeaderLength
+		itemtype                     string
+		itemsize                     uint64
+		printItem                    func(uint64)
+		InstanceLength, MetricLength uint64
+	)
+
+	if header.Version == 1 {
+		InstanceLength = mmvdump.Instance1Length
+		MetricLength = mmvdump.Metric1Length
+	} else {
+		InstanceLength = mmvdump.Instance2Length
+		MetricLength = mmvdump.Metric2Length
+	}
+
+	for ti, toc := range tocs {
+		switch toc.Type {
+		case mmvdump.TocInstances:
+			itemtype = "instances"
+			itemsize = InstanceLength
+			printItem = printInstance
+		case mmvdump.TocIndoms:
+			itemtype = "indoms"
+			itemsize = mmvdump.InstanceDomainLength
+			printItem = printInstanceDomain
+		case mmvdump.TocMetrics:
+			itemtype = "metric"
+			itemsize = MetricLength
+			printItem = printMetric
+		case mmvdump.TocValues:
+			itemtype = "values"
+			itemsize = mmvdump.ValueLength
+			printItem = printValue
+		case mmvdump.TocStrings:
+			itemtype = "strings"
+			itemsize = mmvdump.StringLength
+			printItem = printString
+		}
+
+		fmt.Printf("TOC[%v], offset: %v, %v offset: %v (%v entries)\n", ti, toff, itemtype, toc.Offset, toc.Count)
+		for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+itemsize {
+			printItem(offset)
+		}
+		fmt.Println()
+
+		toff += mmvdump.TocLength
+	}
+}
+
 func main() {
 	flag.Parse()
 
@@ -170,51 +221,5 @@ Flags     = 0x%x
 
 `, file, header.Version, header.G1, header.Toc, header.Cluster, header.Process, int(header.Flag))
 
-	toff := mmvdump.HeaderLength
-	var (
-		itemtype  string
-		itemsize  uint64
-		printItem func(uint64)
-	)
-
-	for ti, toc := range tocs {
-		switch toc.Type {
-		case mmvdump.TocInstances:
-			itemtype = "instances"
-			if header.Version == 1 {
-				itemsize = mmvdump.Instance1Length
-			} else {
-				itemsize = mmvdump.Instance2Length
-			}
-			printItem = printInstance
-		case mmvdump.TocIndoms:
-			itemtype = "indoms"
-			itemsize = mmvdump.InstanceDomainLength
-			printItem = printInstanceDomain
-		case mmvdump.TocMetrics:
-			itemtype = "metric"
-			if header.Version == 1 {
-				itemsize = mmvdump.Metric1Length
-			} else {
-				itemsize = mmvdump.Metric2Length
-			}
-			printItem = printMetric
-		case mmvdump.TocValues:
-			itemtype = "values"
-			itemsize = mmvdump.ValueLength
-			printItem = printValue
-		case mmvdump.TocStrings:
-			itemtype = "strings"
-			itemsize = mmvdump.StringLength
-			printItem = printString
-		}
-
-		fmt.Printf("TOC[%v], offset: %v, %v offset: %v (%v entries)\n", ti, toff, itemtype, toc.Offset, toc.Count)
-		for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+itemsize {
-			printItem(offset)
-		}
-		fmt.Println()
-
-		toff += mmvdump.TocLength
-	}
+	printComponents()
 }
