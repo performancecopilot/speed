@@ -108,7 +108,7 @@ func (r *PCPRegistry) ValuesCount() int { return r.valueCount }
 // StringCount returns the number of strings in the registry
 func (r *PCPRegistry) StringCount() int {
 	if r.version2 {
-		return r.stringcount + r.MetricCount()
+		return r.stringcount + r.MetricCount() + r.InstanceCount()
 	}
 
 	return r.stringcount
@@ -147,6 +147,14 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 
 	r.instanceDomains[indom.Name()] = indom.(*PCPInstanceDomain)
 	r.instanceCount += indom.InstanceCount()
+
+	if !r.version2 {
+		for _, v := range indom.Instances() {
+			if len(v) > MaxV1MetricNameLength {
+				r.version2 = true
+			}
+		}
+	}
 
 	log.WithFields(logrus.Fields{
 		"prefix":        "registry",
