@@ -633,7 +633,7 @@ func TestStringValueWriting(t *testing.T) {
 		return
 	}
 
-	voff, val = findValue(off, v)
+	_, val = findValue(off, v)
 	add := uint64(val.Extra)
 	if str, ok := s[add]; !ok {
 		t.Errorf("expected a string at address %v", add)

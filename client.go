@@ -306,7 +306,7 @@ func (c *PCPClient) writeHeaderBlock(genc chan int64, g2offc chan int) {
 	pos = c.writer.MustWriteInt32(int32(os.Getpid()), pos)
 
 	// cluster identifier
-	pos = c.writer.MustWriteUint32(c.clusterID, pos)
+	_ = c.writer.MustWriteUint32(c.clusterID, pos)
 
 	// NOTE: the order here is important, should be same as in start()
 	// or deadlock
@@ -377,7 +377,7 @@ func (c *PCPClient) writeTocBlock() {
 func (c *PCPClient) writeSingleToc(pos, identifier, count, offset int) {
 	pos = c.writer.MustWriteInt32(int32(identifier), pos)
 	pos = c.writer.MustWriteInt32(int32(count), pos)
-	pos = c.writer.MustWriteUint64(uint64(offset), pos)
+	_ = c.writer.MustWriteUint64(uint64(offset), pos)
 }
 
 func (c *PCPClient) writeInstanceDomains() {
@@ -439,7 +439,7 @@ func (c *PCPClient) writeInstanceDomain(indom *PCPInstanceDomain) {
 	}
 
 	off = c.writer.MustWriteUint64(uint64(so), off)
-	off = c.writer.MustWriteUint64(uint64(lo), off)
+	_ = c.writer.MustWriteUint64(uint64(lo), off)
 
 	wg.Wait()
 }
@@ -504,7 +504,7 @@ func (c *PCPClient) writeSingletonMetric(m *PCPSingletonMetric) {
 	}(off)
 
 	off = c.writer.MustWriteInt64(int64(doff), off+MaxDataValueSize)
-	off = c.writer.MustWriteInt64(0, off)
+	_ = c.writer.MustWriteInt64(0, off)
 
 	wg.Wait()
 }
@@ -530,7 +530,7 @@ func (c *PCPClient) writeInstanceMetric(m *PCPInstanceMetric) {
 		}(m.vals[name], off)
 
 		off = c.writer.MustWriteInt64(int64(doff), off+MaxDataValueSize)
-		off = c.writer.MustWriteInt64(int64(i.offset), off)
+		_ = c.writer.MustWriteInt64(int64(i.offset), off)
 	}
 
 	wg.Wait()
@@ -582,7 +582,7 @@ func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomai
 	}
 
 	off = c.writer.MustWriteUint64(uint64(so), off)
-	off = c.writer.MustWriteUint64(uint64(lo), off)
+	_ = c.writer.MustWriteUint64(uint64(lo), off)
 }
 
 func (c *PCPClient) writeValue(t MetricType, val interface{}, offset int) updateClosure {
