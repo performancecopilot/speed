@@ -424,18 +424,18 @@ func (c *PCPClient) writeInstanceDomain(indom *PCPInstanceDomain) {
 
 	so, lo := 0, 0
 
-	if indom.shortDescription.val != "" {
+	if indom.shortDescription != "" {
 		so = <-c.stringoffsetc
 		c.stringoffsetc <- so + StringLength
 
-		c.writer.MustWriteString(indom.shortDescription.val, so)
+		c.writer.MustWriteString(indom.shortDescription, so)
 	}
 
-	if indom.longDescription.val != "" {
+	if indom.longDescription != "" {
 		lo = <-c.stringoffsetc
 		c.stringoffsetc <- lo + StringLength
 
-		c.writer.MustWriteString(indom.longDescription.val, lo)
+		c.writer.MustWriteString(indom.longDescription, lo)
 	}
 
 	off = c.writer.MustWriteUint64(uint64(so), off)
@@ -456,9 +456,9 @@ func (c *PCPClient) writeInstance(i *pcpInstance, indomoff int, off int) {
 		c.stringoffsetc <- soff + StringLength
 
 		c.writer.MustWriteUint64(uint64(soff), off)
-		c.writer.MustWriteString(i.name.val, soff)
+		c.writer.MustWriteString(i.name, soff)
 	} else {
-		c.writer.MustWriteString(i.name.val, off)
+		c.writer.MustWriteString(i.name, off)
 	}
 }
 
@@ -544,11 +544,11 @@ func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomai
 		c.stringoffsetc <- noff + StringLength
 
 		off = c.writer.MustWriteUint64(uint64(noff), off)
-		c.writer.MustWriteString(desc.name.val, noff)
+		c.writer.MustWriteString(desc.name, noff)
 	} else {
 		c.metricoffsetc <- off + Metric1Length
 
-		c.writer.MustWriteString(desc.name.val, off)
+		c.writer.MustWriteString(desc.name, off)
 		off += MaxV1MetricNameLength + 1
 	}
 
@@ -567,18 +567,18 @@ func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomai
 
 	so, lo := 0, 0
 
-	if desc.shortDescription.val != "" {
+	if desc.shortDescription != "" {
 		so = <-c.stringoffsetc
 		c.stringoffsetc <- so + StringLength
 
-		c.writer.MustWriteString(desc.shortDescription.val, so)
+		c.writer.MustWriteString(desc.shortDescription, so)
 	}
 
-	if desc.longDescription.val != "" {
+	if desc.longDescription != "" {
 		lo = <-c.stringoffsetc
 		c.stringoffsetc <- lo + StringLength
 
-		c.writer.MustWriteString(desc.longDescription.val, lo)
+		c.writer.MustWriteString(desc.longDescription, lo)
 	}
 
 	off = c.writer.MustWriteUint64(uint64(so), off)
@@ -593,8 +593,6 @@ func (c *PCPClient) writeValue(t MetricType, val interface{}, offset int) update
 		c.stringoffsetc <- offset + StringLength
 
 		c.writer.MustWriteUint64(uint64(offset), pos)
-
-		val = val.(*pcpString).val
 	}
 
 	update := newupdateClosure(offset, c.writer)

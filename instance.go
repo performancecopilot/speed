@@ -5,7 +5,7 @@ type Instances map[string]interface{}
 
 // pcpInstance wraps a PCP compatible Instance
 type pcpInstance struct {
-	name   *pcpString
+	name   string
 	id     uint32
 	offset int
 }
@@ -17,10 +17,10 @@ type pcpInstance struct {
 // but instead added using the AddInstance method of InstanceDomain
 func newpcpInstance(name string) *pcpInstance {
 	return &pcpInstance{
-		newpcpString(name), hash(name, 0), 0,
+		name, hash(name, 0), 0,
 	}
 }
 
 func (i *pcpInstance) String() string {
-	return "Instance: " + i.name.val
+	return "Instance: " + i.name
 }

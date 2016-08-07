@@ -162,11 +162,11 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 		"instanceCount": indom.InstanceCount(),
 	}).Info("added new instance domain")
 
-	if indom.(*PCPInstanceDomain).shortDescription.val != "" {
+	if indom.(*PCPInstanceDomain).shortDescription != "" {
 		r.stringcount++
 	}
 
-	if indom.(*PCPInstanceDomain).longDescription.val != "" {
+	if indom.(*PCPInstanceDomain).longDescription != "" {
 		r.stringcount++
 	}
 
