@@ -60,7 +60,11 @@ func (w *ByteWriter) WriteVal(val interface{}, offset int) (int, error) {
 	}
 
 	buf := bytes.NewBuffer(make([]byte, 0))
-	binary.Write(buf, byteOrder, val)
+
+	err := binary.Write(buf, byteOrder, val)
+	if err != nil {
+		return 0, err
+	}
 
 	return w.Write(buf.Bytes(), offset)
 }
