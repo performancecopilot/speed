@@ -8,6 +8,10 @@ import (
 	"github.com/performancecopilot/speed/mmvdump"
 )
 
+/**
+ * TODO: figure out how to match instance metric values
+ */
+
 func TestMmvFileLocation(t *testing.T) {
 	l, present := config["PCP_TMP_DIR"]
 
@@ -37,7 +41,7 @@ func TestMmvFileLocation(t *testing.T) {
 }
 
 func TestTocCountAndLength(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Errorf("cannot create writer, error: %v", err)
 	}
@@ -92,7 +96,7 @@ func TestTocCountAndLength(t *testing.T) {
 }
 
 func TestMapping(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	_, err = c.RegisterString("test.1", 2, CounterSemantics, Int32Type, OneUnit)
 	if err != nil {
 		t.Error("Cannot Register")
@@ -122,15 +126,55 @@ func TestMapping(t *testing.T) {
 	EraseFileOnStop = false
 }
 
-func matchMetricDesc(desc *PCPMetricDesc, metric mmvdump.Metric, t *testing.T) {
-	if m, ok := metric.(*mmvdump.Metric1); ok {
-		if s := m.Name[:len(desc.name.val)]; desc.name.val != string(s) {
-			t.Errorf("expected metric name to be %v, got %v", desc.name.val, s)
+func findMetric(metric Metric, metrics map[uint64]mmvdump.Metric) (uint64, mmvdump.Metric) {
+	for off, m := range metrics {
+		if uint32(m.Item()) == metric.ID() {
+			return off, m
 		}
-	} else {
-		if off := metric.(*mmvdump.Metric2).Name; off != uint64(desc.name.offset) {
-			t.Errorf("expected instance offset to be %v, got %v", desc.name.offset, off)
+	}
+
+	return 0, nil
+}
+
+func findValue(off uint64, values map[uint64]*mmvdump.Value) (uint64, *mmvdump.Value) {
+	for voff, v := range values {
+		if uint64(v.Metric) == off {
+			return voff, v
 		}
+	}
+
+	return 0, nil
+}
+
+func findInstanceDomain(indom *PCPInstanceDomain, indoms map[uint64]*mmvdump.InstanceDomain) (uint64, *mmvdump.InstanceDomain) {
+	for off, in := range indoms {
+		if in.Serial == indom.id {
+			return off, in
+		}
+	}
+
+	return 0, nil
+}
+
+func matchString(s string, str *mmvdump.String, t *testing.T) {
+	sv := string(str.Payload[:len(s)])
+	if sv != s {
+		t.Errorf("expected %v, got %v", s, sv)
+	}
+}
+
+func matchName(n string, name [64]byte, t *testing.T) {
+	if s := name[:len(n)]; n != string(s) {
+		t.Errorf("expected name to be %v, got %v", n, s)
+	}
+}
+
+func matchMetricDesc(desc *PCPMetricDesc, metric mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
+	switch m := metric.(type) {
+	case *mmvdump.Metric1:
+		matchName(desc.name, m.Name, t)
+	case *mmvdump.Metric2:
+		matchString(desc.name, strings[m.Name], t)
 	}
 
 	if int32(metric.Sem()) != int32(desc.sem) {
@@ -145,32 +189,40 @@ func matchMetricDesc(desc *PCPMetricDesc, metric mmvdump.Metric, t *testing.T) {
 		t.Errorf("expected unit to be %v, got %v", desc.u, metric.Unit())
 	}
 
-	if metric.ShortText() != uint64(desc.shortDescription.offset) {
-		t.Errorf("expected shorttext to be %v, got %v", desc.shortDescription.offset, metric.ShortText())
+	if metric.ShortText() != 0 {
+		matchString(desc.shortDescription, strings[metric.ShortText()], t)
+	} else if desc.shortDescription != "" {
+		t.Error("expected short description to be \"\"")
 	}
 
-	if metric.LongText() != uint64(desc.longDescription.offset) {
-		t.Errorf("expected longtext to be %v, got %v", desc.longDescription.offset, metric.LongText())
+	if metric.LongText() != 0 {
+		matchString(desc.longDescription, strings[metric.LongText()], t)
+	} else if desc.longDescription != "" {
+		t.Error("expected long description to be \"\"")
 	}
 }
 
-func matchSingletonMetric(m *PCPSingletonMetric, metric mmvdump.Metric, t *testing.T) {
+func matchSingletonMetric(m *PCPSingletonMetric, metric mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
 	if metric.Indom() != mmvdump.NoIndom {
 		t.Error("expected indom to be null")
 	}
 
-	matchMetricDesc(m.PCPMetricDesc, metric, t)
+	matchMetricDesc(m.PCPMetricDesc, metric, strings, t)
 }
 
-func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, t *testing.T) {
-	if value.Metric != uint64(m.descoffset) {
-		t.Errorf("expected value's metric to be at %v", m.descoffset)
+func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, metrics map[uint64]mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
+	off, met := findMetric(m, metrics)
+	if met == nil {
+		t.Errorf("expected to find metric with name %v", m.Name())
+		return
+	}
+
+	if value.Metric != off {
+		t.Errorf("expected value's metric to be at %v", off)
 	}
 
 	if m.t == StringType {
-		if int64(m.val.(*pcpString).offset) != value.Extra {
-			t.Errorf("expected the string value to be written at %v, got %v", value.Extra, m.val.(*pcpString).offset)
-		}
+		matchString(m.val.(string), strings[uint64(value.Extra)], t)
 	} else {
 		if av, err := mmvdump.FixedVal(value.Val, mmvdump.Type(m.t)); err != nil || av != m.val {
 			t.Errorf("expected the value to be %v, got %v", m.val, av)
@@ -182,30 +234,15 @@ func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, t *testing
 	}
 }
 
-func matchString(s *pcpString, str *mmvdump.String, t *testing.T) {
-	if s == nil {
-		t.Error("expected PCPString to not be nil")
-	}
-
-	sv := string(str.Payload[:len(s.val)])
-	if sv != s.val {
-		t.Errorf("expected %v, got %v", s.val, sv)
-	}
-}
-
-func matchInstanceMetric(m *PCPInstanceMetric, met mmvdump.Metric, t *testing.T) {
+func matchInstanceMetric(m *PCPInstanceMetric, met mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
 	if uint32(met.Indom()) != m.indom.id {
 		t.Errorf("expected indom id to be %d, got %d", m.indom.id, met.Indom())
 	}
 
-	matchMetricDesc(m.PCPMetricDesc, met, t)
+	matchMetricDesc(m.PCPMetricDesc, met, strings, t)
 }
 
-func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCPInstanceMetric, t *testing.T) {
-	if v.Metric != uint64(met.descoffset) {
-		t.Errorf("expected value's metric to be at %v", met.descoffset)
-	}
-
+func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCPInstanceMetric, metrics map[uint64]mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
 	if v.Instance == 0 {
 		t.Errorf("expected instance offset to not be 0")
 	}
@@ -219,9 +256,7 @@ func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCP
 	}
 
 	if met.t == StringType {
-		if int64(i.val.(*pcpString).offset) != v.Extra {
-			t.Errorf("expected the string value to be written at %v, got %v", v.Extra, i.val.(*pcpString).offset)
-		}
+		matchString(i.val.(string), strings[uint64(v.Extra)], t)
 	} else {
 		if av, err := mmvdump.FixedVal(v.Val, mmvdump.Type(met.t)); err != nil || av != i.val {
 			t.Errorf("expected the value to be %v, got %v", i.val, av)
@@ -229,41 +264,44 @@ func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCP
 	}
 }
 
-func matchSingletonMetricAndValue(met *PCPSingletonMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, t *testing.T) {
-	metric, ok := metrics[uint64(met.descoffset)]
-	if !ok {
-		t.Errorf("expected a metric at offset %v", met.descoffset)
-	} else {
-		matchSingletonMetric(met, metric, t)
+func matchSingletonMetricAndValue(met *PCPSingletonMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, strings map[uint64]*mmvdump.String, t *testing.T) {
+	off, metric := findMetric(met, metrics)
+
+	if metric == nil {
+		t.Errorf("expected a metric of name %v", met.name)
+		return
 	}
 
-	mv, ok := values[uint64(met.valueoffset)]
-	if !ok {
-		t.Errorf("expected a value at offset %v", met.valueoffset)
+	matchSingletonMetric(met, metric, strings, t)
+
+	_, mv := findValue(off, values)
+	if mv == nil {
+		t.Errorf("expected a value for metric %v", met.name)
 	} else {
-		matchSingletonValue(met, mv, t)
+		matchSingletonValue(met, mv, metrics, strings, t)
 	}
 }
 
-func matchInstanceMetricAndValues(met *PCPInstanceMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, t *testing.T) {
-	metric, ok := metrics[uint64(met.descoffset)]
-	if !ok {
-		t.Errorf("expected a metric at offset %v", met.descoffset)
-	} else {
-		matchInstanceMetric(met, metric, t)
+func matchInstanceMetricAndValues(met *PCPInstanceMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, strings map[uint64]*mmvdump.String, t *testing.T) {
+	_, metric := findMetric(met, metrics)
+	if metric == nil {
+		t.Errorf("expected a metric of name %v", met.name)
+		return
 	}
 
-	for n, i := range met.vals {
-		mv, ok := values[uint64(i.offset)]
-		if !ok {
-			t.Errorf("expected a value at offset %v", i.offset)
-		} else {
-			matchInstanceValue(mv, i, n, met, t)
-		}
-	}
+	matchInstanceMetric(met, metric, strings, t)
+
+	// for n, i := range met.vals {
+	// 	_, mv := findValue(off, values)
+	// 	if mv == nil {
+	// 		t.Errorf("expected a value at offset %v", i.offset)
+	// 	} else {
+	// 		matchInstanceValue(mv, i, n, met, t)
+	// 	}
+	// }
 }
 
-func matchMetricsAndValues(metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, c *PCPClient, t *testing.T) {
+func matchMetricsAndValues(metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, strings map[uint64]*mmvdump.String, c *PCPClient, t *testing.T) {
 	if c.Registry().MetricCount() != len(metrics) {
 		t.Errorf("expected %v metrics, got %v", c.Registry().MetricCount(), len(metrics))
 	}
@@ -275,15 +313,15 @@ func matchMetricsAndValues(metrics map[uint64]mmvdump.Metric, values map[uint64]
 	for _, m := range c.r.metrics {
 		switch met := m.(type) {
 		case *PCPSingletonMetric:
-			matchSingletonMetricAndValue(met, metrics, values, t)
+			matchSingletonMetricAndValue(met, metrics, values, strings, t)
 		case *PCPInstanceMetric:
-			matchInstanceMetricAndValues(met, metrics, values, t)
+			matchInstanceMetricAndValues(met, metrics, values, strings, t)
 		}
 	}
 }
 
 func TestWritingSingletonMetric(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Error(err)
 		return
@@ -299,7 +337,7 @@ func TestWritingSingletonMetric(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	h, toc, m, v, i, ind, s, err := mmvdump.Dump(c.buffer.Bytes())
+	h, toc, m, v, i, ind, s, err := mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Error(err)
 		return
@@ -317,7 +355,7 @@ func TestWritingSingletonMetric(t *testing.T) {
 		t.Errorf("expected client to write a ProcessFlag, writing %v", MMVFlag(h.Flag))
 	}
 
-	matchMetricsAndValues(m, v, c, t)
+	matchMetricsAndValues(m, v, s, c, t)
 
 	// strings
 
@@ -325,7 +363,8 @@ func TestWritingSingletonMetric(t *testing.T) {
 		t.Error("expected one string")
 	}
 
-	matchString(met.shortDescription, s[uint64(met.shortDescription.offset)], t)
+	_, me := findMetric(met, m)
+	matchString(met.shortDescription, s[me.ShortText()], t)
 
 	// instances
 
@@ -341,7 +380,7 @@ func TestWritingSingletonMetric(t *testing.T) {
 }
 
 func TestUpdatingSingletonMetric(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Error(err)
 		return
@@ -352,8 +391,8 @@ func TestUpdatingSingletonMetric(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	_, _, metrics, values, _, _, _, err := mmvdump.Dump(c.buffer.Bytes())
-	matchMetricsAndValues(metrics, values, c, t)
+	_, _, metrics, values, _, _, strings, err := mmvdump.Dump(c.writer.Bytes())
+	matchMetricsAndValues(metrics, values, strings, c, t)
 
 	if m.(SingletonMetric).Val().(int32) != 10 {
 		t.Errorf("expected metric value to be 10")
@@ -361,55 +400,50 @@ func TestUpdatingSingletonMetric(t *testing.T) {
 
 	m.(SingletonMetric).MustSet(42)
 
-	_, _, metrics, values, _, _, _, err = mmvdump.Dump(c.buffer.Bytes())
+	_, _, metrics, values, _, _, strings, err = mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Errorf("cannot get dump, error: %v", err)
 	}
 
-	matchMetricsAndValues(metrics, values, c, t)
+	matchMetricsAndValues(metrics, values, strings, c, t)
 
 	if m.(SingletonMetric).Val().(int32) != 42 {
 		t.Errorf("expected metric value to be 42")
 	}
 }
 
-func matchInstance(i mmvdump.Instance, pi *pcpInstance, id *PCPInstanceDomain, t *testing.T) {
-	if i.Indom() != uint64(id.offset) {
-		t.Errorf("expected indom offset to be %d, got %d", i.Indom(), id.offset)
+func matchInstance(i mmvdump.Instance, pi *pcpInstance, id *PCPInstanceDomain, indoms map[uint64]*mmvdump.InstanceDomain, strings map[uint64]*mmvdump.String, t *testing.T) {
+	off, _ := findInstanceDomain(id, indoms)
+	if i.Indom() != off {
+		t.Errorf("expected indom offset to be %d, got %d", i.Indom(), off)
 	}
 
-	if in, ok := i.(*mmvdump.Instance1); ok {
-		if s := in.External[:len(pi.name.val)]; pi.name.val != string(s) {
-			t.Errorf("expected instance name to be %v, got %v", pi.name.val, s)
-		}
-	} else {
-		if off := i.(*mmvdump.Instance2).External; off != uint64(pi.name.offset) {
-			t.Errorf("expected instance offset to be %v, got %v", pi.name.val, off)
-		}
+	switch ins := i.(type) {
+	case *mmvdump.Instance1:
+		matchName(pi.name, ins.External, t)
+	case *mmvdump.Instance2:
+		matchString(pi.name, strings[ins.External], t)
 	}
 }
 
-func matchInstanceDomain(id *mmvdump.InstanceDomain, pid *PCPInstanceDomain, t *testing.T) {
+func matchInstanceDomain(id *mmvdump.InstanceDomain, pid *PCPInstanceDomain, strings map[uint64]*mmvdump.String, t *testing.T) {
 	if pid.InstanceCount() != int(id.Count) {
 		t.Errorf("expected %d instances in instance domain %v, got %d", pid.InstanceCount(), pid.Name(), id.Count)
 	}
 
-	if id.Offset != uint64(pid.instanceOffset) {
-		t.Errorf("expected instance offset to be %d, got %d", pid.instanceOffset, id.Offset)
+	if id.Shorttext != 0 {
+		matchString(pid.shortDescription, strings[id.Shorttext], t)
 	}
 
-	if id.Shorttext != uint64(pid.shortDescription.offset) {
-		t.Errorf("expected short description to be %d, got %d", pid.shortDescription.offset, id.Shorttext)
-	}
-
-	if id.Longtext != uint64(pid.longDescription.offset) {
-		t.Errorf("expected long description to be %d, got %d", pid.longDescription.offset, id.Longtext)
+	if id.Longtext != 0 {
+		matchString(pid.longDescription, strings[id.Longtext], t)
 	}
 }
 
 func matchInstancesAndInstanceDomains(
 	ins map[uint64]mmvdump.Instance,
 	ids map[uint64]*mmvdump.InstanceDomain,
+	ss map[uint64]*mmvdump.String,
 	c *PCPClient,
 	t *testing.T,
 ) {
@@ -418,24 +452,26 @@ func matchInstancesAndInstanceDomains(
 	}
 
 	for _, id := range c.r.instanceDomains {
-		if off := uint64(id.offset); ids[off] == nil {
-			t.Errorf("expected an instance domain at %d", id.offset)
+		_, ind := findInstanceDomain(id, ids)
+
+		if ind == nil {
+			t.Errorf("expected an instance domain of name %v", id.name)
 		} else {
-			matchInstanceDomain(ids[off], id, t)
+			matchInstanceDomain(ind, id, ss, t)
 		}
 
 		for _, i := range id.instances {
 			if ioff := uint64(i.offset); ins[ioff] == nil {
 				t.Errorf("expected an instance domain at %d", ioff)
 			} else {
-				matchInstance(ins[ioff], i, id, t)
+				matchInstance(ins[ioff], i, id, ids, ss, t)
 			}
 		}
 	}
 }
 
 func TestWritingInstanceMetric(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Error(err)
 		return
@@ -463,7 +499,7 @@ func TestWritingInstanceMetric(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	h, tocs, mets, vals, ins, ids, ss, err := mmvdump.Dump(c.buffer.Bytes())
+	h, tocs, mets, vals, ins, ids, ss, err := mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Error(err)
 		return
@@ -481,27 +517,21 @@ func TestWritingInstanceMetric(t *testing.T) {
 		t.Errorf("expected client to write a ProcessFlag, writing %v", MMVFlag(h.Flag))
 	}
 
-	matchMetricsAndValues(mets, vals, c, t)
+	matchMetricsAndValues(mets, vals, ss, c, t)
 
-	matchInstancesAndInstanceDomains(ins, ids, c, t)
+	matchInstancesAndInstanceDomains(ins, ids, ss, c, t)
 
 	// strings
 
-	if off := id.shortDescription.offset; ss[uint64(off)] != nil {
-		matchString(id.shortDescription, ss[uint64(off)], t)
-	} else {
-		t.Errorf("expected a string at offset %v", off)
-	}
+	_, ind := findInstanceDomain(id, ids)
+	matchString(id.shortDescription, ss[ind.Shorttext], t)
 
-	if off := m.longDescription.offset; ss[uint64(off)] != nil {
-		matchString(m.longDescription, ss[uint64(off)], t)
-	} else {
-		t.Errorf("expected a string at offset %v", off)
-	}
+	_, me := findMetric(m, mets)
+	matchString(m.longDescription, ss[me.LongText()], t)
 }
 
 func TestUpdatingInstanceMetric(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Error(err)
 		return
@@ -512,13 +542,13 @@ func TestUpdatingInstanceMetric(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	_, _, metrics, values, instances, indoms, _, err := mmvdump.Dump(c.buffer.Bytes())
+	_, _, metrics, values, instances, indoms, strings, err := mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Errorf("cannot get dump, error: %v", err)
 	}
 
-	matchMetricsAndValues(metrics, values, c, t)
-	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 
 	im := m.(InstanceMetric)
 
@@ -542,13 +572,13 @@ func TestUpdatingInstanceMetric(t *testing.T) {
 	im.MustSetInstance("a", 63)
 	im.MustSetInstance("b", 84)
 
-	_, _, metrics, values, instances, indoms, _, err = mmvdump.Dump(c.buffer.Bytes())
+	_, _, metrics, values, instances, indoms, strings, err = mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Errorf("cannot get dump, error: %v", err)
 	}
 
-	matchMetricsAndValues(metrics, values, c, t)
-	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 
 	v, err = im.ValInstance("a")
 	valmatcher(v, 63, err, "a")
@@ -558,7 +588,7 @@ func TestUpdatingInstanceMetric(t *testing.T) {
 }
 
 func TestStringValueWriting(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Error(err)
 		return
@@ -568,7 +598,7 @@ func TestStringValueWriting(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	h, _, _, v, _, _, s, err := mmvdump.Dump(c.buffer.Bytes())
+	h, _, m, v, _, _, s, err := mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Error(err)
 		return
@@ -579,9 +609,11 @@ func TestStringValueWriting(t *testing.T) {
 	}
 
 	sm := metric.(*PCPSingletonMetric)
+	off, _ := findMetric(sm, m)
+	voff, val := findValue(off, v)
 
-	if val, ok := v[uint64(sm.valueoffset)]; !ok {
-		t.Errorf("expected value at %v", sm.valueoffset)
+	if val == nil {
+		t.Errorf("expected value at %v", voff)
 	} else {
 		add := uint64(val.Extra)
 		if str, ok := s[add]; !ok {
@@ -595,13 +627,13 @@ func TestStringValueWriting(t *testing.T) {
 
 	sm.MustSet("spock")
 
-	_, _, _, v, _, _, s, err = mmvdump.Dump(c.buffer.Bytes())
+	_, _, _, v, _, _, s, err = mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Error(err)
 		return
 	}
 
-	val := v[uint64(sm.valueoffset)]
+	voff, val = findValue(off, v)
 	add := uint64(val.Extra)
 	if str, ok := s[add]; !ok {
 		t.Errorf("expected a string at address %v", add)
@@ -613,7 +645,7 @@ func TestStringValueWriting(t *testing.T) {
 }
 
 func TestWritingDifferentSemantics(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Errorf("cannot create client: %v", err)
 		return
@@ -632,18 +664,18 @@ func TestWritingDifferentSemantics(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	_, _, metrics, values, instances, indoms, _, err := mmvdump.Dump(c.buffer.Bytes())
+	_, _, metrics, values, instances, indoms, strings, err := mmvdump.Dump(c.writer.Bytes())
 
 	if err != nil {
 		t.Errorf("cannot create dump: %v", err)
 	}
 
-	matchMetricsAndValues(metrics, values, c, t)
-	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 }
 
 func TestWritingDifferentUnits(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Errorf("cannot create client: %v", err)
 		return
@@ -686,18 +718,18 @@ func TestWritingDifferentUnits(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	_, _, metrics, values, instances, indoms, _, err := mmvdump.Dump(c.buffer.Bytes())
+	_, _, metrics, values, instances, indoms, strings, err := mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Errorf("cannot get dump: %v", err)
 		return
 	}
 
-	matchMetricsAndValues(metrics, values, c, t)
-	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 }
 
 func TestWritingDifferentTypes(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Errorf("cannot create client: %v", err)
 		return
@@ -722,18 +754,18 @@ func TestWritingDifferentTypes(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	_, _, metrics, values, instances, indoms, _, err := mmvdump.Dump(c.buffer.Bytes())
+	_, _, metrics, values, instances, indoms, strings, err := mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Errorf("cannot get dump: %v", err)
 		return
 	}
 
-	matchMetricsAndValues(metrics, values, c, t)
-	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 }
 
 func TestMMV2MetricWriting(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Errorf("cannot create client, error: %v", err)
 		return
@@ -745,7 +777,7 @@ func TestMMV2MetricWriting(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	h, _, metrics, values, instances, indoms, strings, err := mmvdump.Dump(c.buffer.Bytes())
+	h, _, metrics, values, instances, indoms, strings, err := mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Errorf("cannot create dump, error: %v", err)
 	}
@@ -758,14 +790,15 @@ func TestMMV2MetricWriting(t *testing.T) {
 		t.Error("expected tocs to be 3")
 	}
 
-	matchMetricsAndValues(metrics, values, c, t)
-	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 
 	if len(strings) != 1 {
 		t.Error("expected one string in the dump")
 	}
 
-	off := m.(*PCPSingletonMetric).name.offset
+	_, met := findMetric(m, metrics)
+	off := met.(*mmvdump.Metric2).Name
 	if str, ok := strings[uint64(off)]; !ok {
 		t.Errorf("expected a string at offset %v", off)
 	} else if (string(str.Payload[:len(m.Name())])) != m.Name() {
@@ -774,7 +807,7 @@ func TestMMV2MetricWriting(t *testing.T) {
 }
 
 func TestMMV2InstanceWriting(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Errorf("cannot create client, error: %v", err)
 		return
@@ -790,7 +823,7 @@ func TestMMV2InstanceWriting(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	h, _, metrics, values, instances, indoms, strings, err := mmvdump.Dump(c.buffer.Bytes())
+	h, _, metrics, values, instances, indoms, strings, err := mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Errorf("cannot create dump, error: %v", err)
 	}
@@ -803,8 +836,8 @@ func TestMMV2InstanceWriting(t *testing.T) {
 		t.Error("expected tocs to be 3")
 	}
 
-	matchMetricsAndValues(metrics, values, c, t)
-	matchInstancesAndInstanceDomains(instances, indoms, c, t)
+	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 
 	if len(strings) != 2 {
 		t.Errorf("expected two strings in the dump")
