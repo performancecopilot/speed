@@ -27,7 +27,7 @@ func main() {
 		panic(err)
 	}
 
-	client, err := speed.NewPCPClient("singletoncounter", speed.ProcessFlag)
+	client, err := speed.NewPCPClient("singletoncounter")
 	if err != nil {
 		panic(err)
 	}
