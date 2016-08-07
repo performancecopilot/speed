@@ -1,4 +1,4 @@
-package bytebuffer
+package bytewriter
 
 import (
 	"fmt"
@@ -7,15 +7,15 @@ import (
 	"syscall"
 )
 
-// MemoryMappedBuffer is a ByteBuffer that is also mapped into memory
-type MemoryMappedBuffer struct {
-	*ByteBuffer
+// MemoryMappedWriter is a ByteBuffer that is also mapped into memory
+type MemoryMappedWriter struct {
+	*ByteWriter
 	loc  string // location of the memory mapped file
 	size int    // size in bytes
 }
 
-// NewMemoryMappedBuffer will create and return a new instance of a MemoryMappedBuffer
-func NewMemoryMappedBuffer(loc string, size int) (*MemoryMappedBuffer, error) {
+// NewMemoryMappedWriter will create and return a new instance of a MemoryMappedWriter
+func NewMemoryMappedWriter(loc string, size int) (*MemoryMappedWriter, error) {
 	if _, err := os.Stat(loc); err == nil {
 		err = os.Remove(loc)
 		if err != nil {
@@ -25,7 +25,7 @@ func NewMemoryMappedBuffer(loc string, size int) (*MemoryMappedBuffer, error) {
 
 	// ensure destination directory exists
 	dir := path.Dir(loc)
-	err := os.MkdirAll(dir, 0775)
+	err := os.MkdirAll(dir, 0700)
 	if err != nil {
 		return nil, err
 	}
@@ -48,15 +48,15 @@ func NewMemoryMappedBuffer(loc string, size int) (*MemoryMappedBuffer, error) {
 		return nil, err
 	}
 
-	return &MemoryMappedBuffer{
-		NewByteBufferSlice(b),
+	return &MemoryMappedWriter{
+		NewByteWriterSlice(b),
 		loc,
 		size,
 	}, nil
 }
 
 // Unmap will manually delete the memory mapping of a mapped buffer
-func (b *MemoryMappedBuffer) Unmap(removefile bool) error {
+func (b *MemoryMappedWriter) Unmap(removefile bool) error {
 	if err := syscall.Munmap(b.buffer); err != nil {
 		return err
 	}

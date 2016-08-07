@@ -6,7 +6,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/performancecopilot/speed/bytebuffer"
+	"github.com/performancecopilot/speed/bytewriter"
 )
 
 // MetricType is an enumerated type representing all valid types for a metric
@@ -118,13 +118,6 @@ func (m MetricType) resolveFloat(val interface{}) interface{} {
 }
 
 func (m MetricType) resolve(val interface{}) interface{} {
-	if sval, isString := val.(string); isString {
-		if len(sval) > StringLength {
-			sval = sval[:StringLength]
-		}
-		return newpcpString(sval)
-	}
-
 	val = m.resolveInt(val)
 	val = m.resolveFloat(val)
 
@@ -299,12 +292,11 @@ const PCPMetricItemBitLength = 10
 // when writing, this type is supposed to map directly to the pmDesc struct as defined in PCP core
 type PCPMetricDesc struct {
 	id                                uint32          // unique metric id
-	name                              *pcpString      // the name
+	name                              string          // the name
 	t                                 MetricType      // the type of a metric
 	sem                               MetricSemantics // the semantics
 	u                                 MetricUnit      // the unit
-	descoffset                        int             // memory storage offset for the metric description
-	shortDescription, longDescription *pcpString
+	shortDescription, longDescription string
 }
 
 // newPCPMetricDesc creates a new Metric Description wrapper type
@@ -333,8 +325,8 @@ func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, d
 
 	return &PCPMetricDesc{
 		hash(n, PCPMetricItemBitLength),
-		newpcpString(n), t, s, u, 0,
-		newpcpString(shortdesc), newpcpString(longdesc),
+		n, t, s, u,
+		shortdesc, longdesc,
 	}, nil
 }
 
@@ -343,7 +335,7 @@ func (md *PCPMetricDesc) ID() uint32 { return md.id }
 
 // Name returns the generated id for PCPMetric
 func (md *PCPMetricDesc) Name() string {
-	return md.name.val
+	return md.name
 }
 
 // Semantics returns the current stored value for PCPMetric
@@ -356,19 +348,14 @@ func (md *PCPMetricDesc) Unit() MetricUnit { return md.u }
 func (md *PCPMetricDesc) Type() MetricType { return md.t }
 
 // ShortDescription returns the shortdesc value
-func (md *PCPMetricDesc) ShortDescription() string { return md.shortDescription.val }
+func (md *PCPMetricDesc) ShortDescription() string { return md.shortDescription }
 
 // LongDescription returns the longdesc value
-func (md *PCPMetricDesc) LongDescription() string { return md.longDescription.val }
+func (md *PCPMetricDesc) LongDescription() string { return md.longDescription }
 
 // Description returns the description for PCPMetric
 func (md *PCPMetricDesc) Description() string {
-	sd := md.shortDescription
-	ld := md.longDescription
-	if len(ld.val) > 0 {
-		return sd.val + "\n\n" + ld.val
-	}
-	return sd.val
+	return md.shortDescription + "\n" + md.longDescription
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -377,14 +364,14 @@ func (md *PCPMetricDesc) Description() string {
 type updateClosure func(interface{}) error
 
 // newupdateClosure creates a new update closure for an offset, type and buffer
-func newupdateClosure(offset int, buffer bytebuffer.Buffer) updateClosure {
+func newupdateClosure(offset int, writer bytewriter.Writer) updateClosure {
 	return func(val interface{}) error {
 		if _, isString := val.(string); isString {
-			buffer.MustSetPos(offset)
-			buffer.MustWrite(make([]byte, StringLength))
+			writer.MustWrite(make([]byte, StringLength), offset)
 		}
-		buffer.MustSetPos(offset)
-		return buffer.WriteVal(val)
+
+		_, err := writer.WriteVal(val, offset)
+		return err
 	}
 }
 
@@ -395,9 +382,8 @@ func newupdateClosure(offset int, buffer bytebuffer.Buffer) updateClosure {
 type PCPSingletonMetric struct {
 	sync.RWMutex
 	*PCPMetricDesc
-	val         interface{}
-	valueoffset int
-	update      updateClosure
+	val    interface{}
+	update updateClosure
 }
 
 // NewPCPSingletonMetric creates a new instance of PCPSingletonMetric
@@ -417,7 +403,7 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 
 	return &PCPSingletonMetric{
 		sync.RWMutex{},
-		d, val, 0, nil,
+		d, val, nil,
 	}, nil
 }
 
@@ -425,10 +411,6 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 func (m *PCPSingletonMetric) Val() interface{} {
 	m.RLock()
 	defer m.RUnlock()
-
-	if m.t == StringType {
-		return m.val.(*pcpString).val
-	}
 
 	return m.val
 }
@@ -476,12 +458,11 @@ func (m *PCPSingletonMetric) String() string {
 
 type instanceValue struct {
 	val    interface{}
-	offset int
 	update updateClosure
 }
 
 func newinstanceValue(val interface{}) *instanceValue {
-	return &instanceValue{val, 0, nil}
+	return &instanceValue{val, nil}
 }
 
 // PCPInstanceMetric represents a PCPMetric that can have multiple values
@@ -543,11 +524,6 @@ func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
 	defer m.RUnlock()
 
 	ans := m.vals[instance].val
-
-	if m.t == StringType {
-		return ans.(*pcpString).val, nil
-	}
-
 	return ans, nil
 }
 

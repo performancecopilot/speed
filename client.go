@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/performancecopilot/speed/bytebuffer"
+	"github.com/performancecopilot/speed/bytewriter"
 )
 
 // byte lengths of different components in an mmv file
@@ -34,7 +34,7 @@ const MaxDataValueSize = 16
 // EraseFileOnStop if set to true, will also delete the memory mapped file
 var EraseFileOnStop = false
 
-var writerlog = log.WithField("prefix", "writer")
+var clientlogger = log.WithField("prefix", "writer")
 
 // Client defines the interface for a type that can talk to an instrumentation agent
 type Client interface {
@@ -103,34 +103,55 @@ const (
 // PCPClient implements a client that can generate instrumentation for PCP
 type PCPClient struct {
 	sync.Mutex
-	loc       string            // absolute location of the mmv file
-	clusterID uint32            // cluster identifier for the writer
-	flag      MMVFlag           // write flag
-	r         *PCPRegistry      // current registry
-	buffer    bytebuffer.Buffer // current Buffer
+
+	loc       string  // absolute location of the mmv file
+	clusterID uint32  // cluster identifier for the writer
+	flag      MMVFlag // write flag
+
+	r *PCPRegistry // current registry
+
+	writer bytewriter.Writer
+
+	instanceoffsetc chan int
+	indomoffsetc    chan int
+	metricoffsetc   chan int
+	valueoffsetc    chan int
+	stringoffsetc   chan int
 }
 
 // NewPCPClient initializes a new PCPClient object
-func NewPCPClient(name string, flag MMVFlag) (*PCPClient, error) {
+func NewPCPClient(name string) (*PCPClient, error) {
 	fileLocation, err := mmvFileLocation(name)
 	if err != nil {
 		return nil, err
 	}
 
-	writerlog.WithField("location", fileLocation).Info("deduced location to write the MMV file")
+	clientlogger.WithField("location", fileLocation).Info("deduced location to write the MMV file")
 
 	return &PCPClient{
 		loc:       fileLocation,
 		r:         NewPCPRegistry(),
 		clusterID: hash(name, PCPClusterIDBitLength),
-		flag:      flag,
-		buffer:    nil,
+		flag:      ProcessFlag,
 	}, nil
 }
 
 // Registry returns a writer's registry
 func (c *PCPClient) Registry() Registry {
 	return c.r
+}
+
+// SetFlag sets the MMVflag for the client
+func (c *PCPClient) SetFlag(flag MMVFlag) error {
+	c.Lock()
+	defer c.Unlock()
+
+	if c.r.mapped {
+		return errors.New("cannot set mmv flag for an active client")
+	}
+
+	c.flag = flag
+	return nil
 }
 
 func (c *PCPClient) tocCount() int {
@@ -168,98 +189,28 @@ func (c *PCPClient) Length() int {
 		(c.r.StringCount() * StringLength)
 }
 
-func (c *PCPClient) initializeInstanceAndInstanceDomainOffsets(instanceoffset, indomoffset int, stringsoffset *int) {
-	for _, indom := range c.r.instanceDomains {
-		indom.offset = indomoffset
-		indom.instanceOffset = instanceoffset
-		indomoffset += InstanceDomainLength
+// Start dumps existing registry data
+func (c *PCPClient) Start() error {
+	c.Lock()
+	defer c.Unlock()
 
-		for _, i := range indom.instances {
-			i.offset = instanceoffset
+	l := c.Length()
 
-			if c.r.version2 {
-				instanceoffset += Instance2Length
-				i.name.offset = *stringsoffset
-				*stringsoffset += StringLength
-			} else {
-				instanceoffset += Instance1Length
-			}
-		}
-
-		if indom.shortDescription.val != "" {
-			indom.shortDescription.offset = *stringsoffset
-			*stringsoffset += StringLength
-		}
-
-		if indom.longDescription.val != "" {
-			indom.longDescription.offset = *stringsoffset
-			*stringsoffset += StringLength
-		}
+	writer, err := bytewriter.NewMemoryMappedWriter(c.loc, l)
+	if err != nil {
+		clientlogger.WithField("error", err).Error("cannot create MemoryMappedBuffer")
+		return err
 	}
+	c.writer = writer
+
+	c.start()
+
+	c.r.mapped = true
+
+	return nil
 }
 
-func (c *PCPClient) initializeSingletonMetricOffsets(metric *PCPSingletonMetric, metricsoffset, valuesoffset, stringsoffset *int) {
-	metric.descoffset = *metricsoffset
-	metric.valueoffset = *valuesoffset
-	*valuesoffset += ValueLength
-
-	if c.r.version2 {
-		*metricsoffset += Metric2Length
-		metric.name.offset = *stringsoffset
-		*stringsoffset += StringLength
-	} else {
-		*metricsoffset += Metric1Length
-	}
-
-	if metric.t == StringType {
-		metric.val.(*pcpString).offset = *stringsoffset
-		*stringsoffset += StringLength
-	}
-
-	if metric.shortDescription.val != "" {
-		metric.shortDescription.offset = *stringsoffset
-		*stringsoffset += StringLength
-	}
-
-	if metric.longDescription.val != "" {
-		metric.longDescription.offset = *stringsoffset
-		*stringsoffset += StringLength
-	}
-}
-
-func (c *PCPClient) initializeInstanceMetricOffsets(metric *PCPInstanceMetric, metricsoffset, valuesoffset, stringsoffset *int) {
-	metric.descoffset = *metricsoffset
-
-	if c.r.version2 {
-		*metricsoffset += Metric2Length
-		metric.name.offset = *stringsoffset
-		*stringsoffset += StringLength
-	} else {
-		*metricsoffset += Metric1Length
-	}
-
-	for name := range metric.indom.instances {
-		metric.vals[name].offset = *valuesoffset
-		*valuesoffset += ValueLength
-
-		if metric.t == StringType {
-			metric.vals[name].val.(*pcpString).offset = *stringsoffset
-			*stringsoffset += StringLength
-		}
-	}
-
-	if metric.shortDescription.val != "" {
-		metric.shortDescription.offset = *stringsoffset
-		*stringsoffset += StringLength
-	}
-
-	if metric.longDescription.val != "" {
-		metric.longDescription.offset = *stringsoffset
-		*stringsoffset += StringLength
-	}
-}
-
-func (c *PCPClient) initializeOffsets() {
+func (c *PCPClient) start() {
 	var (
 		InstanceLength = Instance1Length
 		MetricLength   = Metric1Length
@@ -270,86 +221,124 @@ func (c *PCPClient) initializeOffsets() {
 		MetricLength = Metric2Length
 	}
 
-	indomoffset := HeaderLength + TocLength*c.tocCount()
-	instanceoffset := indomoffset + InstanceDomainLength*c.r.InstanceDomainCount()
-	metricsoffset := instanceoffset + InstanceLength*c.r.InstanceCount()
-	valuesoffset := metricsoffset + MetricLength*c.r.MetricCount()
-	stringsoffset := valuesoffset + ValueLength*c.r.ValuesCount()
+	c.r.indomoffset = HeaderLength + TocLength*c.tocCount()
+	c.r.instanceoffset = c.r.indomoffset + InstanceDomainLength*c.r.InstanceDomainCount()
+	c.r.metricsoffset = c.r.instanceoffset + InstanceLength*c.r.InstanceCount()
+	c.r.valuesoffset = c.r.metricsoffset + MetricLength*c.r.MetricCount()
+	c.r.stringsoffset = c.r.valuesoffset + ValueLength*c.r.ValuesCount()
 
-	c.r.indomoffset = indomoffset
-	c.r.instanceoffset = instanceoffset
-	c.r.metricsoffset = metricsoffset
-	c.r.valuesoffset = valuesoffset
-	c.r.stringsoffset = stringsoffset
+	c.instanceoffsetc = make(chan int, 1)
+	c.indomoffsetc = make(chan int, 1)
+	c.metricoffsetc = make(chan int, 1)
+	c.valueoffsetc = make(chan int, 1)
+	c.stringoffsetc = make(chan int, 1)
 
-	c.initializeInstanceAndInstanceDomainOffsets(instanceoffset, indomoffset, &stringsoffset)
-
-	for _, metric := range c.r.metrics {
-		switch m := metric.(type) {
-		case *PCPSingletonMetric:
-			c.initializeSingletonMetricOffsets(m, &metricsoffset, &valuesoffset, &stringsoffset)
-		case *PCPInstanceMetric:
-			c.initializeInstanceMetricOffsets(m, &metricsoffset, &valuesoffset, &stringsoffset)
-		}
+	if c.r.InstanceDomainCount() > 0 {
+		c.instanceoffsetc <- c.r.instanceoffset
+		c.indomoffsetc <- c.r.indomoffset
 	}
+
+	if c.r.MetricCount() > 0 {
+		c.metricoffsetc <- c.r.metricsoffset
+		c.valueoffsetc <- c.r.valuesoffset
+	}
+
+	if c.r.StringCount() > 0 {
+		c.stringoffsetc <- c.r.stringsoffset
+	}
+
+	genc, g2offc := make(chan int64), make(chan int)
+
+	go c.writeHeaderBlock(genc, g2offc)
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		c.writeTocBlock()
+		wg.Done()
+	}()
+
+	gen, g2off := <-genc, <-g2offc
+
+	go func() {
+		// instance domains **have** to be written before metrics
+		// as metrics need instance offsets and multiple metrics
+		// can have the same indom, so they need to be cached
+		c.writeInstanceDomains()
+		c.writeMetrics()
+		wg.Done()
+	}()
+
+	wg.Wait()
+
+	// must *always* be the last thing to happen
+	_ = c.writer.MustWriteInt64(gen, g2off)
 }
 
-func (c *PCPClient) writeHeaderBlock() (generation2offset int, generation int64) {
+func (c *PCPClient) writeHeaderBlock(genc chan int64, g2offc chan int) {
 	// tag
-	c.buffer.MustWriteString("MMV")
-	c.buffer.MustSetPos(c.buffer.Pos() + 1) // extra null byte is needed and \0 isn't a valid escape character in go
+	c.writer.MustWriteString("MMV", 0)
+
+	var pos int
 
 	// version
 	if c.r.version2 {
-		c.buffer.MustWriteUint32(2)
+		pos = c.writer.MustWriteUint32(2, 4)
 	} else {
-		c.buffer.MustWriteUint32(1)
+		pos = c.writer.MustWriteUint32(1, 4)
 	}
 
 	// generation
-	generation = time.Now().Unix()
-	c.buffer.MustWriteInt64(generation)
+	gen := time.Now().Unix()
+	pos = c.writer.MustWriteInt64(gen, pos)
 
-	generation2offset = c.buffer.Pos()
-
-	c.buffer.MustWriteInt64(0)
+	g2off := pos
+	pos = c.writer.MustWriteInt64(0, pos)
 
 	// tocCount
-	c.buffer.MustWriteInt32(int32(c.tocCount()))
+	pos = c.writer.MustWriteInt32(int32(c.tocCount()), pos)
 
 	// flag mask
-	c.buffer.MustWriteInt32(int32(c.flag))
+	pos = c.writer.MustWriteInt32(int32(c.flag), pos)
 
 	// process identifier
-	c.buffer.MustWriteInt32(int32(os.Getpid()))
+	pos = c.writer.MustWriteInt32(int32(os.Getpid()), pos)
 
 	// cluster identifier
-	c.buffer.MustWriteUint32(c.clusterID)
+	_ = c.writer.MustWriteUint32(c.clusterID, pos)
+
+	// NOTE: the order here is important, should be same as in start()
+	// or deadlock
+	genc <- gen
+	g2offc <- g2off
 
 	return
 }
 
-func (c *PCPClient) writeSingleToc(pos, identifier, count, offset int) {
-	c.buffer.MustSetPos(pos)
-	c.buffer.MustWriteInt32(int32(identifier))
-	c.buffer.MustWriteInt32(int32(count))
-	c.buffer.MustWriteUint64(uint64(offset))
-}
-
 func (c *PCPClient) writeTocBlock() {
+	var wg sync.WaitGroup
 	tocpos := HeaderLength
+
+	wg.Add(c.tocCount())
 
 	// instance domains toc
 	if c.r.InstanceDomainCount() > 0 {
-		// 1 is the identifier for instance domains
-		c.writeSingleToc(tocpos, 1, c.r.InstanceDomainCount(), c.r.indomoffset)
+		go func(pos int) {
+			// 1 is the identifier for instance domains
+			c.writeSingleToc(pos, 1, c.r.InstanceDomainCount(), c.r.indomoffset)
+			wg.Done()
+		}(tocpos)
 		tocpos += TocLength
 	}
 
 	// instances toc
 	if c.r.InstanceCount() > 0 {
-		// 2 is the identifier for instances
-		c.writeSingleToc(tocpos, 2, c.r.InstanceCount(), c.r.instanceoffset)
+		go func(pos int) {
+			// 2 is the identifier for instances
+			c.writeSingleToc(pos, 2, c.r.InstanceCount(), c.r.instanceoffset)
+			wg.Done()
+		}(tocpos)
 		tocpos += TocLength
 	}
 
@@ -359,194 +348,257 @@ func (c *PCPClient) writeTocBlock() {
 		metricsoffset, valuesoffset = 0, 0
 	}
 
-	// 3 is the identifier for metrics
-	c.writeSingleToc(tocpos, 3, c.r.MetricCount(), metricsoffset)
+	go func(pos int) {
+		// 3 is the identifier for metrics
+		c.writeSingleToc(pos, 3, c.r.MetricCount(), metricsoffset)
+		wg.Done()
+	}(tocpos)
 	tocpos += TocLength
 
-	// 4 is the identifier for values
-	c.writeSingleToc(tocpos, 4, c.r.ValuesCount(), valuesoffset)
+	go func(pos int) {
+		// 4 is the identifier for values
+		c.writeSingleToc(pos, 4, c.r.ValuesCount(), valuesoffset)
+		wg.Done()
+	}(tocpos)
 	tocpos += TocLength
 
 	// strings toc
 	if c.r.StringCount() > 0 {
-		// 5 is the identifier for strings
-		c.writeSingleToc(tocpos, 5, c.r.StringCount(), c.r.stringsoffset)
+		go func(pos int) {
+			// 5 is the identifier for strings
+			c.writeSingleToc(pos, 5, c.r.StringCount(), c.r.stringsoffset)
+			wg.Done()
+		}(tocpos)
 	}
+
+	wg.Wait()
 }
 
-func (c *PCPClient) writeInstanceAndInstanceDomainBlock() {
+func (c *PCPClient) writeSingleToc(pos, identifier, count, offset int) {
+	pos = c.writer.MustWriteInt32(int32(identifier), pos)
+	pos = c.writer.MustWriteInt32(int32(count), pos)
+	_ = c.writer.MustWriteUint64(uint64(offset), pos)
+}
+
+func (c *PCPClient) writeInstanceDomains() {
+	var wg sync.WaitGroup
+	wg.Add(c.r.InstanceDomainCount())
+
 	for _, indom := range c.r.instanceDomains {
-		c.buffer.MustSetPos(indom.offset)
-		c.buffer.MustWriteUint32(indom.ID())
-		c.buffer.MustWriteInt32(int32(indom.InstanceCount()))
-		c.buffer.MustWriteInt64(int64(indom.instanceOffset))
-
-		so, lo := indom.shortDescription.offset, indom.longDescription.offset
-		c.buffer.MustWriteInt64(int64(so))
-		c.buffer.MustWriteInt64(int64(lo))
-
-		if so != 0 {
-			c.buffer.MustSetPos(so)
-			c.buffer.MustWriteString(indom.shortDescription.val)
-		}
-
-		if lo != 0 {
-			c.buffer.MustSetPos(lo)
-			c.buffer.MustWriteString(indom.longDescription.val)
-		}
-
-		for _, i := range indom.instances {
-			c.buffer.MustSetPos(i.offset)
-			c.buffer.MustWriteInt64(int64(indom.offset))
-			c.buffer.MustWriteInt32(0)
-			c.buffer.MustWriteUint32(i.id)
-
-			if c.r.version2 {
-				c.buffer.MustWriteUint64(uint64(i.name.offset))
-
-				pos := c.buffer.Pos()
-				c.buffer.MustSetPos(i.name.offset)
-				c.buffer.MustWriteString(i.name.val)
-				c.buffer.MustSetPos(pos)
-			} else {
-				c.buffer.MustWriteString(i.name.val)
-			}
-		}
+		go func(indom *PCPInstanceDomain) {
+			c.writeInstanceDomain(indom)
+			wg.Done()
+		}(indom)
 	}
+
+	wg.Wait()
 }
 
-func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomain) {
-	c.buffer.MustSetPos(desc.descoffset)
+func (c *PCPClient) writeInstanceDomain(indom *PCPInstanceDomain) {
+	off := <-c.indomoffsetc
+	c.indomoffsetc <- off + InstanceDomainLength
+
+	InstanceLength := Instance1Length
+	if c.r.version2 {
+		InstanceLength = Instance2Length
+	}
+
+	inoff := off
+	ioff := <-c.instanceoffsetc
+	c.instanceoffsetc <- ioff + InstanceLength*indom.InstanceCount()
+
+	var wg sync.WaitGroup
+	wg.Add(indom.InstanceCount())
+
+	off = c.writer.MustWriteUint32(indom.id, off)
+	off = c.writer.MustWriteInt32(int32(indom.InstanceCount()), off)
+	off = c.writer.MustWriteInt64(int64(ioff), off)
+
+	for _, i := range indom.instances {
+		go func(i *pcpInstance, offset int) {
+			c.writeInstance(i, inoff, offset)
+			wg.Done()
+		}(i, ioff)
+		ioff += InstanceLength
+	}
+
+	so, lo := 0, 0
+
+	if indom.shortDescription != "" {
+		so = <-c.stringoffsetc
+		c.stringoffsetc <- so + StringLength
+
+		c.writer.MustWriteString(indom.shortDescription, so)
+	}
+
+	if indom.longDescription != "" {
+		lo = <-c.stringoffsetc
+		c.stringoffsetc <- lo + StringLength
+
+		c.writer.MustWriteString(indom.longDescription, lo)
+	}
+
+	off = c.writer.MustWriteUint64(uint64(so), off)
+	_ = c.writer.MustWriteUint64(uint64(lo), off)
+
+	wg.Wait()
+}
+
+func (c *PCPClient) writeInstance(i *pcpInstance, indomoff int, off int) {
+	i.offset = off
+
+	off = c.writer.MustWriteInt64(int64(indomoff), off)
+	off = c.writer.MustWriteInt32(0, off)
+	off = c.writer.MustWriteUint32(i.id, off)
 
 	if c.r.version2 {
-		c.buffer.MustWriteUint64(uint64(desc.name.offset))
+		soff := <-c.stringoffsetc
+		c.stringoffsetc <- soff + StringLength
 
-		pos := c.buffer.Pos()
-		c.buffer.MustSetPos(desc.name.offset)
-		c.buffer.MustWriteString(desc.name.val)
-		c.buffer.MustSetPos(pos)
+		c.writer.MustWriteUint64(uint64(soff), off)
+		c.writer.MustWriteString(i.name, soff)
 	} else {
-		c.buffer.MustWriteString(desc.name.val)
-		c.buffer.MustSetPos(desc.descoffset + MaxV1MetricNameLength + 1)
-	}
-
-	c.buffer.MustWriteUint32(desc.id)
-	c.buffer.MustWriteInt32(int32(desc.t))
-	c.buffer.MustWriteInt32(int32(desc.sem))
-	c.buffer.MustWriteUint32(desc.u.PMAPI())
-	if indom != nil {
-		c.buffer.MustWriteUint32(indom.ID())
-	} else {
-		c.buffer.MustWriteInt32(-1)
-	}
-	c.buffer.MustWriteInt32(0)
-
-	so, lo := desc.shortDescription.offset, desc.longDescription.offset
-	c.buffer.MustWriteInt64(int64(so))
-	c.buffer.MustWriteInt64(int64(lo))
-
-	if so != 0 {
-		c.buffer.MustSetPos(so)
-		c.buffer.MustWriteString(desc.shortDescription.val)
-	}
-
-	if lo != 0 {
-		c.buffer.MustSetPos(lo)
-		c.buffer.MustWriteString(desc.longDescription.val)
+		c.writer.MustWriteString(i.name, off)
 	}
 }
 
-func (c *PCPClient) writeInstance(t MetricType, val interface{}, valueoffset int) updateClosure {
-	offset := valueoffset
+func (c *PCPClient) writeMetrics() {
+	var wg sync.WaitGroup
 
-	if t == StringType {
-		c.buffer.MustSetPos(offset)
-		c.buffer.MustWriteUint64(StringLength - 1)
-		offset = val.(*pcpString).offset
-		c.buffer.MustWriteUint64(uint64(offset))
-		val = val.(*pcpString).val
+	wg.Add(c.r.MetricCount())
+	for _, m := range c.r.metrics {
+		switch metric := m.(type) {
+		case *PCPSingletonMetric:
+			go func(metric *PCPSingletonMetric) {
+				c.writeSingletonMetric(metric)
+				wg.Done()
+			}(metric)
+		case *PCPInstanceMetric:
+			go func(metric *PCPInstanceMetric) {
+				c.writeInstanceMetric(metric)
+				wg.Done()
+			}(metric)
+		}
 	}
 
-	update := newupdateClosure(offset, c.buffer)
-	_ = update(val)
-
-	c.buffer.MustSetPos(valueoffset + MaxDataValueSize)
-
-	return update
+	wg.Wait()
 }
 
 func (c *PCPClient) writeSingletonMetric(m *PCPSingletonMetric) {
-	c.writeMetricDesc(m.PCPMetricDesc, m.Indom())
-	m.update = c.writeInstance(m.t, m.val, m.valueoffset)
-	c.buffer.MustWriteInt64(int64(m.descoffset))
-	c.buffer.MustWriteInt64(0)
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	doff := <-c.metricoffsetc
+
+	go func() {
+		c.writeMetricDesc(m.PCPMetricDesc, m.Indom(), doff)
+		wg.Done()
+	}()
+
+	off := <-c.valueoffsetc
+	c.valueoffsetc <- off + ValueLength
+
+	go func(offset int) {
+		m.update = c.writeValue(m.t, m.val, offset)
+		wg.Done()
+	}(off)
+
+	off = c.writer.MustWriteInt64(int64(doff), off+MaxDataValueSize)
+	_ = c.writer.MustWriteInt64(0, off)
+
+	wg.Wait()
 }
 
 func (c *PCPClient) writeInstanceMetric(m *PCPInstanceMetric) {
-	c.writeMetricDesc(m.PCPMetricDesc, m.Indom())
+	var wg sync.WaitGroup
+	wg.Add(1 + m.Indom().InstanceCount())
+
+	doff := <-c.metricoffsetc
+
+	go func() {
+		c.writeMetricDesc(m.PCPMetricDesc, m.Indom(), doff)
+		wg.Done()
+	}()
 
 	for name, i := range m.indom.instances {
-		ival := m.vals[name]
-		ival.update = c.writeInstance(m.t, ival.val, ival.offset)
-		c.buffer.MustWriteInt64(int64(m.descoffset))
-		c.buffer.MustWriteInt64(int64(i.offset))
+		off := <-c.valueoffsetc
+		c.valueoffsetc <- off + ValueLength
+
+		go func(i *instanceValue, offset int) {
+			i.update = c.writeValue(m.t, i.val, offset)
+			wg.Done()
+		}(m.vals[name], off)
+
+		off = c.writer.MustWriteInt64(int64(doff), off+MaxDataValueSize)
+		_ = c.writer.MustWriteInt64(int64(i.offset), off)
 	}
+
+	wg.Wait()
 }
 
-func (c *PCPClient) writeMetricsAndValuesBlock() {
-	for _, metric := range c.r.metrics {
-		switch m := metric.(type) {
-		case *PCPSingletonMetric:
-			c.writeSingletonMetric(m)
-		case *PCPInstanceMetric:
-			c.writeInstanceMetric(m)
-		}
+func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomain, off int) {
+	if c.r.version2 {
+		c.metricoffsetc <- off + Metric2Length
+
+		noff := <-c.stringoffsetc
+		c.stringoffsetc <- noff + StringLength
+
+		off = c.writer.MustWriteUint64(uint64(noff), off)
+		c.writer.MustWriteString(desc.name, noff)
+	} else {
+		c.metricoffsetc <- off + Metric1Length
+
+		c.writer.MustWriteString(desc.name, off)
+		off += MaxV1MetricNameLength + 1
 	}
+
+	off = c.writer.MustWriteUint32(desc.id, off)
+	off = c.writer.MustWriteInt32(int32(desc.t), off)
+	off = c.writer.MustWriteInt32(int32(desc.sem), off)
+	off = c.writer.MustWriteUint32(desc.u.PMAPI(), off)
+
+	if indom != nil {
+		off = c.writer.MustWriteUint32(indom.ID(), off)
+	} else {
+		off = c.writer.MustWriteInt32(-1, off)
+	}
+
+	off = c.writer.MustWriteInt32(0, off)
+
+	so, lo := 0, 0
+
+	if desc.shortDescription != "" {
+		so = <-c.stringoffsetc
+		c.stringoffsetc <- so + StringLength
+
+		c.writer.MustWriteString(desc.shortDescription, so)
+	}
+
+	if desc.longDescription != "" {
+		lo = <-c.stringoffsetc
+		c.stringoffsetc <- lo + StringLength
+
+		c.writer.MustWriteString(desc.longDescription, lo)
+	}
+
+	off = c.writer.MustWriteUint64(uint64(so), off)
+	_ = c.writer.MustWriteUint64(uint64(lo), off)
 }
 
-// fillData will fill the Buffer with the mmv file
-// data as long as something doesn't go wrong
-func (c *PCPClient) fillData() error {
-	generation2offset, generation := c.writeHeaderBlock()
-	c.writeTocBlock()
-	c.writeInstanceAndInstanceDomainBlock()
-	c.writeMetricsAndValuesBlock()
+func (c *PCPClient) writeValue(t MetricType, val interface{}, offset int) updateClosure {
+	if t == StringType {
+		pos := c.writer.MustWriteUint64(StringLength-1, offset)
 
-	c.buffer.MustSetPos(generation2offset)
-	c.buffer.MustWriteUint64(uint64(generation))
+		offset = <-c.stringoffsetc
+		c.stringoffsetc <- offset + StringLength
 
-	return nil
-}
-
-// Start dumps existing registry data
-func (c *PCPClient) Start() error {
-	c.Lock()
-	defer c.Unlock()
-
-	l := c.Length()
-	writerlog.WithField("length", l).Info("initializing writing the MMV file")
-
-	c.initializeOffsets()
-	writerlog.Info("initialized offsets for all written types")
-
-	buffer, err := bytebuffer.NewMemoryMappedBuffer(c.loc, l)
-	if err != nil {
-		writerlog.WithField("error", err).Error("cannot create MemoryMappedBuffer")
-		return err
+		c.writer.MustWriteUint64(uint64(offset), pos)
 	}
-	c.buffer = buffer
-	writerlog.Info("created MemoryMappedBuffer")
 
-	err = c.fillData()
-	if err != nil {
-		writerlog.WithField("error", err).Error("cannot fill MMV data")
-		return err
-	}
-	writerlog.Info("written data to MMV file")
+	update := newupdateClosure(offset, c.writer)
+	_ = update(val)
 
-	c.r.mapped = true
-
-	return nil
+	return update
 }
 
 // MustStart is a start that panics
@@ -565,18 +617,18 @@ func (c *PCPClient) Stop() error {
 		return errors.New("trying to stop an already stopped mapping")
 	}
 
-	writerlog.Info("stopping the writer")
+	clientlogger.Info("stopping the writer")
 
 	c.r.mapped = false
 
-	err := c.buffer.(*bytebuffer.MemoryMappedBuffer).Unmap(EraseFileOnStop)
-	c.buffer = nil
+	err := c.writer.(*bytewriter.MemoryMappedWriter).Unmap(EraseFileOnStop)
+	c.writer = nil
 	if err != nil {
-		writerlog.WithField("error", err).Error("error unmapping MemoryMappedBuffer")
+		clientlogger.WithField("error", err).Error("error unmapping MemoryMappedBuffer")
 		return err
 	}
 
-	writerlog.Info("unmapped the memory mapped file")
+	clientlogger.Info("unmapped the memory mapped file")
 
 	return nil
 }

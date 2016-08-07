@@ -1,4 +1,4 @@
-package bytebuffer
+package bytewriter
 
 import (
 	"os"
@@ -6,8 +6,8 @@ import (
 	"testing"
 )
 
-func TestMemoryMappedBuffer(t *testing.T) {
-	filename := "bytebuffer_memorymappedbuffer_test.tmp"
+func TestMemoryMappedWriter(t *testing.T) {
+	filename := "bytebuffer_memorymappedwriter_test.tmp"
 	loc := path.Join(os.TempDir(), filename)
 
 	if _, err := os.Stat(loc); err == nil {
@@ -18,9 +18,9 @@ func TestMemoryMappedBuffer(t *testing.T) {
 		}
 	}
 
-	b, err := NewMemoryMappedBuffer(loc, 10)
+	w, err := NewMemoryMappedWriter(loc, 10)
 	if err != nil {
-		t.Error("Cannot proceed with test as create buffer\n", err)
+		t.Error("Cannot proceed with test as create writer failed:", err)
 		return
 	}
 
@@ -29,10 +29,9 @@ func TestMemoryMappedBuffer(t *testing.T) {
 		return
 	}
 
-	b.MustSetPos(5)
-	err = b.WriteString("x")
+	_, err = w.WriteString("x", 5)
 	if err != nil {
-		t.Error("Cannot Write to MemoryMappedBuffer")
+		t.Error("Cannot Write to MemoryMappedWriter")
 		return
 	}
 
@@ -48,7 +47,7 @@ func TestMemoryMappedBuffer(t *testing.T) {
 		t.Error("Data Written in buffer not getting reflected in file")
 	}
 
-	err = b.Unmap(true)
+	err = w.Unmap(true)
 	if err != nil {
 		t.Error(err)
 	}

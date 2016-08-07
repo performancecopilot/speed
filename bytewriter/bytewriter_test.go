@@ -1,4 +1,4 @@
-package bytebuffer
+package bytewriter
 
 import "testing"
 
@@ -6,17 +6,17 @@ func TestWriteInt32(t *testing.T) {
 	cases := []int32{0, 10, 100, 200, 1000, 10000, 10000000, 1000000000, 2147483647}
 
 	for _, val := range cases {
-		b := NewByteBuffer(4)
+		b := NewByteWriter(4)
 
-		err := b.WriteInt32(val)
+		off, err := b.WriteInt32(val, 0)
+
 		if err != nil {
 			t.Error(err)
 			return
 		}
 
-		if b.Pos() != 4 {
-			t.Error("Not Writing 4 bytes for int32")
-			return
+		if off != 4 {
+			t.Error("expected offset to be 4")
 		}
 
 		e := []byte{
@@ -39,15 +39,15 @@ func TestWriteInt64(t *testing.T) {
 		4294967295, 10000000000000, 100000000000000000, 9223372036854775807}
 
 	for _, val := range cases {
-		b := NewByteBuffer(8)
+		w := NewByteWriter(8)
 
-		err := b.WriteInt64(val)
+		off, err := w.WriteInt64(val, 0)
 		if err != nil {
 			t.Error(err)
 			return
 		}
 
-		if b.Pos() != 8 {
+		if off != 8 {
 			t.Error("Not Writing 8 bytes for int32")
 			return
 		}
@@ -64,8 +64,8 @@ func TestWriteInt64(t *testing.T) {
 		}
 
 		for i := 0; i < 8; i++ {
-			if b.buffer[i] != e[i] {
-				t.Errorf("pos: %v, expected: %v, got %v", i, e[i], b.buffer[i])
+			if w.buffer[i] != e[i] {
+				t.Errorf("pos: %v, expected: %v, got %v", i, e[i], w.buffer[i])
 			}
 		}
 	}
@@ -74,63 +74,55 @@ func TestWriteInt64(t *testing.T) {
 func TestWriteString(t *testing.T) {
 	cases := []string{"MMV", "Suyash", "This is a little long string"}
 	for _, val := range cases {
-		b := NewByteBuffer(len(val))
+		w := NewByteWriter(len(val))
 
-		err := b.WriteString(val)
+		off, err := w.WriteString(val, 0)
 		if err != nil {
 			t.Error(err)
 			return
 		}
 
-		if b.Pos() != len(val) {
-			t.Errorf("Expected to write %v bytes, writing %v bytes", len(val), b.Pos())
+		if off != len(val) {
+			t.Errorf("Expected to write %v bytes, writing %v bytes", len(val), off)
 			return
 		}
 
 		e := []byte(val)
 		for i := 0; i < len(val); i++ {
-			if b.buffer[i] != e[i] {
-				t.Errorf("pos: %v, expected: %v, got %v", i, e[i], b.buffer[i])
+			if w.buffer[i] != e[i] {
+				t.Errorf("pos: %v, expected: %v, got %v", i, e[i], w.buffer[i])
 			}
 		}
 	}
 }
 
-func TestSetPos(t *testing.T) {
-	b := NewByteBuffer(4)
-	err := b.SetPos(4)
-	if err == nil {
-		t.Error("Expected error at setting a bytebuffer to a position outside its range")
-	}
+func TestOffset(t *testing.T) {
+	w := NewByteWriter(4)
 
-	b.MustSetPos(2)
-
-	err = b.WriteString("a")
+	off, err := w.WriteString("a", 2)
 	if err != nil {
 		t.Error("Did not Expect error in writing a value inside the buffer")
 		return
 	}
 
-	if b.Pos() != 3 {
+	if off != 3 {
 		t.Error("Position not changing as expected")
 		return
 	}
 
-	if b.Bytes()[2] != 'a' {
+	if w.Bytes()[2] != 'a' {
 		t.Error("Value was not written at the expected position")
 		return
 	}
 
-	b.MustSetPos(2)
-
-	err = b.WriteInt32(10)
+	off, err = w.WriteInt32(10, 2)
 	if err == nil {
 		t.Error("Expected error in writing a value guaranteed to overflow")
 		return
 	}
 
-	if b.Pos() != 2 {
-		t.Error("Position changing despite a write failure")
+	if off != -1 {
+		t.Error("expected write failure to return -1")
 		return
 	}
 }
