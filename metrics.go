@@ -6,7 +6,7 @@ import (
 	"math"
 	"sync"
 
-	"github.com/performancecopilot/speed/bytebuffer"
+	"github.com/performancecopilot/speed/bytewriter"
 )
 
 // MetricType is an enumerated type representing all valid types for a metric
@@ -377,14 +377,14 @@ func (md *PCPMetricDesc) Description() string {
 type updateClosure func(interface{}) error
 
 // newupdateClosure creates a new update closure for an offset, type and buffer
-func newupdateClosure(offset int, buffer bytebuffer.Buffer) updateClosure {
+func newupdateClosure(offset int, writer bytewriter.Writer) updateClosure {
 	return func(val interface{}) error {
 		if _, isString := val.(string); isString {
-			buffer.MustSetPos(offset)
-			buffer.MustWrite(make([]byte, StringLength))
+			writer.MustWrite(make([]byte, StringLength), offset)
 		}
-		buffer.MustSetPos(offset)
-		return buffer.WriteVal(val)
+
+		_, err := writer.WriteVal(val, offset)
+		return err
 	}
 }
 
