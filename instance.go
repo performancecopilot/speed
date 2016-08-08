@@ -20,7 +20,3 @@ func newpcpInstance(name string) *pcpInstance {
 		name, hash(name, 0), 0,
 	}
 }
-
-func (i *pcpInstance) String() string {
-	return "Instance: " + i.name
-}
