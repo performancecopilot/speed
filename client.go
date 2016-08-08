@@ -34,7 +34,7 @@ const MaxDataValueSize = 16
 // EraseFileOnStop if set to true, will also delete the memory mapped file
 var EraseFileOnStop = false
 
-var clientlogger = log.WithField("prefix", "writer")
+var clientlogger = log.WithField("prefix", "client")
 
 // Client defines the interface for a type that can talk to an instrumentation agent
 type Client interface {
@@ -204,6 +204,7 @@ func (c *PCPClient) Start() error {
 	c.writer = writer
 
 	c.start()
+	clientlogger.Info("written the different components, the registered metrics should be visible now")
 
 	c.r.mapped = true
 
@@ -227,23 +228,22 @@ func (c *PCPClient) start() {
 	c.r.valuesoffset = c.r.metricsoffset + MetricLength*c.r.MetricCount()
 	c.r.stringsoffset = c.r.valuesoffset + ValueLength*c.r.ValuesCount()
 
-	c.instanceoffsetc = make(chan int, 1)
-	c.indomoffsetc = make(chan int, 1)
-	c.metricoffsetc = make(chan int, 1)
-	c.valueoffsetc = make(chan int, 1)
-	c.stringoffsetc = make(chan int, 1)
-
 	if c.r.InstanceDomainCount() > 0 {
+		c.instanceoffsetc, c.indomoffsetc = make(chan int, 1), make(chan int, 1)
+
 		c.instanceoffsetc <- c.r.instanceoffset
 		c.indomoffsetc <- c.r.indomoffset
 	}
 
 	if c.r.MetricCount() > 0 {
+		c.metricoffsetc, c.valueoffsetc = make(chan int, 1), make(chan int, 1)
+
 		c.metricoffsetc <- c.r.metricsoffset
 		c.valueoffsetc <- c.r.valuesoffset
 	}
 
 	if c.r.StringCount() > 0 {
+		c.stringoffsetc = make(chan int, 1)
 		c.stringoffsetc <- c.r.stringsoffset
 	}
 
@@ -259,8 +259,6 @@ func (c *PCPClient) start() {
 		wg.Done()
 	}()
 
-	gen, g2off := <-genc, <-g2offc
-
 	go func() {
 		// instance domains **have** to be written before metrics
 		// as metrics need instance offsets and multiple metrics
@@ -270,6 +268,7 @@ func (c *PCPClient) start() {
 		wg.Done()
 	}()
 
+	gen, g2off := <-genc, <-g2offc
 	wg.Wait()
 
 	// must *always* be the last thing to happen
@@ -617,7 +616,9 @@ func (c *PCPClient) Stop() error {
 		return errors.New("trying to stop an already stopped mapping")
 	}
 
-	clientlogger.Info("stopping the writer")
+	clientlogger.Info("stopping the client")
+
+	c.stop()
 
 	c.r.mapped = false
 
@@ -631,6 +632,12 @@ func (c *PCPClient) Stop() error {
 	clientlogger.Info("unmapped the memory mapped file")
 
 	return nil
+}
+
+func (c *PCPClient) stop() {
+	c.instanceoffsetc, c.indomoffsetc = nil, nil
+	c.metricoffsetc, c.valueoffsetc = nil, nil
+	c.stringoffsetc = nil
 }
 
 // MustStop is a stop that panics
