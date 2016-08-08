@@ -1,11 +1,12 @@
 language: go
 go:
   - 1.6.3
-  - 1.7rc2
+  - 1.7rc5
   - tip
 env:
   global:
     - GO15VENDOREXPERIMENT=1
+    # coveralls token
     - secure: Tt++Fdp5IqwJyYuK5EFA29BHGInHxVylFQMRtvpNt2qMZA89Z1N4BUDswqVu23TaMwoFM0a1/E3tAuC0Ffqm19oS8jnFyonuFlXduwG8iVb8znWzP67Jtj9l5xDzra/NhdhE25OxUD3b203rOMChpRx77i+eBITlaYsOMUTq/K77at+NW58qL3W7h6vu4WFBG0T0RbEVjp+IxSJiAUJI9jSYYldo7EpeDL/BqMJeMVe1D0UfVa/DU0GNdDKYibmF+Mag/v34ttlfdYarLEicwQpcQb52NfrRg06iPmiiqRsN/glU2clzkJPLZUmx3UgMPK8nKg4Iu8LXKMCm46UhnnsWcXjnquioLa8vPCv2hoModCcwjGLqC4BHnnh4QqNkMnL3UpLWQcT5zrqvsEIcy1TpwKwOEcIRo1ZqEmgl2kkz5hBN6hjFKR44Uti2ayw831X8FRxyGsq7O6b8R7M4w5gdt12Hj2V04Qnr718ZBhsrbNn+GPPv3p9Pspal9CXvuWTnIRbPCw0DOdajLIX9JMUB86ElPqLGxHBsrc6Ev2rsFPlJZqyur9KBU/KJfmlhrV8veksorugMk6nxshzS0P8eAdbmC+xTo999LQPNZqsNVfbKI97UKkfy7jZxHLDriTBD9qHtJSt+J2wkcS6iGrNe5bEpksZAmxJlSwSqIuY=
 before_install:
   - make deps
@@ -23,9 +24,9 @@ script:
 notifications:
   email:
     on_success: change
-    on_failure: always
+    on_failure: change
   slack:
     on_success: change
-    on_failure: always
+    on_failure: change
     on_pull_requests: false
     secure: ro8jvUWa7x6eFvaWkVHpyC753If3lKVcNttAcQAZ+BtJAeWPGnNtwMbbRpuNfXNqt2ZZghICbK1AhX41F0SZ1Fs3/fRndPzBu1JjCVE3Rr+hiua3aZjF6ncTZjhVWg/IZQHVOIi7moveWd5LdJ6t0eS+Np4tRX1U25n4n3wbT0+tElA10cX7ESttbDs6eGiHF14IKMSHvJ6h8xW2ozi9F74Q0VDS0fyV0qCruGzRT15yOQyGI/iunJudQQvcrZmLGxuw1kwkYcWPUdniYBFbjmmCeuz0NhXE7m7p06cLSQsnrPQ/Ucy42QSxGgfT4+D1aoHQrfv4H5QFw9edTRINoX39qG4Ieuw7IbXbzjQFom0LvG65lZm/Y4MNGy4mJt5A+7uH5UPU5lBMUvAEMq3i92FCWGocJZTWuJi0Jpmlbp8JzdHZbBzAKIyHyxZB0fMVkrats0eH8nORRtBw0plKGp6c78rWlhw6RwXvFhlvDRpyEPhFugUbiN9bGNuVtHTcFqRgGc94Chmr1mKE9o5VFJiae82A0WX6OfGpffa+NOQ/lavcQvpfE9KWrVSq9I5mgVQCkQJ2LlDYuEtVLsRTwZjSBojgELBnEkttm77oeQNA51vYbuG+n7gyCTdckjs58OVmKGf9JGlJ37Xu4OST9gyFg875lCt3rIhLILmc3ng=
