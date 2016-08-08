@@ -24,9 +24,9 @@ const (
 	StringLength         = 256
 )
 
-// MaxV1MetricNameLength is the maximum length for a metric name
+// MaxV1NameLength is the maximum length for a metric/instance name
 // under MMV format 1
-const MaxV1MetricNameLength = 63
+const MaxV1NameLength = 63
 
 // MaxDataValueSize is the maximum byte length for a stored metric value, unless it is a string
 const MaxDataValueSize = 16
@@ -548,7 +548,7 @@ func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomai
 		c.metricoffsetc <- off + Metric1Length
 
 		c.writer.MustWriteString(desc.name, off)
-		off += MaxV1MetricNameLength + 1
+		off += MaxV1NameLength + 1
 	}
 
 	off = c.writer.MustWriteUint32(desc.id, off)

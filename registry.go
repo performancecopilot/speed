@@ -150,7 +150,7 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 
 	if !r.version2 {
 		for _, v := range indom.Instances() {
-			if len(v) > MaxV1MetricNameLength {
+			if len(v) > MaxV1NameLength {
 				r.version2 = true
 			}
 		}
@@ -176,7 +176,7 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 func (r *PCPRegistry) addMetric(m PCPMetric) {
 	r.metrics[m.Name()] = m
 
-	if len(m.Name()) > MaxV1MetricNameLength && !r.version2 {
+	if len(m.Name()) > MaxV1NameLength && !r.version2 {
 		r.version2 = true
 	}
 
