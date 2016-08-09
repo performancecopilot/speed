@@ -845,14 +845,16 @@ func TestMMV2InstanceWriting(t *testing.T) {
 }
 
 func TestCounter(t *testing.T) {
-	c, err := NewPCPClient("test", ProcessFlag)
+	c, err := NewPCPClient("test")
 	if err != nil {
 		t.Errorf("cannot create client, error: %v", err)
+		return
 	}
 
 	m, err := NewPCPCounter(0, "c.1")
 	if err != nil {
 		t.Errorf("cannot create counter, error: %v", err)
+		return
 	}
 
 	c.MustRegister(m)
@@ -860,12 +862,54 @@ func TestCounter(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	_, _, metrics, values, _, _, _, err := mmvdump.Dump(c.buffer.Bytes())
-	if err != nil {
-		t.Errorf("cannot get dump: %v", err)
-		return
+	matchThings := func(expected int64) {
+		_, _, metrics, values, _, _, strings, derr := mmvdump.Dump(c.writer.Bytes())
+		if derr != nil {
+			t.Errorf("cannot get dump: %v", derr)
+			return
+		}
+
+		matchMetricsAndValues(metrics, values, strings, c, t)
+
+		off, _ := findMetric(m, metrics)
+		_, v := findValue(off, values)
+
+		if val, _ := mmvdump.FixedVal(v.Val, mmvdump.Int64Type); val != int64(expected) {
+			t.Errorf("expected counter to be 10 after Set(10), got %v", val)
+		}
 	}
 
-	matchMetricsAndValues(metrics, values, c, t)
-}
+	// Up
 
+	m.Up()
+	matchThings(1)
+
+	// Inc
+
+	m.MustInc(9)
+	matchThings(10)
+
+	// Inc decrement
+
+	err = m.Inc(-9)
+	if err == nil {
+		t.Errorf("expected decrementing a counter to generate an error")
+	}
+	matchThings(10)
+
+	// Set less
+
+	err = m.Set(9)
+	if err == nil {
+		t.Errorf("expected setting a counter to a lesser value to generate an error")
+	}
+	matchThings(10)
+
+	// Set more
+
+	err = m.Set(99)
+	if err != nil {
+		t.Errorf("expected setting a counter to a larger value to not generate an error")
+	}
+	matchThings(99)
+}
