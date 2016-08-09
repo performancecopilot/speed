@@ -617,6 +617,10 @@ func (c *PCPCounter) Set(val int64) error {
 
 // Inc increases the stored counter's value by the passed increment
 func (c *PCPCounter) Inc(val int64) error {
+	if val < 0 {
+		return errors.New("cannot decrement a counter")
+	}
+
 	v := c.Val()
 	v += val
 	return c.Set(v)
