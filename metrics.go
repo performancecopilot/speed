@@ -281,50 +281,6 @@ type PCPMetric interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// Counter defines a metric that holds a single value that can only be incremented
-type Counter interface {
-	Metric
-
-	Val() int64
-	Set(int64) error
-
-	Inc(int64) error
-	MustInc(int64)
-
-	Up() // same as MustInc(1)
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-// Gauge defines a metric that holds a single double value that can be incremented or decremented
-type Gauge interface {
-	Metric
-
-	Val() float64
-
-	Set(float64) error
-	MustSet(float64)
-
-	Inc(float64) error
-	Dec(float64) error
-
-	MustInc(float64)
-	MustDec(float64)
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-// Timer defines a metric that accumulates time periods
-// Start signals the beginning of monitoring
-// End signals the end of monitoring and adding the elapsed time to the accumulated time
-// and returning it
-type Timer interface {
-	Start() error
-	Stop() (float64, error)
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
 // PCPMetricItemBitLength is the maximum bit size of a PCP Metric id
 //
 // see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
@@ -497,7 +453,234 @@ func (m *PCPSingletonMetric) String() string {
 	return fmt.Sprintf("Val: %v\n%v", m.val, m.Description())
 }
 
-// TODO: implement PCPCounterMetric, PCPGaugeMetric ...
+///////////////////////////////////////////////////////////////////////////////
+
+// Counter defines a metric that holds a single value that can only be incremented
+type Counter interface {
+	Metric
+
+	Val() int64
+	Set(int64) error
+
+	Inc(int64) error
+	MustInc(int64)
+
+	Up() // same as MustInc(1)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPCounter implements a PCP compatible Counter Metric
+type PCPCounter struct {
+	*PCPSingletonMetric
+}
+
+// NewPCPCounter creates a new PCPCounter instance
+func NewPCPCounter(val int64, name string, desc ...string) (*PCPCounter, error) {
+	m, err := NewPCPSingletonMetric(val, name, Int64Type, CounterSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPCounter{m}, nil
+}
+
+// Val returns the current value of the counter
+func (c *PCPCounter) Val() int64 {
+	return c.PCPSingletonMetric.Val().(int64)
+}
+
+// Set sets the value of the counter
+func (c *PCPCounter) Set(val int64) error {
+	v := c.Val()
+
+	if val < v {
+		return fmt.Errorf("cannot set counter to %v, current value is %v and PCP counters cannot go backwards", val, v)
+	}
+
+	if val == v {
+		return nil
+	}
+
+	return c.PCPSingletonMetric.Set(val)
+}
+
+// Inc increases the stored counter's value by the passed increment
+func (c *PCPCounter) Inc(val int64) error {
+	if val < 0 {
+		return errors.New("cannot decrement a counter")
+	}
+
+	v := c.Val()
+	v += val
+	return c.Set(v)
+}
+
+// MustInc is Inc that panics
+func (c *PCPCounter) MustInc(val int64) {
+	if err := c.Inc(val); err != nil {
+		panic(err)
+	}
+}
+
+// Up increases the counter by 1
+func (c *PCPCounter) Up() { c.MustInc(1) }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Gauge defines a metric that holds a single double value that can be incremented or decremented
+type Gauge interface {
+	Metric
+
+	Val() float64
+
+	Set(float64) error
+	MustSet(float64)
+
+	Inc(float64) error
+	Dec(float64) error
+
+	MustInc(float64)
+	MustDec(float64)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPGauge defines a PCP compatible Gauge metric
+type PCPGauge struct {
+	*PCPSingletonMetric
+}
+
+// NewPCPGauge creates a new PCPGauge instance
+func NewPCPGauge(val float64, name string, desc ...string) (*PCPGauge, error) {
+	sm, err := NewPCPSingletonMetric(val, name, DoubleType, InstantSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPGauge{sm}, nil
+}
+
+// Val returns the current value of the Gauge
+func (g *PCPGauge) Val() float64 { return g.PCPSingletonMetric.Val().(float64) }
+
+// Set sets the current value of the Gauge
+func (g *PCPGauge) Set(val float64) error { return g.PCPSingletonMetric.Set(val) }
+
+// MustSet will panic if Set fails
+func (g *PCPGauge) MustSet(val float64) {
+	if err := g.Set(val); err != nil {
+		panic(err)
+	}
+}
+
+// Inc adds a value to the existing Gauge value
+func (g *PCPGauge) Inc(val float64) error {
+	v := g.Val()
+	return g.Set(v + val)
+}
+
+// MustInc will panic if Inc fails
+func (g *PCPGauge) MustInc(val float64) {
+	if err := g.Inc(val); err != nil {
+		panic(err)
+	}
+}
+
+// Dec adds a value to the existing Gauge value
+func (g *PCPGauge) Dec(val float64) error {
+	return g.Inc(-val)
+}
+
+// MustDec will panic if Dec fails
+func (g *PCPGauge) MustDec(val float64) {
+	if err := g.Dec(val); err != nil {
+		panic(err)
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Timer defines a metric that accumulates time periods
+// Start signals the beginning of monitoring
+// End signals the end of monitoring and adding the elapsed time to the accumulated time
+// and returning it
+type Timer interface {
+	Start() error
+	Stop() (float64, error)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPTimer implements a PCP compatible Timer
+// It also functionally implements a metric with elapsed type from PCP
+type PCPTimer struct {
+	*PCPSingletonMetric
+	started bool
+	since   time.Time
+}
+
+// NewPCPTimer creates a new PCPTimer instance of the specified unit
+func NewPCPTimer(name string, unit TimeUnit, desc ...string) (*PCPTimer, error) {
+	sm, err := NewPCPSingletonMetric(float64(0), name, DoubleType, InstantSemantics, unit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPTimer{sm, false, time.Time{}}, nil
+}
+
+// Start signals the timer to start monitoring
+func (t *PCPTimer) Start() error {
+	t.Lock()
+	defer t.Unlock()
+
+	if t.started {
+		return errors.New("trying to start an already started timer")
+	}
+
+	t.since = time.Now()
+	t.started = true
+	return nil
+}
+
+// Stop signals the timer to end monitoring and return elapsed time so far
+func (t *PCPTimer) Stop() (float64, error) {
+	t.Lock()
+
+	if !t.started {
+		t.Unlock()
+		return 0, errors.New("trying to stop a stopped timer")
+	}
+
+	d := time.Since(t.since)
+
+	var inc float64
+	switch t.PCPMetricDesc.Unit() {
+	case NanosecondUnit:
+		inc = float64(d.Nanoseconds())
+	case MicrosecondUnit:
+		inc = float64(d.Nanoseconds()) * 1e-3
+	case MillisecondUnit:
+		inc = float64(d.Nanoseconds()) * 1e-6
+	case SecondUnit:
+		inc = d.Seconds()
+	case MinuteUnit:
+		inc = d.Minutes()
+	case HourUnit:
+		inc = d.Hours()
+	}
+
+	t.Unlock()
+
+	v := t.PCPSingletonMetric.Val().(float64)
+	err := t.PCPSingletonMetric.Set(v + inc)
+
+	if err != nil {
+		return -1, err
+	}
+	return v + inc, nil
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -606,189 +789,4 @@ func (m *PCPInstanceMetric) MustSetInstance(instance string, val interface{}) {
 	if err := m.SetInstance(instance, val); err != nil {
 		panic(err)
 	}
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-// PCPCounter implements a PCP compatible Counter Metric
-type PCPCounter struct {
-	*PCPSingletonMetric
-}
-
-// NewPCPCounter creates a new PCPCounter instance
-func NewPCPCounter(val int64, name string, desc ...string) (*PCPCounter, error) {
-	m, err := NewPCPSingletonMetric(val, name, Int64Type, CounterSemantics, OneUnit, desc...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &PCPCounter{m}, nil
-}
-
-// Val returns the current value of the counter
-func (c *PCPCounter) Val() int64 {
-	return c.PCPSingletonMetric.Val().(int64)
-}
-
-// Set sets the value of the counter
-func (c *PCPCounter) Set(val int64) error {
-	v := c.Val()
-
-	if val < v {
-		return fmt.Errorf("cannot set counter to %v, current value is %v and PCP counters cannot go backwards", val, v)
-	}
-
-	if val == v {
-		return nil
-	}
-
-	return c.PCPSingletonMetric.Set(val)
-}
-
-// Inc increases the stored counter's value by the passed increment
-func (c *PCPCounter) Inc(val int64) error {
-	if val < 0 {
-		return errors.New("cannot decrement a counter")
-	}
-
-	v := c.Val()
-	v += val
-	return c.Set(v)
-}
-
-// MustInc is Inc that panics
-func (c *PCPCounter) MustInc(val int64) {
-	if err := c.Inc(val); err != nil {
-		panic(err)
-	}
-}
-
-// Up increases the counter by 1
-func (c *PCPCounter) Up() { c.MustInc(1) }
-
-///////////////////////////////////////////////////////////////////////////////
-
-// PCPGauge defines a PCP compatible Gauge metric
-type PCPGauge struct {
-	*PCPSingletonMetric
-}
-
-// NewPCPGauge creates a new PCPGauge instance
-func NewPCPGauge(val float64, name string, desc ...string) (*PCPGauge, error) {
-	sm, err := NewPCPSingletonMetric(val, name, DoubleType, InstantSemantics, OneUnit, desc...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &PCPGauge{sm}, nil
-}
-
-// Val returns the current value of the Gauge
-func (g *PCPGauge) Val() float64 { return g.PCPSingletonMetric.Val().(float64) }
-
-// Set sets the current value of the Gauge
-func (g *PCPGauge) Set(val float64) error { return g.PCPSingletonMetric.Set(val) }
-
-// MustSet will panic if Set fails
-func (g *PCPGauge) MustSet(val float64) {
-	if err := g.Set(val); err != nil {
-		panic(err)
-	}
-}
-
-// Inc adds a value to the existing Gauge value
-func (g *PCPGauge) Inc(val float64) error {
-	v := g.Val()
-	return g.Set(v + val)
-}
-
-// MustInc will panic if Inc fails
-func (g *PCPGauge) MustInc(val float64) {
-	if err := g.Inc(val); err != nil {
-		panic(err)
-	}
-}
-
-// Dec adds a value to the existing Gauge value
-func (g *PCPGauge) Dec(val float64) error {
-	return g.Inc(-val)
-}
-
-// MustDec will panic if Dec fails
-func (g *PCPGauge) MustDec(val float64) {
-	if err := g.Dec(val); err != nil {
-		panic(err)
-	}
-}
-
-///////////////////////////////////////////////////////////////////////////////
-
-// PCPTimer implements a PCP compatible Timer
-// It also functionally implements a metric with elapsed type from PCP
-type PCPTimer struct {
-	*PCPSingletonMetric
-	started bool
-	since   time.Time
-}
-
-// NewPCPTimer creates a new PCPTimer instance of the specified unit
-func NewPCPTimer(name string, unit TimeUnit, desc ...string) (*PCPTimer, error) {
-	sm, err := NewPCPSingletonMetric(float64(0), name, DoubleType, InstantSemantics, unit, desc...)
-	if err != nil {
-		return nil, err
-	}
-
-	return &PCPTimer{sm, false, time.Time{}}, nil
-}
-
-// Start signals the timer to start monitoring
-func (t *PCPTimer) Start() error {
-	t.Lock()
-	defer t.Unlock()
-
-	if t.started {
-		return errors.New("trying to start an already started timer")
-	}
-
-	t.since = time.Now()
-	t.started = true
-	return nil
-}
-
-// Stop signals the timer to end monitoring and return elapsed time so far
-func (t *PCPTimer) Stop() (float64, error) {
-	t.Lock()
-
-	if !t.started {
-		t.Unlock()
-		return 0, errors.New("trying to stop a stopped timer")
-	}
-
-	d := time.Since(t.since)
-
-	var inc float64
-	switch t.PCPMetricDesc.Unit() {
-	case NanosecondUnit:
-		inc = float64(d.Nanoseconds())
-	case MicrosecondUnit:
-		inc = float64(d.Nanoseconds()) * 1e3
-	case MillisecondUnit:
-		inc = float64(d.Nanoseconds()) * 1e6
-	case SecondUnit:
-		inc = d.Seconds()
-	case MinuteUnit:
-		inc = d.Minutes()
-	case HourUnit:
-		inc = d.Hours()
-	}
-
-	t.Unlock()
-
-	v := t.PCPSingletonMetric.Val().(float64)
-	err := t.PCPSingletonMetric.Set(v + inc)
-
-	if err != nil {
-		return -1, err
-	}
-	return v + inc, nil
 }
