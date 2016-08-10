@@ -997,3 +997,51 @@ func TestTimer(t *testing.T) {
 
 	matchSingleDump(v, timer, c, t)
 }
+
+func TestCounterVector(t *testing.T) {
+	cv, err := NewPCPCounterVector(map[string]int64{
+		"m1": 1,
+		"m2": 2,
+	}, "m.1")
+
+	if err != nil {
+		t.Errorf("cannot create CounterVector, error: %v", err)
+		return
+	}
+
+	c, err := NewPCPClient("c")
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+	}
+
+	c.MustRegister(cv)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	// Set
+
+	err = cv.Set(10, "m1")
+	if err != nil {
+		t.Errorf("cannot set an instance, error: %v", err)
+	}
+
+	if val, err := cv.Val("m1"); val != 10 {
+		t.Errorf("expected m.1[m1] to be 10, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve  m.1[m1] value")
+	}
+
+	// Inc
+
+	err = cv.Inc(10, "m2")
+	if err != nil {
+		t.Errorf("cannot inc an instance, error: %v", err)
+	}
+
+	if val, err := cv.Val("m2"); val != 12 {
+		t.Errorf("expected m.1[m2] to be 12, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve  m.1[m2] value")
+	}
+}

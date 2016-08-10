@@ -492,6 +492,11 @@ func (c *PCPClient) writeMetrics() {
 				c.writeSingletonMetric(metric.PCPSingletonMetric)
 				wg.Done()
 			}(metric)
+		case *PCPCounterVector:
+			go func(metric *PCPCounterVector) {
+				c.writeInstanceMetric(metric.PCPInstanceMetric)
+				wg.Done()
+			}(metric)
 		}
 	}
 
