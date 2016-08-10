@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"time"
 
 	"github.com/performancecopilot/speed/bytewriter"
 )
@@ -309,6 +310,17 @@ type Gauge interface {
 
 	MustInc(float64)
 	MustDec(float64)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Timer defines a metric that accumulates time periods
+// Start signals the beginning of monitoring
+// End signals the end of monitoring and adding the elapsed time to the accumulated time
+// and returning it
+type Timer interface {
+	Start() error
+	Stop() (float64, error)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -707,4 +719,73 @@ func (g *PCPGauge) MustDec(val float64) {
 	if err := g.Dec(val); err != nil {
 		panic(err)
 	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPTimer implements a PCP compatible Timer
+// It also functionally implements a metric with elapsed type from PCP
+type PCPTimer struct {
+	*PCPSingletonMetric
+	started bool
+	since   time.Time
+}
+
+// NewPCPTimer creates a new PCPTimer instance of the specified unit
+func NewPCPTimer(name string, unit TimeUnit, desc ...string) (*PCPTimer, error) {
+	sm, err := NewPCPSingletonMetric(float64(0), name, DoubleType, InstantSemantics, unit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPTimer{sm, false, time.Time{}}, nil
+}
+
+// Start signals the timer to start monitoring
+func (t *PCPTimer) Start() error {
+	t.Lock()
+	defer t.Unlock()
+
+	if t.started {
+		return errors.New("trying to start an already started timer")
+	}
+
+	t.since = time.Now()
+	t.started = true
+	return nil
+}
+
+// Stop signals the timer to end monitoring and return elapsed time so far
+func (t *PCPTimer) Stop() (float64, error) {
+	t.Lock()
+
+	if !t.started {
+		t.Unlock()
+		return 0, errors.New("trying to stop a stopped timer")
+	}
+
+	d := time.Since(t.since)
+
+	var inc float64
+	switch t.PCPMetricDesc.Unit() {
+	case NanosecondUnit:
+		inc = float64(d.Nanoseconds())
+	case MicrosecondUnit:
+		inc = float64(d.Nanoseconds()) * 1e3
+	case MillisecondUnit:
+		inc = float64(d.Nanoseconds()) * 1e6
+	case SecondUnit:
+		inc = d.Seconds()
+	case MinuteUnit:
+		inc = d.Minutes()
+	case HourUnit:
+		inc = d.Hours()
+	}
+
+	t.Unlock()
+
+	v := t.PCPSingletonMetric.Val().(float64)
+	t.PCPSingletonMetric.Set(v + inc)
+
+	return v + inc, nil
 }
