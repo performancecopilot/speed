@@ -785,7 +785,10 @@ func (t *PCPTimer) Stop() (float64, error) {
 	t.Unlock()
 
 	v := t.PCPSingletonMetric.Val().(float64)
-	t.PCPSingletonMetric.Set(v + inc)
+	err := t.PCPSingletonMetric.Set(v + inc)
 
+	if err != nil {
+		return -1, err
+	}
 	return v + inc, nil
 }
