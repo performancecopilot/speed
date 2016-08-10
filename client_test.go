@@ -862,7 +862,7 @@ func TestCounter(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	matchThings := func(expected int64) {
+	match := func(expected int64) {
 		_, _, metrics, values, _, _, strings, derr := mmvdump.Dump(c.writer.Bytes())
 		if derr != nil {
 			t.Errorf("cannot get dump: %v", derr)
@@ -874,20 +874,22 @@ func TestCounter(t *testing.T) {
 		off, _ := findMetric(m, metrics)
 		_, v := findValue(off, values)
 
-		if val, _ := mmvdump.FixedVal(v.Val, mmvdump.Int64Type); val != int64(expected) {
-			t.Errorf("expected counter to be 10 after Set(10), got %v", val)
+		if val, verr := mmvdump.FixedVal(v.Val, mmvdump.Int64Type); val.(int64) != expected {
+			t.Errorf("expected counter to be %v, got %v", expected, val)
+		} else if verr != nil {
+			t.Errorf("cannot convert stored metric val to int64")
 		}
 	}
 
 	// Up
 
 	m.Up()
-	matchThings(1)
+	match(1)
 
 	// Inc
 
 	m.MustInc(9)
-	matchThings(10)
+	match(10)
 
 	// Inc decrement
 
@@ -895,7 +897,7 @@ func TestCounter(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected decrementing a counter to generate an error")
 	}
-	matchThings(10)
+	match(10)
 
 	// Set less
 
@@ -903,7 +905,7 @@ func TestCounter(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected setting a counter to a lesser value to generate an error")
 	}
-	matchThings(10)
+	match(10)
 
 	// Set more
 
@@ -911,5 +913,64 @@ func TestCounter(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected setting a counter to a larger value to not generate an error")
 	}
-	matchThings(99)
+	match(99)
+}
+
+func TestGauge(t *testing.T) {
+	c, err := NewPCPClient("test")
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+		return
+	}
+
+	m, err := NewPCPGauge(0, "g.1")
+	if err != nil {
+		t.Errorf("cannot create gauge, error: %v", err)
+		return
+	}
+
+	c.MustRegister(m)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	match := func(expected float64) {
+		_, _, metrics, values, _, _, strings, derr := mmvdump.Dump(c.writer.Bytes())
+		if derr != nil {
+			t.Errorf("cannot get dump: %v", derr)
+			return
+		}
+
+		matchMetricsAndValues(metrics, values, strings, c, t)
+
+		off, _ := findMetric(m, metrics)
+		_, v := findValue(off, values)
+
+		if val, verr := mmvdump.FixedVal(v.Val, mmvdump.DoubleType); val.(float64) != expected {
+			t.Errorf("expected gauge to be %v, got %v", expected, val)
+		} else if verr != nil {
+			t.Errorf("cannot convert stored metric val to float64")
+		}
+	}
+
+	// Inc
+
+	m.MustInc(10)
+	match(10)
+
+	// Dec
+
+	err = m.Dec(9)
+	if err != nil {
+		t.Errorf("cannot decrement the gauge")
+	}
+	match(1)
+
+	// Set
+
+	err = m.Set(9)
+	if err != nil {
+		t.Errorf("cannot set the gauge's value")
+	}
+	match(9)
 }

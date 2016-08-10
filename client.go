@@ -482,6 +482,11 @@ func (c *PCPClient) writeMetrics() {
 				c.writeSingletonMetric(metric.PCPSingletonMetric)
 				wg.Done()
 			}(metric)
+		case *PCPGauge:
+			go func(metric *PCPGauge) {
+				c.writeSingletonMetric(metric.PCPSingletonMetric)
+				wg.Done()
+			}(metric)
 		}
 	}
 
