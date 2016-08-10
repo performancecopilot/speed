@@ -606,6 +606,8 @@ func (g *PCPGauge) MustDec(val float64) {
 // End signals the end of monitoring and adding the elapsed time to the accumulated time
 // and returning it
 type Timer interface {
+	Metric
+
 	Start() error
 	Stop() (float64, error)
 }
@@ -790,3 +792,102 @@ func (m *PCPInstanceMetric) MustSetInstance(instance string, val interface{}) {
 		panic(err)
 	}
 }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// CounterVector defines a Counter on multiple instances
+type CounterVector interface {
+	Metric
+
+	Val(string) int64
+
+	Set(int64, string) error
+
+	Inc(int64, string) error
+
+	Up(string)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPCounterVector implements a PCP counter vector
+type PCPCounterVector struct {
+	*PCPInstanceMetric
+}
+
+// NewPCPCounterVector creates a new instance of a PCPCounterVector
+func NewPCPCounterVector(values map[string]int64, name string, desc ...string) (*PCPCounterVector, error) {
+	instances, i := make([]string, len(values)), 0
+	vals := make(map[string]interface{})
+	for k, v := range values {
+		instances[i] = k
+		i++
+		vals[k] = v
+	}
+
+	indomname := name + ".indom"
+	indom, err := NewPCPInstanceDomain(indomname, instances)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create indom, error: %v", err)
+	}
+
+	im, err := NewPCPInstanceMetric(vals, name, indom, Int64Type, CounterSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPCounterVector{im}, nil
+}
+
+// Val returns the value of a particular instance of PCPCounterVector
+func (c *PCPCounterVector) Val(instance string) (int64, error) {
+	val, err := c.PCPInstanceMetric.ValInstance(instance)
+	if err != nil {
+		return 0, err
+	}
+	return val.(int64), nil
+}
+
+// Set sets the value of a particular instance of PCPCounterVector
+func (c *PCPCounterVector) Set(val int64, instance string) error {
+	v, err := c.Val(instance)
+	if err != nil {
+		return err
+	}
+
+	if val < v {
+		return fmt.Errorf("cannot set instance %s to a lesser value %v", instance, val)
+	}
+
+	return c.PCPInstanceMetric.SetInstance(instance, val)
+}
+
+// Inc increments the value of a particular instance of PCPCounterVector
+func (c *PCPCounterVector) Inc(inc int64, instance string) error {
+	if inc < 0 {
+		return errors.New("increment cannot be negative")
+	}
+
+	if inc == 0 {
+		return nil
+	}
+
+	v, err := c.Val(instance)
+	if err != nil {
+		return err
+	}
+
+	return c.Set(v+inc, instance)
+}
+
+// Up increments the value of a particular instance ny 1
+func (c *PCPCounterVector) Up(instance string) error {
+	v, err := c.Val(instance)
+	if err != nil {
+		return err
+	}
+
+	return c.Set(v+1, instance)
+}
+
+///////////////////////////////////////////////////////////////////////////////
