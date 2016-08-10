@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/performancecopilot/speed/mmvdump"
 )
@@ -844,6 +845,33 @@ func TestMMV2InstanceWriting(t *testing.T) {
 	}
 }
 
+func matchSingleDump(expected interface{}, m PCPMetric, c *PCPClient, t *testing.T) {
+	_, _, metrics, values, _, _, strings, err := mmvdump.Dump(c.writer.Bytes())
+	if err != nil {
+		t.Errorf("cannot get dump: %v", err)
+		return
+	}
+
+	matchMetricsAndValues(metrics, values, strings, c, t)
+
+	off, _ := findMetric(m, metrics)
+	_, v := findValue(off, values)
+
+	if val, err := mmvdump.FixedVal(v.Val, mmvdump.Type(m.Type())); val != expected {
+		t.Errorf("expected metric to be %v, got %v", expected, val)
+	} else if err != nil {
+		t.Errorf("cannot convert stored metric val to float64")
+	}
+}
+
+func matchSingle(expected, val interface{}, m PCPMetric, c *PCPClient, t *testing.T) {
+	if val != expected {
+		t.Errorf("expected Val() to return %v", expected)
+	}
+
+	matchSingleDump(expected, m, c, t)
+}
+
 func TestCounter(t *testing.T) {
 	c, err := NewPCPClient("test")
 	if err != nil {
@@ -862,34 +890,15 @@ func TestCounter(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	match := func(expected int64) {
-		_, _, metrics, values, _, _, strings, derr := mmvdump.Dump(c.writer.Bytes())
-		if derr != nil {
-			t.Errorf("cannot get dump: %v", derr)
-			return
-		}
-
-		matchMetricsAndValues(metrics, values, strings, c, t)
-
-		off, _ := findMetric(m, metrics)
-		_, v := findValue(off, values)
-
-		if val, verr := mmvdump.FixedVal(v.Val, mmvdump.Int64Type); val.(int64) != expected {
-			t.Errorf("expected counter to be %v, got %v", expected, val)
-		} else if verr != nil {
-			t.Errorf("cannot convert stored metric val to int64")
-		}
-	}
-
 	// Up
 
 	m.Up()
-	match(1)
+	matchSingle(int64(1), m.Val(), m, c, t)
 
 	// Inc
 
 	m.MustInc(9)
-	match(10)
+	matchSingle(int64(10), m.Val(), m, c, t)
 
 	// Inc decrement
 
@@ -897,7 +906,7 @@ func TestCounter(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected decrementing a counter to generate an error")
 	}
-	match(10)
+	matchSingle(int64(10), m.Val(), m, c, t)
 
 	// Set less
 
@@ -905,7 +914,7 @@ func TestCounter(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected setting a counter to a lesser value to generate an error")
 	}
-	match(10)
+	matchSingle(int64(10), m.Val(), m, c, t)
 
 	// Set more
 
@@ -913,7 +922,7 @@ func TestCounter(t *testing.T) {
 	if err != nil {
 		t.Errorf("expected setting a counter to a larger value to not generate an error")
 	}
-	match(99)
+	matchSingle(int64(99), m.Val(), m, c, t)
 }
 
 func TestGauge(t *testing.T) {
@@ -934,29 +943,10 @@ func TestGauge(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	match := func(expected float64) {
-		_, _, metrics, values, _, _, strings, derr := mmvdump.Dump(c.writer.Bytes())
-		if derr != nil {
-			t.Errorf("cannot get dump: %v", derr)
-			return
-		}
-
-		matchMetricsAndValues(metrics, values, strings, c, t)
-
-		off, _ := findMetric(m, metrics)
-		_, v := findValue(off, values)
-
-		if val, verr := mmvdump.FixedVal(v.Val, mmvdump.DoubleType); val.(float64) != expected {
-			t.Errorf("expected gauge to be %v, got %v", expected, val)
-		} else if verr != nil {
-			t.Errorf("cannot convert stored metric val to float64")
-		}
-	}
-
 	// Inc
 
 	m.MustInc(10)
-	match(10)
+	matchSingle(float64(10), m.Val(), m, c, t)
 
 	// Dec
 
@@ -964,7 +954,7 @@ func TestGauge(t *testing.T) {
 	if err != nil {
 		t.Errorf("cannot decrement the gauge")
 	}
-	match(1)
+	matchSingle(float64(1), m.Val(), m, c, t)
 
 	// Set
 
@@ -972,5 +962,38 @@ func TestGauge(t *testing.T) {
 	if err != nil {
 		t.Errorf("cannot set the gauge's value")
 	}
-	match(9)
+	matchSingle(float64(9), m.Val(), m, c, t)
+}
+
+func TestTimer(t *testing.T) {
+	timer, err := NewPCPTimer("t.1", NanosecondUnit)
+	if err != nil {
+		t.Errorf("cannot create timer, error: %v", err)
+		return
+	}
+
+	c, err := NewPCPClient("test")
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+		return
+	}
+
+	c.MustRegister(timer)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	err = timer.Start()
+	if err != nil {
+		t.Errorf("cannot start timer, error: %v", err)
+	}
+
+	time.Sleep(time.Second)
+
+	v, err := timer.Stop()
+	if err != nil {
+		t.Errorf("cannot stop timer, error: %v", err)
+	}
+
+	matchSingleDump(v, timer, c, t)
 }
