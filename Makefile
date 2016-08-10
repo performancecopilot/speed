@@ -14,7 +14,7 @@ deps:
 	gometalinter --install
 
 lint:
-	gometalinter ./... --vendor --deadline=10000s --dupl-threshold=150 --disable=gas	
+	gometalinter ./... --vendor --deadline=10000s --dupl-threshold=150 --disable=interfacer	--disable=gas
 
 test: 
 	go test ./...
