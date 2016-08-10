@@ -213,7 +213,10 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 
 	// if it is an indom metric
 	if pcpm.Indom() != nil && !r.HasInstanceDomain(pcpm.Indom().Name()) {
-		return errors.New("the metric's instance domain is not defined for current registry")
+		err := r.AddInstanceDomain(pcpm.Indom())
+		if err != nil {
+			return err
+		}
 	}
 
 	r.metricslock.Lock()
