@@ -280,7 +280,7 @@ type PCPMetric interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// Counter defines a metric that holds a single value that can be incremented or decremented
+// Counter defines a metric that holds a single value that can only be incremented
 type Counter interface {
 	Metric
 
@@ -291,6 +291,24 @@ type Counter interface {
 	MustInc(int64)
 
 	Up() // same as MustInc(1)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Gauge defines a metric that holds a single double value that can be incremented or decremented
+type Gauge interface {
+	Metric
+
+	Val() float64
+
+	Set(float64) error
+	MustSet(float64)
+
+	Inc(float64) error
+	Dec(float64) error
+
+	MustInc(float64)
+	MustDec(float64)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -635,3 +653,58 @@ func (c *PCPCounter) MustInc(val int64) {
 
 // Up increases the counter by 1
 func (c *PCPCounter) Up() { c.MustInc(1) }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPGauge defines a PCP compatible Gauge metric
+type PCPGauge struct {
+	*PCPSingletonMetric
+}
+
+// NewPCPGauge creates a new PCPGauge instance
+func NewPCPGauge(val float64, name string, desc ...string) (*PCPGauge, error) {
+	sm, err := NewPCPSingletonMetric(val, name, DoubleType, InstantSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPGauge{sm}, nil
+}
+
+// Val returns the current value of the Gauge
+func (g *PCPGauge) Val() float64 { return g.PCPSingletonMetric.Val().(float64) }
+
+// Set sets the current value of the Gauge
+func (g *PCPGauge) Set(val float64) error { return g.PCPSingletonMetric.Set(val) }
+
+// MustSet will panic if Set fails
+func (g *PCPGauge) MustSet(val float64) {
+	if err := g.Set(val); err != nil {
+		panic(err)
+	}
+}
+
+// Inc adds a value to the existing Gauge value
+func (g *PCPGauge) Inc(val float64) error {
+	v := g.Val()
+	return g.Set(v + val)
+}
+
+// MustInc will panic if Inc fails
+func (g *PCPGauge) MustInc(val float64) {
+	if err := g.Inc(val); err != nil {
+		panic(err)
+	}
+}
+
+// Dec adds a value to the existing Gauge value
+func (g *PCPGauge) Dec(val float64) error {
+	return g.Inc(-val)
+}
+
+// MustDec will panic if Dec fails
+func (g *PCPGauge) MustDec(val float64) {
+	if err := g.Dec(val); err != nil {
+		panic(err)
+	}
+}
