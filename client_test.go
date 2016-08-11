@@ -1023,10 +1023,7 @@ func TestCounterVector(t *testing.T) {
 
 	// Set
 
-	err = cv.Set(10, "m1")
-	if err != nil {
-		t.Errorf("cannot set an instance, error: %v", err)
-	}
+	cv.MustSet(10, "m1")
 
 	if val, err = cv.Val("m1"); val != 10 {
 		t.Errorf("expected m.1[m1] to be 10, got %v", val)
@@ -1036,10 +1033,7 @@ func TestCounterVector(t *testing.T) {
 
 	// Inc
 
-	err = cv.Inc(10, "m2")
-	if err != nil {
-		t.Errorf("cannot inc an instance, error: %v", err)
-	}
+	cv.MustInc(10, "m2")
 
 	if val, err = cv.Val("m2"); val != 12 {
 		t.Errorf("expected m.1[m2] to be 12, got %v", val)
@@ -1083,10 +1077,7 @@ func TestGaugeVector(t *testing.T) {
 
 	// Set
 
-	err = g.Set(10, "m1")
-	if err != nil {
-		t.Errorf("cannot set an instance, error: %v", err)
-	}
+	g.MustSet(10, "m1")
 
 	if val, err = g.Val("m1"); val != 10 {
 		t.Errorf("expected m.1[m1] to be 10, got %v", val)
@@ -1096,13 +1087,20 @@ func TestGaugeVector(t *testing.T) {
 
 	// Inc
 
-	err = g.Inc(10, "m2")
-	if err != nil {
-		t.Errorf("cannot inc an instance, error: %v", err)
-	}
+	g.MustInc(10, "m2")
 
 	if val, err = g.Val("m2"); val != 12.4 {
-		t.Errorf("expected m.1[m2] to be 12, got %v", val)
+		t.Errorf("expected m.1[m2] to be 12.4, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m2] value, error: %v", err)
+	}
+
+	// Dec
+
+	g.MustDec(10, "m2")
+
+	if val, err = g.Val("m2"); val != 2.4 {
+		t.Errorf("expected m.1[m2] to be 2.4, got %v", val)
 	} else if err != nil {
 		t.Errorf("cannot retrieve m.1[m2] value, error: %v", err)
 	}
