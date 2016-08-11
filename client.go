@@ -102,7 +102,7 @@ const (
 
 // PCPClient implements a client that can generate instrumentation for PCP
 type PCPClient struct {
-	sync.Mutex
+	mutex sync.Mutex
 
 	loc       string  // absolute location of the mmv file
 	clusterID uint32  // cluster identifier for the writer
@@ -143,8 +143,8 @@ func (c *PCPClient) Registry() Registry {
 
 // SetFlag sets the MMVflag for the client
 func (c *PCPClient) SetFlag(flag MMVFlag) error {
-	c.Lock()
-	defer c.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	if c.r.mapped {
 		return errors.New("cannot set mmv flag for an active client")
@@ -191,8 +191,8 @@ func (c *PCPClient) Length() int {
 
 // Start dumps existing registry data
 func (c *PCPClient) Start() error {
-	c.Lock()
-	defer c.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	l := c.Length()
 
@@ -634,8 +634,8 @@ func (c *PCPClient) MustStart() {
 
 // Stop removes existing mapping and cleans up
 func (c *PCPClient) Stop() error {
-	c.Lock()
-	defer c.Unlock()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
 	if !c.r.mapped {
 		return errors.New("trying to stop an already stopped mapping")
