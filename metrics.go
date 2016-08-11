@@ -802,8 +802,10 @@ type CounterVector interface {
 	Val(string) int64
 
 	Set(int64, string) error
+	MustSet(int64, string)
 
 	Inc(int64, string) error
+	MustInc(int64, string)
 
 	Up(string)
 }
@@ -862,6 +864,13 @@ func (c *PCPCounterVector) Set(val int64, instance string) error {
 	return c.PCPInstanceMetric.SetInstance(instance, val)
 }
 
+// MustSet panics if Set fails
+func (c *PCPCounterVector) MustSet(val int64, instance string) {
+	if err := c.Set(val, instance); err != nil {
+		panic(err)
+	}
+}
+
 // Inc increments the value of a particular instance of PCPCounterVector
 func (c *PCPCounterVector) Inc(inc int64, instance string) error {
 	if inc < 0 {
@@ -880,14 +889,14 @@ func (c *PCPCounterVector) Inc(inc int64, instance string) error {
 	return c.Set(v+inc, instance)
 }
 
-// Up increments the value of a particular instance ny 1
-func (c *PCPCounterVector) Up(instance string) error {
-	v, err := c.Val(instance)
-	if err != nil {
-		return err
+// MustInc panics if Inc fails
+func (c *PCPCounterVector) MustInc(inc int64, instance string) {
+	if err := c.Inc(inc, instance); err != nil {
+		panic(err)
 	}
-
-	return c.Set(v+1, instance)
 }
+
+// Up increments the value of a particular instance ny 1
+func (c *PCPCounterVector) Up(instance string) { c.MustInc(1, instance) }
 
 ///////////////////////////////////////////////////////////////////////////////
