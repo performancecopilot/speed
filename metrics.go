@@ -381,8 +381,8 @@ func newupdateClosure(offset int, writer bytewriter.Writer) updateClosure {
 // PCPSingletonMetric defines a singleton metric with no instance domain
 // only a value and a valueoffset
 type PCPSingletonMetric struct {
-	sync.RWMutex
 	*PCPMetricDesc
+	mutex  sync.RWMutex
 	val    interface{}
 	update updateClosure
 }
@@ -403,15 +403,14 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 	val = t.resolve(val)
 
 	return &PCPSingletonMetric{
-		sync.RWMutex{},
-		d, val, nil,
+		d, sync.RWMutex{}, val, nil,
 	}, nil
 }
 
 // Val returns the current Set value of PCPSingletonMetric
 func (m *PCPSingletonMetric) Val() interface{} {
-	m.RLock()
-	defer m.RUnlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	return m.val
 }
@@ -425,8 +424,8 @@ func (m *PCPSingletonMetric) Set(val interface{}) error {
 	val = m.t.resolveFloat(m.t.resolveInt(val))
 
 	if val != m.val {
-		m.Lock()
-		defer m.Unlock()
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
 		if m.update != nil {
 			err := m.update(val)
 			if err != nil {
@@ -634,8 +633,8 @@ func NewPCPTimer(name string, unit TimeUnit, desc ...string) (*PCPTimer, error) 
 
 // Start signals the timer to start monitoring
 func (t *PCPTimer) Start() error {
-	t.Lock()
-	defer t.Unlock()
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
 
 	if t.started {
 		return errors.New("trying to start an already started timer")
@@ -648,10 +647,10 @@ func (t *PCPTimer) Start() error {
 
 // Stop signals the timer to end monitoring and return elapsed time so far
 func (t *PCPTimer) Stop() (float64, error) {
-	t.Lock()
+	t.mutex.Lock()
 
 	if !t.started {
-		t.Unlock()
+		t.mutex.Unlock()
 		return 0, errors.New("trying to stop a stopped timer")
 	}
 
@@ -673,7 +672,7 @@ func (t *PCPTimer) Stop() (float64, error) {
 		inc = d.Hours()
 	}
 
-	t.Unlock()
+	t.mutex.Unlock()
 
 	v := t.PCPSingletonMetric.Val().(float64)
 	err := t.PCPSingletonMetric.Set(v + inc)
@@ -698,8 +697,8 @@ func newinstanceValue(val interface{}) *instanceValue {
 // PCPInstanceMetric represents a PCPMetric that can have multiple values
 // over multiple instances in an instance domain
 type PCPInstanceMetric struct {
-	sync.RWMutex
 	*PCPMetricDesc
+	mutex sync.RWMutex
 	indom *PCPInstanceDomain
 	vals  map[string]*instanceValue
 }
@@ -734,10 +733,7 @@ func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain,
 	}
 
 	return &PCPInstanceMetric{
-		sync.RWMutex{},
-		d,
-		indom,
-		mvals,
+		d, sync.RWMutex{}, indom, mvals,
 	}, nil
 }
 
@@ -750,8 +746,8 @@ func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
 		return nil, fmt.Errorf("%v is not an instance of this metric", instance)
 	}
 
-	m.RLock()
-	defer m.RUnlock()
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
 
 	ans := m.vals[instance].val
 	return ans, nil
@@ -770,8 +766,8 @@ func (m *PCPInstanceMetric) SetInstance(instance string, val interface{}) error 
 	val = m.t.resolveFloat(m.t.resolveInt(val))
 
 	if m.vals[instance].val != val {
-		m.Lock()
-		defer m.Unlock()
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
 
 		if m.vals[instance].update != nil {
 			err := m.vals[instance].update(val)
