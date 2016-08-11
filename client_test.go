@@ -1019,6 +1019,8 @@ func TestCounterVector(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
+	var val int64
+
 	// Set
 
 	err = cv.Set(10, "m1")
@@ -1026,10 +1028,10 @@ func TestCounterVector(t *testing.T) {
 		t.Errorf("cannot set an instance, error: %v", err)
 	}
 
-	if val, verr := cv.Val("m1"); val != 10 {
+	if val, err = cv.Val("m1"); val != 10 {
 		t.Errorf("expected m.1[m1] to be 10, got %v", val)
-	} else if verr != nil {
-		t.Errorf("cannot retrieve  m.1[m1] value, error: %v", err)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m1] value, error: %v", err)
 	}
 
 	// Inc
@@ -1039,9 +1041,69 @@ func TestCounterVector(t *testing.T) {
 		t.Errorf("cannot inc an instance, error: %v", err)
 	}
 
-	if val, verr := cv.Val("m2"); val != 12 {
+	if val, err = cv.Val("m2"); val != 12 {
 		t.Errorf("expected m.1[m2] to be 12, got %v", val)
-	} else if verr != nil {
-		t.Errorf("cannot retrieve  m.1[m2] value, error: %v", err)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m2] value, error: %v", err)
+	}
+
+	// Up
+
+	cv.Up("m1")
+
+	if val, err = cv.Val("m1"); val != 11 {
+		t.Errorf("expected m.1[m1] to be 11, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m1] value, error: %v", err)
+	}
+}
+
+func TestGaugeVector(t *testing.T) {
+	g, err := NewPCPGaugeVector(map[string]float64{
+		"m1": 1.2,
+		"m2": 2.4,
+	}, "m.1")
+
+	if err != nil {
+		t.Errorf("cannot create GaugeVector, error: %v", err)
+		return
+	}
+
+	c, err := NewPCPClient("c")
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+	}
+
+	c.MustRegister(g)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	var val float64
+
+	// Set
+
+	err = g.Set(10, "m1")
+	if err != nil {
+		t.Errorf("cannot set an instance, error: %v", err)
+	}
+
+	if val, err = g.Val("m1"); val != 10 {
+		t.Errorf("expected m.1[m1] to be 10, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m1] value, error: %v", err)
+	}
+
+	// Inc
+
+	err = g.Inc(10, "m2")
+	if err != nil {
+		t.Errorf("cannot inc an instance, error: %v", err)
+	}
+
+	if val, err = g.Val("m2"); val != 12.4 {
+		t.Errorf("expected m.1[m2] to be 12, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m2] value, error: %v", err)
 	}
 }

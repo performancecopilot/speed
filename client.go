@@ -497,6 +497,11 @@ func (c *PCPClient) writeMetrics() {
 				c.writeInstanceMetric(metric.PCPInstanceMetric)
 				wg.Done()
 			}(metric)
+		case *PCPGaugeVector:
+			go func(metric *PCPGaugeVector) {
+				c.writeInstanceMetric(metric.PCPInstanceMetric)
+				wg.Done()
+			}(metric)
 		}
 	}
 
