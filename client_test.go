@@ -2,6 +2,7 @@ package speed
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"testing"
 	"time"
@@ -845,6 +846,10 @@ func TestMMV2InstanceWriting(t *testing.T) {
 	}
 }
 
+func toFixed(v float64, p int) float64 {
+	return float64(uint64(v*math.Pow(10, float64(p)))) / math.Pow(10, float64(p))
+}
+
 func matchSingleDump(expected interface{}, m PCPMetric, c *PCPClient, t *testing.T) {
 	_, _, metrics, values, _, _, strings, err := mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
@@ -1099,7 +1104,7 @@ func TestGaugeVector(t *testing.T) {
 
 	g.MustDec(10, "m2")
 
-	if val, err = g.Val("m2"); val != 2.4 {
+	if val, err = g.Val("m2"); toFixed(val, 5) != 2.4 {
 		t.Errorf("expected m.1[m2] to be 2.4, got %v", val)
 	} else if err != nil {
 		t.Errorf("cannot retrieve m.1[m2] value, error: %v", err)
