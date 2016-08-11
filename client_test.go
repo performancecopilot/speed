@@ -171,7 +171,7 @@ func matchName(n string, name [64]byte, t *testing.T) {
 	}
 }
 
-func matchMetricDesc(desc *PCPMetricDesc, metric mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
+func matchMetricDesc(desc *pcpMetricDesc, metric mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
 	switch m := metric.(type) {
 	case *mmvdump.Metric1:
 		matchName(desc.name, m.Name, t)
@@ -209,7 +209,7 @@ func matchSingletonMetric(m *PCPSingletonMetric, metric mmvdump.Metric, strings 
 		t.Error("expected indom to be null")
 	}
 
-	matchMetricDesc(m.PCPMetricDesc, metric, strings, t)
+	matchMetricDesc(m.pcpMetricDesc, metric, strings, t)
 }
 
 func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, metrics map[uint64]mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
@@ -241,7 +241,7 @@ func matchInstanceMetric(m *PCPInstanceMetric, met mmvdump.Metric, strings map[u
 		t.Errorf("expected indom id to be %d, got %d", m.indom.id, met.Indom())
 	}
 
-	matchMetricDesc(m.PCPMetricDesc, met, strings, t)
+	matchMetricDesc(m.pcpMetricDesc, met, strings, t)
 }
 
 func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCPInstanceMetric, metrics map[uint64]mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {

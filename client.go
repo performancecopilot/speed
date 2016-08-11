@@ -515,7 +515,7 @@ func (c *PCPClient) writeSingletonMetric(m *PCPSingletonMetric) {
 	doff := <-c.metricoffsetc
 
 	go func() {
-		c.writeMetricDesc(m.PCPMetricDesc, m.Indom(), doff)
+		c.writeMetricDesc(m.pcpMetricDesc, m.Indom(), doff)
 		wg.Done()
 	}()
 
@@ -540,7 +540,7 @@ func (c *PCPClient) writeInstanceMetric(m *PCPInstanceMetric) {
 	doff := <-c.metricoffsetc
 
 	go func() {
-		c.writeMetricDesc(m.PCPMetricDesc, m.Indom(), doff)
+		c.writeMetricDesc(m.pcpMetricDesc, m.Indom(), doff)
 		wg.Done()
 	}()
 
@@ -560,7 +560,7 @@ func (c *PCPClient) writeInstanceMetric(m *PCPInstanceMetric) {
 	wg.Wait()
 }
 
-func (c *PCPClient) writeMetricDesc(desc *PCPMetricDesc, indom *PCPInstanceDomain, off int) {
+func (c *PCPClient) writeMetricDesc(desc *pcpMetricDesc, indom *PCPInstanceDomain, off int) {
 	if c.r.version2 {
 		c.metricoffsetc <- off + Metric2Length
 

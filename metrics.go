@@ -286,12 +286,12 @@ type PCPMetric interface {
 // see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
 const PCPMetricItemBitLength = 10
 
-// PCPMetricDesc is a metric metadata wrapper
-// each metric type can wrap its metadata by containing a PCPMetricDesc type and only define its own
-// specific properties assuming PCPMetricDesc will handle the rest
+// pcpMetricDesc is a metric metadata wrapper
+// each metric type can wrap its metadata by containing a pcpMetricDesc type and only define its own
+// specific properties assuming pcpMetricDesc will handle the rest
 //
 // when writing, this type is supposed to map directly to the pmDesc struct as defined in PCP core
-type PCPMetricDesc struct {
+type pcpMetricDesc struct {
 	id                                uint32          // unique metric id
 	name                              string          // the name
 	t                                 MetricType      // the type of a metric
@@ -300,8 +300,8 @@ type PCPMetricDesc struct {
 	shortDescription, longDescription string
 }
 
-// newPCPMetricDesc creates a new Metric Description wrapper type
-func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPMetricDesc, error) {
+// newpcpMetricDesc creates a new Metric Description wrapper type
+func newpcpMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*pcpMetricDesc, error) {
 	if n == "" {
 		return nil, errors.New("Metric name cannot be empty")
 	}
@@ -324,7 +324,7 @@ func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, d
 		longdesc = desc[1]
 	}
 
-	return &PCPMetricDesc{
+	return &pcpMetricDesc{
 		hash(n, PCPMetricItemBitLength),
 		n, t, s, u,
 		shortdesc, longdesc,
@@ -332,30 +332,30 @@ func newPCPMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, d
 }
 
 // ID returns the generated id for PCPMetric
-func (md *PCPMetricDesc) ID() uint32 { return md.id }
+func (md *pcpMetricDesc) ID() uint32 { return md.id }
 
 // Name returns the generated id for PCPMetric
-func (md *PCPMetricDesc) Name() string {
+func (md *pcpMetricDesc) Name() string {
 	return md.name
 }
 
 // Semantics returns the current stored value for PCPMetric
-func (md *PCPMetricDesc) Semantics() MetricSemantics { return md.sem }
+func (md *pcpMetricDesc) Semantics() MetricSemantics { return md.sem }
 
 // Unit returns the unit for PCPMetric
-func (md *PCPMetricDesc) Unit() MetricUnit { return md.u }
+func (md *pcpMetricDesc) Unit() MetricUnit { return md.u }
 
 // Type returns the type for PCPMetric
-func (md *PCPMetricDesc) Type() MetricType { return md.t }
+func (md *pcpMetricDesc) Type() MetricType { return md.t }
 
 // ShortDescription returns the shortdesc value
-func (md *PCPMetricDesc) ShortDescription() string { return md.shortDescription }
+func (md *pcpMetricDesc) ShortDescription() string { return md.shortDescription }
 
 // LongDescription returns the longdesc value
-func (md *PCPMetricDesc) LongDescription() string { return md.longDescription }
+func (md *pcpMetricDesc) LongDescription() string { return md.longDescription }
 
 // Description returns the description for PCPMetric
-func (md *PCPMetricDesc) Description() string {
+func (md *pcpMetricDesc) Description() string {
 	return md.shortDescription + "\n" + md.longDescription
 }
 
@@ -381,7 +381,7 @@ func newupdateClosure(offset int, writer bytewriter.Writer) updateClosure {
 // PCPSingletonMetric defines a singleton metric with no instance domain
 // only a value and a valueoffset
 type PCPSingletonMetric struct {
-	*PCPMetricDesc
+	*pcpMetricDesc
 	mutex  sync.RWMutex
 	val    interface{}
 	update updateClosure
@@ -395,7 +395,7 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 		return nil, fmt.Errorf("type %v is not compatible with value %v", t, val)
 	}
 
-	d, err := newPCPMetricDesc(name, t, s, u, desc...)
+	d, err := newpcpMetricDesc(name, t, s, u, desc...)
 	if err != nil {
 		return nil, err
 	}
@@ -657,7 +657,7 @@ func (t *PCPTimer) Stop() (float64, error) {
 	d := time.Since(t.since)
 
 	var inc float64
-	switch t.PCPMetricDesc.Unit() {
+	switch t.pcpMetricDesc.Unit() {
 	case NanosecondUnit:
 		inc = float64(d.Nanoseconds())
 	case MicrosecondUnit:
@@ -697,7 +697,7 @@ func newinstanceValue(val interface{}) *instanceValue {
 // PCPInstanceMetric represents a PCPMetric that can have multiple values
 // over multiple instances in an instance domain
 type PCPInstanceMetric struct {
-	*PCPMetricDesc
+	*pcpMetricDesc
 	mutex sync.RWMutex
 	indom *PCPInstanceDomain
 	vals  map[string]*instanceValue
@@ -711,7 +711,7 @@ func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain,
 		return nil, errors.New("values for all instances in the instance domain only should be passed")
 	}
 
-	d, err := newPCPMetricDesc(name, t, s, u, desc...)
+	d, err := newpcpMetricDesc(name, t, s, u, desc...)
 	if err != nil {
 		return nil, err
 	}
