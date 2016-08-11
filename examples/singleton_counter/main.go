@@ -1,7 +1,5 @@
 package main
 
-// TODO: update this example with PCPCounterMetric once that is implemented
-
 import (
 	"flag"
 	"fmt"
@@ -15,12 +13,9 @@ var timelimit = flag.Int("time", 60, "number of seconds to run for")
 func main() {
 	flag.Parse()
 
-	metric, err := speed.NewPCPSingletonMetric(
+	metric, err := speed.NewPCPCounter(
 		0,
 		"counter",
-		speed.Int32Type,
-		speed.CounterSemantics,
-		speed.OneUnit,
 		"A Simple Metric",
 	)
 	if err != nil {
@@ -42,9 +37,7 @@ func main() {
 
 	fmt.Println("The metric should be visible as mmv.singletoncounter.counter")
 	for i := 0; i < *timelimit; i++ {
-		v := metric.Val().(int32)
-		v++
-		metric.MustSet(v)
+		metric.Up()
 		time.Sleep(time.Second)
 	}
 }

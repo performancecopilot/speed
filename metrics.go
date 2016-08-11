@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"time"
 
 	"github.com/performancecopilot/speed/bytewriter"
 )
@@ -452,7 +453,236 @@ func (m *PCPSingletonMetric) String() string {
 	return fmt.Sprintf("Val: %v\n%v", m.val, m.Description())
 }
 
-// TODO: implement PCPCounterMetric, PCPGaugeMetric ...
+///////////////////////////////////////////////////////////////////////////////
+
+// Counter defines a metric that holds a single value that can only be incremented
+type Counter interface {
+	Metric
+
+	Val() int64
+	Set(int64) error
+
+	Inc(int64) error
+	MustInc(int64)
+
+	Up() // same as MustInc(1)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPCounter implements a PCP compatible Counter Metric
+type PCPCounter struct {
+	*PCPSingletonMetric
+}
+
+// NewPCPCounter creates a new PCPCounter instance
+func NewPCPCounter(val int64, name string, desc ...string) (*PCPCounter, error) {
+	m, err := NewPCPSingletonMetric(val, name, Int64Type, CounterSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPCounter{m}, nil
+}
+
+// Val returns the current value of the counter
+func (c *PCPCounter) Val() int64 {
+	return c.PCPSingletonMetric.Val().(int64)
+}
+
+// Set sets the value of the counter
+func (c *PCPCounter) Set(val int64) error {
+	v := c.Val()
+
+	if val < v {
+		return fmt.Errorf("cannot set counter to %v, current value is %v and PCP counters cannot go backwards", val, v)
+	}
+
+	if val == v {
+		return nil
+	}
+
+	return c.PCPSingletonMetric.Set(val)
+}
+
+// Inc increases the stored counter's value by the passed increment
+func (c *PCPCounter) Inc(val int64) error {
+	if val < 0 {
+		return errors.New("cannot decrement a counter")
+	}
+
+	v := c.Val()
+	v += val
+	return c.Set(v)
+}
+
+// MustInc is Inc that panics
+func (c *PCPCounter) MustInc(val int64) {
+	if err := c.Inc(val); err != nil {
+		panic(err)
+	}
+}
+
+// Up increases the counter by 1
+func (c *PCPCounter) Up() { c.MustInc(1) }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Gauge defines a metric that holds a single double value that can be incremented or decremented
+type Gauge interface {
+	Metric
+
+	Val() float64
+
+	Set(float64) error
+	MustSet(float64)
+
+	Inc(float64) error
+	Dec(float64) error
+
+	MustInc(float64)
+	MustDec(float64)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPGauge defines a PCP compatible Gauge metric
+type PCPGauge struct {
+	*PCPSingletonMetric
+}
+
+// NewPCPGauge creates a new PCPGauge instance
+func NewPCPGauge(val float64, name string, desc ...string) (*PCPGauge, error) {
+	sm, err := NewPCPSingletonMetric(val, name, DoubleType, InstantSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPGauge{sm}, nil
+}
+
+// Val returns the current value of the Gauge
+func (g *PCPGauge) Val() float64 { return g.PCPSingletonMetric.Val().(float64) }
+
+// Set sets the current value of the Gauge
+func (g *PCPGauge) Set(val float64) error { return g.PCPSingletonMetric.Set(val) }
+
+// MustSet will panic if Set fails
+func (g *PCPGauge) MustSet(val float64) {
+	if err := g.Set(val); err != nil {
+		panic(err)
+	}
+}
+
+// Inc adds a value to the existing Gauge value
+func (g *PCPGauge) Inc(val float64) error {
+	v := g.Val()
+	return g.Set(v + val)
+}
+
+// MustInc will panic if Inc fails
+func (g *PCPGauge) MustInc(val float64) {
+	if err := g.Inc(val); err != nil {
+		panic(err)
+	}
+}
+
+// Dec adds a value to the existing Gauge value
+func (g *PCPGauge) Dec(val float64) error {
+	return g.Inc(-val)
+}
+
+// MustDec will panic if Dec fails
+func (g *PCPGauge) MustDec(val float64) {
+	if err := g.Dec(val); err != nil {
+		panic(err)
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Timer defines a metric that accumulates time periods
+// Start signals the beginning of monitoring
+// End signals the end of monitoring and adding the elapsed time to the accumulated time
+// and returning it
+type Timer interface {
+	Metric
+
+	Start() error
+	Stop() (float64, error)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPTimer implements a PCP compatible Timer
+// It also functionally implements a metric with elapsed type from PCP
+type PCPTimer struct {
+	*PCPSingletonMetric
+	started bool
+	since   time.Time
+}
+
+// NewPCPTimer creates a new PCPTimer instance of the specified unit
+func NewPCPTimer(name string, unit TimeUnit, desc ...string) (*PCPTimer, error) {
+	sm, err := NewPCPSingletonMetric(float64(0), name, DoubleType, InstantSemantics, unit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPTimer{sm, false, time.Time{}}, nil
+}
+
+// Start signals the timer to start monitoring
+func (t *PCPTimer) Start() error {
+	t.Lock()
+	defer t.Unlock()
+
+	if t.started {
+		return errors.New("trying to start an already started timer")
+	}
+
+	t.since = time.Now()
+	t.started = true
+	return nil
+}
+
+// Stop signals the timer to end monitoring and return elapsed time so far
+func (t *PCPTimer) Stop() (float64, error) {
+	t.Lock()
+
+	if !t.started {
+		t.Unlock()
+		return 0, errors.New("trying to stop a stopped timer")
+	}
+
+	d := time.Since(t.since)
+
+	var inc float64
+	switch t.PCPMetricDesc.Unit() {
+	case NanosecondUnit:
+		inc = float64(d.Nanoseconds())
+	case MicrosecondUnit:
+		inc = float64(d.Nanoseconds()) * 1e-3
+	case MillisecondUnit:
+		inc = float64(d.Nanoseconds()) * 1e-6
+	case SecondUnit:
+		inc = d.Seconds()
+	case MinuteUnit:
+		inc = d.Minutes()
+	case HourUnit:
+		inc = d.Hours()
+	}
+
+	t.Unlock()
+
+	v := t.PCPSingletonMetric.Val().(float64)
+	err := t.PCPSingletonMetric.Set(v + inc)
+
+	if err != nil {
+		return -1, err
+	}
+	return v + inc, nil
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -562,3 +792,202 @@ func (m *PCPInstanceMetric) MustSetInstance(instance string, val interface{}) {
 		panic(err)
 	}
 }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// CounterVector defines a Counter on multiple instances
+type CounterVector interface {
+	Metric
+
+	Val(string) int64
+
+	Set(int64, string) error
+	MustSet(int64, string)
+
+	Inc(int64, string) error
+	MustInc(int64, string)
+
+	Up(string)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPCounterVector implements a PCP counter vector
+type PCPCounterVector struct {
+	*PCPInstanceMetric
+}
+
+// NewPCPCounterVector creates a new instance of a PCPCounterVector
+func NewPCPCounterVector(values map[string]int64, name string, desc ...string) (*PCPCounterVector, error) {
+	instances, i := make([]string, len(values)), 0
+	vals := make(map[string]interface{})
+	for k, v := range values {
+		instances[i] = k
+		i++
+		vals[k] = v
+	}
+
+	indomname := name + ".indom"
+	indom, err := NewPCPInstanceDomain(indomname, instances)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create indom, error: %v", err)
+	}
+
+	im, err := NewPCPInstanceMetric(vals, name, indom, Int64Type, CounterSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPCounterVector{im}, nil
+}
+
+// Val returns the value of a particular instance of PCPCounterVector
+func (c *PCPCounterVector) Val(instance string) (int64, error) {
+	val, err := c.PCPInstanceMetric.ValInstance(instance)
+	if err != nil {
+		return 0, err
+	}
+	return val.(int64), nil
+}
+
+// Set sets the value of a particular instance of PCPCounterVector
+func (c *PCPCounterVector) Set(val int64, instance string) error {
+	v, err := c.Val(instance)
+	if err != nil {
+		return err
+	}
+
+	if val < v {
+		return fmt.Errorf("cannot set instance %s to a lesser value %v", instance, val)
+	}
+
+	return c.PCPInstanceMetric.SetInstance(instance, val)
+}
+
+// MustSet panics if Set fails
+func (c *PCPCounterVector) MustSet(val int64, instance string) {
+	if err := c.Set(val, instance); err != nil {
+		panic(err)
+	}
+}
+
+// Inc increments the value of a particular instance of PCPCounterVector
+func (c *PCPCounterVector) Inc(inc int64, instance string) error {
+	if inc < 0 {
+		return errors.New("increment cannot be negative")
+	}
+
+	if inc == 0 {
+		return nil
+	}
+
+	v, err := c.Val(instance)
+	if err != nil {
+		return err
+	}
+
+	return c.Set(v+inc, instance)
+}
+
+// MustInc panics if Inc fails
+func (c *PCPCounterVector) MustInc(inc int64, instance string) {
+	if err := c.Inc(inc, instance); err != nil {
+		panic(err)
+	}
+}
+
+// Up increments the value of a particular instance ny 1
+func (c *PCPCounterVector) Up(instance string) { c.MustInc(1, instance) }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// GaugeVector defines a Gauge on multiple instances
+type GaugeVector interface {
+	Metric
+
+	Val(string) float64
+
+	Set(float64, string) error
+	MustSet(float64, string)
+
+	Inc(float64, string) error
+	MustInc(float64, string)
+
+	Dec(float64, string) error
+	MustDec(float64, string)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPGaugeVector implements a PCP counter vector
+type PCPGaugeVector struct {
+	*PCPInstanceMetric
+}
+
+// NewPCPGaugeVector creates a new instance of a PCPGaugeVector
+func NewPCPGaugeVector(values map[string]float64, name string, desc ...string) (*PCPGaugeVector, error) {
+	instances, i := make([]string, len(values)), 0
+	vals := make(map[string]interface{})
+	for k, v := range values {
+		instances[i] = k
+		i++
+		vals[k] = v
+	}
+
+	indomname := name + ".indom"
+	indom, err := NewPCPInstanceDomain(indomname, instances)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create indom, error: %v", err)
+	}
+
+	im, err := NewPCPInstanceMetric(vals, name, indom, DoubleType, InstantSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPGaugeVector{im}, nil
+}
+
+// Val returns the value of a particular instance of PCPCounterVector
+func (g *PCPGaugeVector) Val(instance string) (float64, error) {
+	val, err := g.PCPInstanceMetric.ValInstance(instance)
+	if err != nil {
+		return 0, err
+	}
+	return val.(float64), nil
+}
+
+// Set sets the value of a particular instance of PCPCounterVector
+func (g *PCPGaugeVector) Set(val float64, instance string) error {
+	return g.PCPInstanceMetric.SetInstance(instance, val)
+}
+
+// MustSet panics if Set fails
+func (g *PCPGaugeVector) MustSet(val float64, instance string) {
+	if err := g.Set(val, instance); err != nil {
+		panic(err)
+	}
+}
+
+// Inc increments the value of a particular instance of PCPCounterVector
+func (g *PCPGaugeVector) Inc(inc float64, instance string) error {
+	v, err := g.Val(instance)
+	if err != nil {
+		return err
+	}
+
+	return g.Set(v+inc, instance)
+}
+
+// MustInc panics if Inc fails
+func (g *PCPGaugeVector) MustInc(inc float64, instance string) {
+	if err := g.Inc(inc, instance); err != nil {
+		panic(err)
+	}
+}
+
+// Dec increments the value of a particular instance of PCPCounterVector
+func (g *PCPGaugeVector) Dec(inc float64, instance string) error { return g.Inc(-inc, instance) }
+
+// MustDec panics if Dec fails
+func (g *PCPGaugeVector) MustDec(inc float64, instance string) { g.MustInc(-inc, instance) }

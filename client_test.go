@@ -2,8 +2,10 @@ package speed
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/performancecopilot/speed/mmvdump"
 )
@@ -841,5 +843,270 @@ func TestMMV2InstanceWriting(t *testing.T) {
 
 	if len(strings) != 2 {
 		t.Errorf("expected two strings in the dump")
+	}
+}
+
+func toFixed(v float64, p int) float64 {
+	return float64(uint64(v*math.Pow(10, float64(p)))) / math.Pow(10, float64(p))
+}
+
+func matchSingleDump(expected interface{}, m PCPMetric, c *PCPClient, t *testing.T) {
+	_, _, metrics, values, _, _, strings, err := mmvdump.Dump(c.writer.Bytes())
+	if err != nil {
+		t.Errorf("cannot get dump: %v", err)
+		return
+	}
+
+	matchMetricsAndValues(metrics, values, strings, c, t)
+
+	off, _ := findMetric(m, metrics)
+	_, v := findValue(off, values)
+
+	if val, err := mmvdump.FixedVal(v.Val, mmvdump.Type(m.Type())); val != expected {
+		t.Errorf("expected metric to be %v, got %v", expected, val)
+	} else if err != nil {
+		t.Errorf("cannot convert stored metric val to float64")
+	}
+}
+
+func matchSingle(expected, val interface{}, m PCPMetric, c *PCPClient, t *testing.T) {
+	if val != expected {
+		t.Errorf("expected Val() to return %v", expected)
+	}
+
+	matchSingleDump(expected, m, c, t)
+}
+
+func TestCounter(t *testing.T) {
+	c, err := NewPCPClient("test")
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+		return
+	}
+
+	m, err := NewPCPCounter(0, "c.1")
+	if err != nil {
+		t.Errorf("cannot create counter, error: %v", err)
+		return
+	}
+
+	c.MustRegister(m)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	// Up
+
+	m.Up()
+	matchSingle(int64(1), m.Val(), m, c, t)
+
+	// Inc
+
+	m.MustInc(9)
+	matchSingle(int64(10), m.Val(), m, c, t)
+
+	// Inc decrement
+
+	err = m.Inc(-9)
+	if err == nil {
+		t.Errorf("expected decrementing a counter to generate an error")
+	}
+	matchSingle(int64(10), m.Val(), m, c, t)
+
+	// Set less
+
+	err = m.Set(9)
+	if err == nil {
+		t.Errorf("expected setting a counter to a lesser value to generate an error")
+	}
+	matchSingle(int64(10), m.Val(), m, c, t)
+
+	// Set more
+
+	err = m.Set(99)
+	if err != nil {
+		t.Errorf("expected setting a counter to a larger value to not generate an error")
+	}
+	matchSingle(int64(99), m.Val(), m, c, t)
+}
+
+func TestGauge(t *testing.T) {
+	c, err := NewPCPClient("test")
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+		return
+	}
+
+	m, err := NewPCPGauge(0, "g.1")
+	if err != nil {
+		t.Errorf("cannot create gauge, error: %v", err)
+		return
+	}
+
+	c.MustRegister(m)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	// Inc
+
+	m.MustInc(10)
+	matchSingle(float64(10), m.Val(), m, c, t)
+
+	// Dec
+
+	err = m.Dec(9)
+	if err != nil {
+		t.Errorf("cannot decrement the gauge")
+	}
+	matchSingle(float64(1), m.Val(), m, c, t)
+
+	// Set
+
+	err = m.Set(9)
+	if err != nil {
+		t.Errorf("cannot set the gauge's value")
+	}
+	matchSingle(float64(9), m.Val(), m, c, t)
+}
+
+func TestTimer(t *testing.T) {
+	timer, err := NewPCPTimer("t.1", NanosecondUnit)
+	if err != nil {
+		t.Errorf("cannot create timer, error: %v", err)
+		return
+	}
+
+	c, err := NewPCPClient("test")
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+		return
+	}
+
+	c.MustRegister(timer)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	err = timer.Start()
+	if err != nil {
+		t.Errorf("cannot start timer, error: %v", err)
+	}
+
+	time.Sleep(time.Second)
+
+	v, err := timer.Stop()
+	if err != nil {
+		t.Errorf("cannot stop timer, error: %v", err)
+	}
+
+	matchSingleDump(v, timer, c, t)
+}
+
+func TestCounterVector(t *testing.T) {
+	cv, err := NewPCPCounterVector(map[string]int64{
+		"m1": 1,
+		"m2": 2,
+	}, "m.1")
+
+	if err != nil {
+		t.Errorf("cannot create CounterVector, error: %v", err)
+		return
+	}
+
+	c, err := NewPCPClient("c")
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+	}
+
+	c.MustRegister(cv)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	var val int64
+
+	// Set
+
+	cv.MustSet(10, "m1")
+
+	if val, err = cv.Val("m1"); val != 10 {
+		t.Errorf("expected m.1[m1] to be 10, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m1] value, error: %v", err)
+	}
+
+	// Inc
+
+	cv.MustInc(10, "m2")
+
+	if val, err = cv.Val("m2"); val != 12 {
+		t.Errorf("expected m.1[m2] to be 12, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m2] value, error: %v", err)
+	}
+
+	// Up
+
+	cv.Up("m1")
+
+	if val, err = cv.Val("m1"); val != 11 {
+		t.Errorf("expected m.1[m1] to be 11, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m1] value, error: %v", err)
+	}
+}
+
+func TestGaugeVector(t *testing.T) {
+	g, err := NewPCPGaugeVector(map[string]float64{
+		"m1": 1.2,
+		"m2": 2.4,
+	}, "m.1")
+
+	if err != nil {
+		t.Errorf("cannot create GaugeVector, error: %v", err)
+		return
+	}
+
+	c, err := NewPCPClient("c")
+	if err != nil {
+		t.Errorf("cannot create client, error: %v", err)
+	}
+
+	c.MustRegister(g)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	var val float64
+
+	// Set
+
+	g.MustSet(10, "m1")
+
+	if val, err = g.Val("m1"); val != 10 {
+		t.Errorf("expected m.1[m1] to be 10, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m1] value, error: %v", err)
+	}
+
+	// Inc
+
+	g.MustInc(10, "m2")
+
+	if val, err = g.Val("m2"); val != 12.4 {
+		t.Errorf("expected m.1[m2] to be 12.4, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m2] value, error: %v", err)
+	}
+
+	// Dec
+
+	g.MustDec(10, "m2")
+
+	if val, err = g.Val("m2"); toFixed(val, 5) != 2.4 {
+		t.Errorf("expected m.1[m2] to be 2.4, got %v", val)
+	} else if err != nil {
+		t.Errorf("cannot retrieve m.1[m2] value, error: %v", err)
 	}
 }

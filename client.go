@@ -477,6 +477,31 @@ func (c *PCPClient) writeMetrics() {
 				c.writeInstanceMetric(metric)
 				wg.Done()
 			}(metric)
+		case *PCPCounter:
+			go func(metric *PCPCounter) {
+				c.writeSingletonMetric(metric.PCPSingletonMetric)
+				wg.Done()
+			}(metric)
+		case *PCPGauge:
+			go func(metric *PCPGauge) {
+				c.writeSingletonMetric(metric.PCPSingletonMetric)
+				wg.Done()
+			}(metric)
+		case *PCPTimer:
+			go func(metric *PCPTimer) {
+				c.writeSingletonMetric(metric.PCPSingletonMetric)
+				wg.Done()
+			}(metric)
+		case *PCPCounterVector:
+			go func(metric *PCPCounterVector) {
+				c.writeInstanceMetric(metric.PCPInstanceMetric)
+				wg.Done()
+			}(metric)
+		case *PCPGaugeVector:
+			go func(metric *PCPGaugeVector) {
+				c.writeInstanceMetric(metric.PCPInstanceMetric)
+				wg.Done()
+			}(metric)
 		}
 	}
 
