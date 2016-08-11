@@ -378,54 +378,32 @@ func newupdateClosure(offset int, writer bytewriter.Writer) updateClosure {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// PCPSingletonMetric defines a singleton metric with no instance domain
-// only a value and a valueoffset
-type PCPSingletonMetric struct {
+// pcpSingletonMetric defines an embeddable base singleton metric
+type pcpSingletonMetric struct {
 	*pcpMetricDesc
-	mutex  sync.RWMutex
 	val    interface{}
 	update updateClosure
 }
 
-// NewPCPSingletonMetric creates a new instance of PCPSingletonMetric
-// it takes 2 extra optional strings as short and long description parameters,
-// which on not being present are set blank
-func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPSingletonMetric, error) {
-	if !t.IsCompatible(val) {
-		return nil, fmt.Errorf("type %v is not compatible with value %v", t, val)
+// newpcpSingletonMetric creates a new instance of pcpSingletonMetric
+func newpcpSingletonMetric(val interface{}, desc *pcpMetricDesc) (*pcpSingletonMetric, error) {
+	if !desc.t.IsCompatible(val) {
+		return nil, fmt.Errorf("type %v is not compatible with value %v(%T)", desc.t, val, val)
 	}
 
-	d, err := newpcpMetricDesc(name, t, s, u, desc...)
-	if err != nil {
-		return nil, err
-	}
-
-	val = t.resolve(val)
-
-	return &PCPSingletonMetric{
-		d, sync.RWMutex{}, val, nil,
-	}, nil
+	val = desc.t.resolve(val)
+	return &pcpSingletonMetric{desc, val, nil}, nil
 }
 
-// Val returns the current Set value of PCPSingletonMetric
-func (m *PCPSingletonMetric) Val() interface{} {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-
-	return m.val
-}
-
-// Set Sets the current value of PCPSingletonMetric
-func (m *PCPSingletonMetric) Set(val interface{}) error {
+// set Sets the current value of pcpSingletonMetric
+func (m *pcpSingletonMetric) set(val interface{}) error {
 	if !m.t.IsCompatible(val) {
-		return errors.New("the value is incompatible with this metrics MetricType")
+		return fmt.Errorf("value %v is incompatible with MetricType %v", val, m.t)
 	}
 
-	val = m.t.resolveFloat(m.t.resolveInt(val))
+	val = m.t.resolve(val)
 
 	if val != m.val {
-		m.mutex.Lock()
-		defer m.mutex.Unlock()
 		if m.update != nil {
 			err := m.update(val)
 			if err != nil {
@@ -438,15 +416,56 @@ func (m *PCPSingletonMetric) Set(val interface{}) error {
 	return nil
 }
 
+func (m *pcpSingletonMetric) Indom() *PCPInstanceDomain { return nil }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPSingletonMetric defines a singleton metric with no instance domain
+// only a value and a valueoffset
+type PCPSingletonMetric struct {
+	*pcpSingletonMetric
+	mutex sync.RWMutex
+}
+
+// NewPCPSingletonMetric creates a new instance of PCPSingletonMetric
+// it takes 2 extra optional strings as short and long description parameters,
+// which on not being present are set blank
+func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPSingletonMetric, error) {
+	d, err := newpcpMetricDesc(name, t, s, u, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	sm, err := newpcpSingletonMetric(val, d)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPSingletonMetric{sm, sync.RWMutex{}}, nil
+}
+
+// Val returns the current Set value of PCPSingletonMetric
+func (m *PCPSingletonMetric) Val() interface{} {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	return m.val
+}
+
+// Set Sets the current value of PCPSingletonMetric
+func (m *PCPSingletonMetric) Set(val interface{}) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	return m.set(val)
+}
+
 // MustSet is a Set that panics
 func (m *PCPSingletonMetric) MustSet(val interface{}) {
 	if err := m.Set(val); err != nil {
 		panic(err)
 	}
 }
-
-// Indom returns the instance domain for a PCPSingletonMetric
-func (m *PCPSingletonMetric) Indom() *PCPInstanceDomain { return nil }
 
 func (m *PCPSingletonMetric) String() string {
 	return fmt.Sprintf("Val: %v\n%v", m.val, m.Description())
@@ -471,22 +490,31 @@ type Counter interface {
 
 // PCPCounter implements a PCP compatible Counter Metric
 type PCPCounter struct {
-	*PCPSingletonMetric
+	*pcpSingletonMetric
+	mutex sync.RWMutex
 }
 
 // NewPCPCounter creates a new PCPCounter instance
 func NewPCPCounter(val int64, name string, desc ...string) (*PCPCounter, error) {
-	m, err := NewPCPSingletonMetric(val, name, Int64Type, CounterSemantics, OneUnit, desc...)
+	d, err := newpcpMetricDesc(name, Int64Type, CounterSemantics, OneUnit, desc...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &PCPCounter{m}, nil
+	sm, err := newpcpSingletonMetric(val, d)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPCounter{sm, sync.RWMutex{}}, nil
 }
 
 // Val returns the current value of the counter
 func (c *PCPCounter) Val() int64 {
-	return c.PCPSingletonMetric.Val().(int64)
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	return c.val.(int64)
 }
 
 // Set sets the value of the counter
@@ -497,11 +525,10 @@ func (c *PCPCounter) Set(val int64) error {
 		return fmt.Errorf("cannot set counter to %v, current value is %v and PCP counters cannot go backwards", val, v)
 	}
 
-	if val == v {
-		return nil
-	}
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
 
-	return c.PCPSingletonMetric.Set(val)
+	return c.set(val)
 }
 
 // Inc increases the stored counter's value by the passed increment
@@ -547,24 +574,38 @@ type Gauge interface {
 
 // PCPGauge defines a PCP compatible Gauge metric
 type PCPGauge struct {
-	*PCPSingletonMetric
+	*pcpSingletonMetric
+	mutex sync.RWMutex
 }
 
 // NewPCPGauge creates a new PCPGauge instance
 func NewPCPGauge(val float64, name string, desc ...string) (*PCPGauge, error) {
-	sm, err := NewPCPSingletonMetric(val, name, DoubleType, InstantSemantics, OneUnit, desc...)
+	d, err := newpcpMetricDesc(name, DoubleType, InstantSemantics, OneUnit, desc...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &PCPGauge{sm}, nil
+	sm, err := newpcpSingletonMetric(val, d)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPGauge{sm, sync.RWMutex{}}, nil
 }
 
 // Val returns the current value of the Gauge
-func (g *PCPGauge) Val() float64 { return g.PCPSingletonMetric.Val().(float64) }
+func (g *PCPGauge) Val() float64 {
+	g.mutex.RLock()
+	defer g.mutex.RUnlock()
+	return g.val.(float64)
+}
 
 // Set sets the current value of the Gauge
-func (g *PCPGauge) Set(val float64) error { return g.PCPSingletonMetric.Set(val) }
+func (g *PCPGauge) Set(val float64) error {
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+	return g.set(val)
+}
 
 // MustSet will panic if Set fails
 func (g *PCPGauge) MustSet(val float64) {
@@ -616,19 +657,25 @@ type Timer interface {
 // PCPTimer implements a PCP compatible Timer
 // It also functionally implements a metric with elapsed type from PCP
 type PCPTimer struct {
-	*PCPSingletonMetric
+	*pcpSingletonMetric
+	mutex   sync.Mutex
 	started bool
 	since   time.Time
 }
 
 // NewPCPTimer creates a new PCPTimer instance of the specified unit
 func NewPCPTimer(name string, unit TimeUnit, desc ...string) (*PCPTimer, error) {
-	sm, err := NewPCPSingletonMetric(float64(0), name, DoubleType, InstantSemantics, unit, desc...)
+	d, err := newpcpMetricDesc(name, DoubleType, DiscreteSemantics, unit, desc...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &PCPTimer{sm, false, time.Time{}}, nil
+	sm, err := newpcpSingletonMetric(0, d)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPTimer{sm, sync.Mutex{}, false, time.Time{}}, nil
 }
 
 // Start signals the timer to start monitoring
@@ -648,9 +695,9 @@ func (t *PCPTimer) Start() error {
 // Stop signals the timer to end monitoring and return elapsed time so far
 func (t *PCPTimer) Stop() (float64, error) {
 	t.mutex.Lock()
+	defer t.mutex.Unlock()
 
 	if !t.started {
-		t.mutex.Unlock()
 		return 0, errors.New("trying to stop a stopped timer")
 	}
 
@@ -674,12 +721,13 @@ func (t *PCPTimer) Stop() (float64, error) {
 
 	t.mutex.Unlock()
 
-	v := t.PCPSingletonMetric.Val().(float64)
-	err := t.PCPSingletonMetric.Set(v + inc)
+	v := t.val.(float64)
 
+	err := t.set(v + inc)
 	if err != nil {
 		return -1, err
 	}
+
 	return v + inc, nil
 }
 
