@@ -1026,10 +1026,10 @@ func TestCounterVector(t *testing.T) {
 		t.Errorf("cannot set an instance, error: %v", err)
 	}
 
-	if val, err := cv.Val("m1"); val != 10 {
+	if val, verr := cv.Val("m1"); val != 10 {
 		t.Errorf("expected m.1[m1] to be 10, got %v", val)
-	} else if err != nil {
-		t.Errorf("cannot retrieve  m.1[m1] value")
+	} else if verr != nil {
+		t.Errorf("cannot retrieve  m.1[m1] value, error: %v", err)
 	}
 
 	// Inc
@@ -1039,9 +1039,9 @@ func TestCounterVector(t *testing.T) {
 		t.Errorf("cannot inc an instance, error: %v", err)
 	}
 
-	if val, err := cv.Val("m2"); val != 12 {
+	if val, verr := cv.Val("m2"); val != 12 {
 		t.Errorf("expected m.1[m2] to be 12, got %v", val)
-	} else if err != nil {
-		t.Errorf("cannot retrieve  m.1[m2] value")
+	} else if verr != nil {
+		t.Errorf("cannot retrieve  m.1[m2] value, error: %v", err)
 	}
 }
