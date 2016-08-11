@@ -900,3 +900,94 @@ func (c *PCPCounterVector) MustInc(inc int64, instance string) {
 func (c *PCPCounterVector) Up(instance string) { c.MustInc(1, instance) }
 
 ///////////////////////////////////////////////////////////////////////////////
+
+// GaugeVector defines a Gauge on multiple instances
+type GaugeVector interface {
+	Metric
+
+	Val(string) float64
+
+	Set(float64, string) error
+	MustSet(float64, string)
+
+	Inc(float64, string) error
+	MustInc(float64, string)
+
+	Dec(float64, string) error
+	MustDec(float64, string)
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPGaugeVector implements a PCP counter vector
+type PCPGaugeVector struct {
+	*PCPInstanceMetric
+}
+
+// NewPCPGaugeVector creates a new instance of a PCPGaugeVector
+func NewPCPGaugeVector(values map[string]float64, name string, desc ...string) (*PCPGaugeVector, error) {
+	instances, i := make([]string, len(values)), 0
+	vals := make(map[string]interface{})
+	for k, v := range values {
+		instances[i] = k
+		i++
+		vals[k] = v
+	}
+
+	indomname := name + ".indom"
+	indom, err := NewPCPInstanceDomain(indomname, instances)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create indom, error: %v", err)
+	}
+
+	im, err := NewPCPInstanceMetric(vals, name, indom, DoubleType, InstantSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPGaugeVector{im}, nil
+}
+
+// Val returns the value of a particular instance of PCPCounterVector
+func (g *PCPGaugeVector) Val(instance string) (float64, error) {
+	val, err := g.PCPInstanceMetric.ValInstance(instance)
+	if err != nil {
+		return 0, err
+	}
+	return val.(float64), nil
+}
+
+// Set sets the value of a particular instance of PCPCounterVector
+func (g *PCPGaugeVector) Set(val float64, instance string) error {
+	return g.PCPInstanceMetric.SetInstance(instance, val)
+}
+
+// MustSet panics if Set fails
+func (g *PCPGaugeVector) MustSet(val float64, instance string) {
+	if err := g.Set(val, instance); err != nil {
+		panic(err)
+	}
+}
+
+// Inc increments the value of a particular instance of PCPCounterVector
+func (g *PCPGaugeVector) Inc(inc float64, instance string) error {
+	v, err := g.Val(instance)
+	if err != nil {
+		return err
+	}
+
+	return g.Set(v+inc, instance)
+}
+
+// MustInc panics if Inc fails
+func (g *PCPGaugeVector) MustInc(inc float64, instance string) {
+	if err := g.Inc(inc, instance); err != nil {
+		panic(err)
+	}
+}
+
+// Dec increments the value of a particular instance of PCPCounterVector
+func (g *PCPGaugeVector) Dec(inc float64, instance string) error { return g.Inc(-inc, instance) }
+
+// MustDec panics if Dec fails
+func (g *PCPGaugeVector) MustDec(inc float64, instance string) { g.MustInc(-inc, instance) }
