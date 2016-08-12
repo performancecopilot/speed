@@ -1158,28 +1158,45 @@ func (h *PCPHistogram) Min() int64 {
 	return int64(h.vals["min"].val.(float64))
 }
 
-func (h *PCPHistogram) update() {
+func (h *PCPHistogram) update() error {
 	if val := float64(h.h.Min()); h.vals["min"].val != val {
-		h.setInstance(val, "min")
+		err := h.setInstance(val, "min")
+		if err != nil {
+			return err
+		}
 	}
 
 	if val := float64(h.h.Max()); h.vals["max"].val != val {
-		h.setInstance(val, "max")
+		err := h.setInstance(val, "max")
+		if err != nil {
+			return err
+		}
 	}
 
 	if val := h.h.Mean(); h.vals["mean"].val != val {
-		h.setInstance(val, "mean")
+		err := h.setInstance(val, "mean")
+		if err != nil {
+			return err
+		}
 	}
 
 	stddev := h.h.StdDev()
 
 	if val := stddev * stddev; h.vals["variance"].val != val {
-		h.setInstance(val, "variance")
+		err := h.setInstance(val, "variance")
+		if err != nil {
+			return err
+		}
 	}
 
 	if h.vals["standard_deviation"].val != stddev {
-		h.setInstance(stddev, "standard_deviation")
+		err := h.setInstance(stddev, "standard_deviation")
+		if err != nil {
+			return err
+		}
 	}
+
+	return nil
 }
 
 // Record records a new value
@@ -1192,7 +1209,11 @@ func (h *PCPHistogram) Record(val int64) error {
 		return err
 	}
 
-	h.update()
+	err = h.update()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
