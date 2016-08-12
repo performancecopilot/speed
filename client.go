@@ -464,51 +464,44 @@ func (c *PCPClient) writeInstance(i *pcpInstance, indomoff int, off int) {
 func (c *PCPClient) writeMetrics() {
 	var wg sync.WaitGroup
 
+	launchSingletonMetric := func(metric *pcpSingletonMetric) {
+		go func() {
+			c.writeSingletonMetric(metric)
+			wg.Done()
+		}()
+	}
+
+	launchInstanceMetric := func(metric *pcpInstanceMetric) {
+		go func() {
+			c.writeInstanceMetric(metric)
+			wg.Done()
+		}()
+	}
+
 	wg.Add(c.r.MetricCount())
 	for _, m := range c.r.metrics {
 		switch metric := m.(type) {
 		case *PCPSingletonMetric:
-			go func(metric *PCPSingletonMetric) {
-				c.writeSingletonMetric(metric)
-				wg.Done()
-			}(metric)
-		case *PCPInstanceMetric:
-			go func(metric *PCPInstanceMetric) {
-				c.writeInstanceMetric(metric)
-				wg.Done()
-			}(metric)
+			launchSingletonMetric(metric.pcpSingletonMetric)
 		case *PCPCounter:
-			go func(metric *PCPCounter) {
-				c.writeSingletonMetric(metric.PCPSingletonMetric)
-				wg.Done()
-			}(metric)
+			launchSingletonMetric(metric.pcpSingletonMetric)
 		case *PCPGauge:
-			go func(metric *PCPGauge) {
-				c.writeSingletonMetric(metric.PCPSingletonMetric)
-				wg.Done()
-			}(metric)
+			launchSingletonMetric(metric.pcpSingletonMetric)
 		case *PCPTimer:
-			go func(metric *PCPTimer) {
-				c.writeSingletonMetric(metric.PCPSingletonMetric)
-				wg.Done()
-			}(metric)
+			launchSingletonMetric(metric.pcpSingletonMetric)
+		case *PCPInstanceMetric:
+			launchInstanceMetric(metric.pcpInstanceMetric)
 		case *PCPCounterVector:
-			go func(metric *PCPCounterVector) {
-				c.writeInstanceMetric(metric.PCPInstanceMetric)
-				wg.Done()
-			}(metric)
+			launchInstanceMetric(metric.pcpInstanceMetric)
 		case *PCPGaugeVector:
-			go func(metric *PCPGaugeVector) {
-				c.writeInstanceMetric(metric.PCPInstanceMetric)
-				wg.Done()
-			}(metric)
+			launchInstanceMetric(metric.pcpInstanceMetric)
 		}
 	}
 
 	wg.Wait()
 }
 
-func (c *PCPClient) writeSingletonMetric(m *PCPSingletonMetric) {
+func (c *PCPClient) writeSingletonMetric(m *pcpSingletonMetric) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 
@@ -533,7 +526,7 @@ func (c *PCPClient) writeSingletonMetric(m *PCPSingletonMetric) {
 	wg.Wait()
 }
 
-func (c *PCPClient) writeInstanceMetric(m *PCPInstanceMetric) {
+func (c *PCPClient) writeInstanceMetric(m *pcpInstanceMetric) {
 	var wg sync.WaitGroup
 	wg.Add(1 + m.Indom().InstanceCount())
 

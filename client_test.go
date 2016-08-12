@@ -571,8 +571,8 @@ func TestUpdatingInstanceMetric(t *testing.T) {
 	v, err = im.ValInstance("b")
 	valmatcher(v, 42, err, "b")
 
-	im.MustSetInstance("a", 63)
-	im.MustSetInstance("b", 84)
+	im.MustSetInstance(63, "a")
+	im.MustSetInstance(84, "b")
 
 	_, _, metrics, values, instances, indoms, strings, err = mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
