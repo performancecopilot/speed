@@ -259,10 +259,10 @@ type InstanceMetric interface {
 	ValInstance(string) (interface{}, error)
 
 	// sets the value of a particular instance
-	SetInstance(string, interface{}) error
+	SetInstance(interface{}, string) error
 
 	// tries to set the value of a particular instance and panics on error
-	MustSetInstance(string, interface{})
+	MustSetInstance(interface{}, string)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -670,7 +670,7 @@ func NewPCPTimer(name string, unit TimeUnit, desc ...string) (*PCPTimer, error) 
 		return nil, err
 	}
 
-	sm, err := newpcpSingletonMetric(0, d)
+	sm, err := newpcpSingletonMetric(float64(0), d)
 	if err != nil {
 		return nil, err
 	}
@@ -719,8 +719,6 @@ func (t *PCPTimer) Stop() (float64, error) {
 		inc = d.Hours()
 	}
 
-	t.mutex.Unlock()
-
 	v := t.val.(float64)
 
 	err := t.set(v + inc)
@@ -742,26 +740,18 @@ func newinstanceValue(val interface{}) *instanceValue {
 	return &instanceValue{val, nil}
 }
 
-// PCPInstanceMetric represents a PCPMetric that can have multiple values
+// pcpInstanceMetric represents a PCPMetric that can have multiple values
 // over multiple instances in an instance domain
-type PCPInstanceMetric struct {
+type pcpInstanceMetric struct {
 	*pcpMetricDesc
-	mutex sync.RWMutex
 	indom *PCPInstanceDomain
 	vals  map[string]*instanceValue
 }
 
-// NewPCPInstanceMetric creates a new instance of PCPSingletonMetric
-// it takes 2 extra optional strings as short and long description parameters,
-// which on not being present are set blank
-func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPInstanceMetric, error) {
+// newpcpInstanceMetric creates a new instance of PCPSingletonMetric
+func newpcpInstanceMetric(vals Instances, indom *PCPInstanceDomain, desc *pcpMetricDesc) (*pcpInstanceMetric, error) {
 	if len(vals) != indom.InstanceCount() {
 		return nil, errors.New("values for all instances in the instance domain only should be passed")
-	}
-
-	d, err := newpcpMetricDesc(name, t, s, u, desc...)
-	if err != nil {
-		return nil, err
 	}
 
 	mvals := make(map[string]*instanceValue)
@@ -772,37 +762,27 @@ func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain,
 			return nil, fmt.Errorf("Instance %v not initialized", name)
 		}
 
-		if !t.IsCompatible(val) {
-			return nil, fmt.Errorf("value %v is incompatible with type %v for Instance %v", val, t, name)
+		if !desc.t.IsCompatible(val) {
+			return nil, fmt.Errorf("value %v is incompatible with type %v for Instance %v", val, desc.t, name)
 		}
 
-		val = t.resolve(val)
+		val = desc.t.resolve(val)
 		mvals[name] = newinstanceValue(val)
 	}
 
-	return &PCPInstanceMetric{
-		d, sync.RWMutex{}, indom, mvals,
-	}, nil
+	return &pcpInstanceMetric{desc, indom, mvals}, nil
 }
 
-// Indom returns the instance domain for the metric
-func (m *PCPInstanceMetric) Indom() *PCPInstanceDomain { return m.indom }
-
-// ValInstance returns the value for a particular instance of the metric
-func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
+func (m *pcpInstanceMetric) valInstance(instance string) (interface{}, error) {
 	if !m.indom.HasInstance(instance) {
 		return nil, fmt.Errorf("%v is not an instance of this metric", instance)
 	}
 
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-
-	ans := m.vals[instance].val
-	return ans, nil
+	return m.vals[instance].val, nil
 }
 
-// SetInstance sets the value for a particular instance of the metric
-func (m *PCPInstanceMetric) SetInstance(instance string, val interface{}) error {
+// setInstance sets the value for a particular instance of the metric
+func (m *pcpInstanceMetric) setInstance(val interface{}, instance string) error {
 	if !m.t.IsCompatible(val) {
 		return errors.New("the value is incompatible with this metrics MetricType")
 	}
@@ -811,12 +791,9 @@ func (m *PCPInstanceMetric) SetInstance(instance string, val interface{}) error 
 		return fmt.Errorf("%v is not an instance of this metric", instance)
 	}
 
-	val = m.t.resolveFloat(m.t.resolveInt(val))
+	val = m.t.resolve(val)
 
 	if m.vals[instance].val != val {
-		m.mutex.Lock()
-		defer m.mutex.Unlock()
-
 		if m.vals[instance].update != nil {
 			err := m.vals[instance].update(val)
 			if err != nil {
@@ -830,9 +807,54 @@ func (m *PCPInstanceMetric) SetInstance(instance string, val interface{}) error 
 	return nil
 }
 
+// Indom returns the instance domain for the metric
+func (m *pcpInstanceMetric) Indom() *PCPInstanceDomain { return m.indom }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPInstanceMetric represents a PCPMetric that can have multiple values
+// over multiple instances in an instance domain
+type PCPInstanceMetric struct {
+	*pcpInstanceMetric
+	mutex sync.RWMutex
+}
+
+// NewPCPInstanceMetric creates a new instance of PCPSingletonMetric
+// it takes 2 extra optional strings as short and long description parameters,
+// which on not being present are set blank
+func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPInstanceMetric, error) {
+	d, err := newpcpMetricDesc(name, t, s, u, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	im, err := newpcpInstanceMetric(vals, indom, d)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPInstanceMetric{im, sync.RWMutex{}}, nil
+}
+
+// ValInstance returns the value for a particular instance of the metric
+func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	return m.valInstance(instance)
+}
+
+// SetInstance sets the value for a particular instance of the metric
+func (m *PCPInstanceMetric) SetInstance(val interface{}, instance string) error {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	return m.setInstance(val, instance)
+}
+
 // MustSetInstance is a SetInstance that panics
-func (m *PCPInstanceMetric) MustSetInstance(instance string, val interface{}) {
-	if err := m.SetInstance(instance, val); err != nil {
+func (m *PCPInstanceMetric) MustSetInstance(val interface{}, instance string) {
+	if err := m.SetInstance(val, instance); err != nil {
 		panic(err)
 	}
 }
@@ -858,7 +880,8 @@ type CounterVector interface {
 
 // PCPCounterVector implements a PCP counter vector
 type PCPCounterVector struct {
-	*PCPInstanceMetric
+	*pcpInstanceMetric
+	mutex sync.RWMutex
 }
 
 // NewPCPCounterVector creates a new instance of a PCPCounterVector
@@ -877,21 +900,30 @@ func NewPCPCounterVector(values map[string]int64, name string, desc ...string) (
 		return nil, fmt.Errorf("cannot create indom, error: %v", err)
 	}
 
-	im, err := NewPCPInstanceMetric(vals, name, indom, Int64Type, CounterSemantics, OneUnit, desc...)
+	d, err := newpcpMetricDesc(name, Int64Type, CounterSemantics, OneUnit, desc...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &PCPCounterVector{im}, nil
+	im, err := newpcpInstanceMetric(vals, indom, d)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPCounterVector{im, sync.RWMutex{}}, nil
 }
 
 // Val returns the value of a particular instance of PCPCounterVector
 func (c *PCPCounterVector) Val(instance string) (int64, error) {
-	val, err := c.PCPInstanceMetric.ValInstance(instance)
+	c.mutex.RLock()
+	defer c.mutex.RUnlock()
+
+	v, err := c.valInstance(instance)
 	if err != nil {
 		return 0, err
 	}
-	return val.(int64), nil
+
+	return v.(int64), nil
 }
 
 // Set sets the value of a particular instance of PCPCounterVector
@@ -905,7 +937,10 @@ func (c *PCPCounterVector) Set(val int64, instance string) error {
 		return fmt.Errorf("cannot set instance %s to a lesser value %v", instance, val)
 	}
 
-	return c.PCPInstanceMetric.SetInstance(instance, val)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	return c.setInstance(val, instance)
 }
 
 // MustSet panics if Set fails
@@ -965,7 +1000,8 @@ type GaugeVector interface {
 
 // PCPGaugeVector implements a PCP counter vector
 type PCPGaugeVector struct {
-	*PCPInstanceMetric
+	*pcpInstanceMetric
+	mutex sync.RWMutex
 }
 
 // NewPCPGaugeVector creates a new instance of a PCPGaugeVector
@@ -984,26 +1020,37 @@ func NewPCPGaugeVector(values map[string]float64, name string, desc ...string) (
 		return nil, fmt.Errorf("cannot create indom, error: %v", err)
 	}
 
-	im, err := NewPCPInstanceMetric(vals, name, indom, DoubleType, InstantSemantics, OneUnit, desc...)
+	d, err := newpcpMetricDesc(name, DoubleType, InstantSemantics, OneUnit, desc...)
 	if err != nil {
 		return nil, err
 	}
 
-	return &PCPGaugeVector{im}, nil
+	im, err := newpcpInstanceMetric(vals, indom, d)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPGaugeVector{im, sync.RWMutex{}}, nil
 }
 
 // Val returns the value of a particular instance of PCPCounterVector
 func (g *PCPGaugeVector) Val(instance string) (float64, error) {
-	val, err := g.PCPInstanceMetric.ValInstance(instance)
+	val, err := g.valInstance(instance)
 	if err != nil {
 		return 0, err
 	}
+
+	g.mutex.RLock()
+	defer g.mutex.RUnlock()
+
 	return val.(float64), nil
 }
 
 // Set sets the value of a particular instance of PCPCounterVector
 func (g *PCPGaugeVector) Set(val float64, instance string) error {
-	return g.PCPInstanceMetric.SetInstance(instance, val)
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+	return g.setInstance(val, instance)
 }
 
 // MustSet panics if Set fails
