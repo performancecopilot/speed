@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	histogram "github.com/codahale/hdrhistogram"
 	"github.com/performancecopilot/speed/bytewriter"
 )
 
@@ -1075,3 +1076,171 @@ func (g *PCPGaugeVector) Dec(inc float64, instance string) error { return g.Inc(
 
 // MustDec panics if Dec fails
 func (g *PCPGaugeVector) MustDec(inc float64, instance string) { g.MustInc(-inc, instance) }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Histogram defines a metric that records a distribution of data
+type Histogram interface {
+	Max() int64 // Maximum value recorded so far
+	Min() int64 // Minimum value recorded so far
+
+	High() int64 // Highest allowed value
+	Low() int64  // Lowest allowed value
+
+	Record(int64) error         // Records a new value
+	RecordN(int64, int64) error // Records multiple instances of the same value
+
+	MustRecord(int64)
+	MustRecordN(int64, int64)
+
+	Mean() float64              // Mean of all recorded data
+	Variance() float64          // Variance of all recorded data
+	StandardDeviation() float64 // StandardDeviation of all recorded data
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPHistogram implements a histogram for PCP backed by the coda hale hdrhistogram
+// https://github.com/codahale/hdrhistogram
+type PCPHistogram struct {
+	*pcpInstanceMetric
+	mutex sync.RWMutex
+	h     *histogram.Histogram
+}
+
+// NewPCPHistogram returns a new instance of PCPHistogram
+func NewPCPHistogram(name string, low, high int64, desc ...string) (*PCPHistogram, error) {
+	h := histogram.New(low, high, 5)
+
+	d, err := newpcpMetricDesc(name, DoubleType, InstantSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	ins := Instances{
+		"min":                float64(0),
+		"max":                float64(0),
+		"mean":               float64(0),
+		"variance":           float64(0),
+		"standard_deviation": float64(0),
+	}
+
+	ind, err := NewPCPInstanceDomain(name+".indom", ins.Keys())
+	if err != nil {
+		return nil, err
+	}
+
+	m, err := newpcpInstanceMetric(ins, ind, d)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPHistogram{m, sync.RWMutex{}, h}, nil
+}
+
+// High returns the maximum recordable value
+func (h *PCPHistogram) High() int64 { return h.h.LowestTrackableValue() }
+
+// Low returns the minimum recordable value
+func (h *PCPHistogram) Low() int64 { return h.h.HighestTrackableValue() }
+
+// Max returns the maximum recorded value so far
+func (h *PCPHistogram) Max() int64 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return int64(h.vals["max"].val.(float64))
+}
+
+// Min returns the minimum recorded value so far
+func (h *PCPHistogram) Min() int64 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return int64(h.vals["min"].val.(float64))
+}
+
+func (h *PCPHistogram) update() {
+	if val := float64(h.h.Min()); h.vals["min"].val != val {
+		h.setInstance(val, "min")
+	}
+
+	if val := float64(h.h.Max()); h.vals["max"].val != val {
+		h.setInstance(val, "max")
+	}
+
+	if val := h.h.Mean(); h.vals["mean"].val != val {
+		h.setInstance(val, "mean")
+	}
+
+	stddev := h.h.StdDev()
+
+	if val := stddev * stddev; h.vals["variance"].val != val {
+		h.setInstance(val, "variance")
+	}
+
+	if h.vals["standard_deviation"].val != stddev {
+		h.setInstance(stddev, "standard_deviation")
+	}
+}
+
+// Record records a new value
+func (h *PCPHistogram) Record(val int64) error {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	err := h.h.RecordValue(val)
+	if err != nil {
+		return err
+	}
+
+	h.update()
+	return nil
+}
+
+// MustRecord panics if Record fails
+func (h *PCPHistogram) MustRecord(val int64) {
+	if err := h.Record(val); err != nil {
+		panic(err)
+	}
+}
+
+// RecordN records multiple instances of the same value
+func (h *PCPHistogram) RecordN(val, n int64) error {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	err := h.h.RecordValues(val, n)
+	if err != nil {
+		return err
+	}
+
+	h.update()
+	return nil
+}
+
+// MustRecordN panics if RecordN fails
+func (h *PCPHistogram) MustRecordN(val, n int64) {
+	if err := h.RecordN(val, n); err != nil {
+		panic(err)
+	}
+}
+
+// Mean returns the mean of all values recorded so far
+func (h *PCPHistogram) Mean() float64 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.vals["mean"].val.(float64)
+}
+
+// StandardDeviation returns the standard deviation of all values recorded so far
+func (h *PCPHistogram) StandardDeviation() float64 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.vals["standard_deviation"].val.(float64)
+}
+
+// Variance returns the variance of all values recorded so far
+func (h *PCPHistogram) Variance() float64 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.vals["variance"].val.(float64)
+}

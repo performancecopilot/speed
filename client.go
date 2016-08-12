@@ -495,6 +495,8 @@ func (c *PCPClient) writeMetrics() {
 			launchInstanceMetric(metric.pcpInstanceMetric)
 		case *PCPGaugeVector:
 			launchInstanceMetric(metric.pcpInstanceMetric)
+		case *PCPHistogram:
+			launchInstanceMetric(metric.pcpInstanceMetric)
 		}
 	}
 
