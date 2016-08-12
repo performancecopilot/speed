@@ -99,7 +99,7 @@ func TestTocCountAndLength(t *testing.T) {
 
 func TestMapping(t *testing.T) {
 	c, err := NewPCPClient("test")
-	_, err = c.RegisterString("test.1", 2, CounterSemantics, Int32Type, OneUnit)
+	_, err = c.RegisterString("test.1", 2, Int32Type, CounterSemantics, OneUnit)
 	if err != nil {
 		t.Error("Cannot Register")
 	}
@@ -110,7 +110,7 @@ func TestMapping(t *testing.T) {
 		t.Error("expected a MMV file to be created on startup")
 	}
 
-	_, err = c.RegisterString("test.2", 2, CounterSemantics, Int32Type, OneUnit)
+	_, err = c.RegisterString("test.2", 2, Int32Type, CounterSemantics, OneUnit)
 	if err == nil {
 		t.Error("expected registration to fail when a mapping is active")
 	}
@@ -388,7 +388,7 @@ func TestUpdatingSingletonMetric(t *testing.T) {
 		return
 	}
 
-	m := c.MustRegisterString("met.1", 10, CounterSemantics, Int32Type, OneUnit)
+	m := c.MustRegisterString("met.1", 10, Int32Type, CounterSemantics, OneUnit)
 
 	c.MustStart()
 	defer c.MustStop()
@@ -539,7 +539,7 @@ func TestUpdatingInstanceMetric(t *testing.T) {
 		return
 	}
 
-	m := c.MustRegisterString("met[a, b].1", Instances{"a": 21, "b": 42}, CounterSemantics, Int32Type, OneUnit)
+	m := c.MustRegisterString("met[a, b].1", Instances{"a": 21, "b": 42}, Int32Type, CounterSemantics, OneUnit)
 
 	c.MustStart()
 	defer c.MustStop()
@@ -596,7 +596,7 @@ func TestStringValueWriting(t *testing.T) {
 		return
 	}
 
-	metric := c.MustRegisterString("test.str", "kirk", CounterSemantics, StringType, OneUnit)
+	metric := c.MustRegisterString("test.str", "kirk", StringType, CounterSemantics, OneUnit)
 	c.MustStart()
 	defer c.MustStop()
 
@@ -653,15 +653,15 @@ func TestWritingDifferentSemantics(t *testing.T) {
 		return
 	}
 
-	c.MustRegisterString("m.1", 10, NoSemantics, Int32Type, OneUnit)
-	c.MustRegisterString("m.2", 10, CounterSemantics, Int32Type, OneUnit)
-	c.MustRegisterString("m.3", 10, InstantSemantics, Int32Type, OneUnit)
-	c.MustRegisterString("m.4", 10, DiscreteSemantics, Int32Type, OneUnit)
+	c.MustRegisterString("m.1", 10, Int32Type, NoSemantics, OneUnit)
+	c.MustRegisterString("m.2", 10, Int32Type, CounterSemantics, OneUnit)
+	c.MustRegisterString("m.3", 10, Int32Type, InstantSemantics, OneUnit)
+	c.MustRegisterString("m.4", 10, Int32Type, DiscreteSemantics, OneUnit)
 
-	c.MustRegisterString("m[a, b].5", Instances{"a": 1, "b": 2}, NoSemantics, Int32Type, OneUnit)
-	c.MustRegisterString("m[a, b].6", Instances{"a": 3, "b": 4}, NoSemantics, Int32Type, OneUnit)
-	c.MustRegisterString("m[a, b].7", Instances{"a": 5, "b": 6}, NoSemantics, Int32Type, OneUnit)
-	c.MustRegisterString("m[a, b].8", Instances{"a": 7, "b": 8}, NoSemantics, Int32Type, OneUnit)
+	c.MustRegisterString("m[a, b].5", Instances{"a": 1, "b": 2}, Int32Type, NoSemantics, OneUnit)
+	c.MustRegisterString("m[a, b].6", Instances{"a": 3, "b": 4}, Int32Type, CounterSemantics, OneUnit)
+	c.MustRegisterString("m[a, b].7", Instances{"a": 5, "b": 6}, Int32Type, InstantSemantics, OneUnit)
+	c.MustRegisterString("m[a, b].8", Instances{"a": 7, "b": 8}, Int32Type, DiscreteSemantics, OneUnit)
 
 	c.MustStart()
 	defer c.MustStop()
@@ -683,39 +683,39 @@ func TestWritingDifferentUnits(t *testing.T) {
 		return
 	}
 
-	c.MustRegisterString("m.0", 10, CounterSemantics, Uint64Type, NanosecondUnit)
-	c.MustRegisterString("m.1", 10, CounterSemantics, Uint64Type, MicrosecondUnit)
-	c.MustRegisterString("m.2", 10, CounterSemantics, Uint64Type, MillisecondUnit)
-	c.MustRegisterString("m.3", 10, CounterSemantics, Uint64Type, SecondUnit)
-	c.MustRegisterString("m.4", 10, CounterSemantics, Uint64Type, MinuteUnit)
-	c.MustRegisterString("m.5", 10, CounterSemantics, Uint64Type, HourUnit)
+	c.MustRegisterString("m.0", 10, Uint64Type, CounterSemantics, NanosecondUnit)
+	c.MustRegisterString("m.1", 10, Uint64Type, CounterSemantics, MicrosecondUnit)
+	c.MustRegisterString("m.2", 10, Uint64Type, CounterSemantics, MillisecondUnit)
+	c.MustRegisterString("m.3", 10, Uint64Type, CounterSemantics, SecondUnit)
+	c.MustRegisterString("m.4", 10, Uint64Type, CounterSemantics, MinuteUnit)
+	c.MustRegisterString("m.5", 10, Uint64Type, CounterSemantics, HourUnit)
 
-	c.MustRegisterString("m.6", 10, CounterSemantics, Uint64Type, ByteUnit)
-	c.MustRegisterString("m.7", 10, CounterSemantics, Uint64Type, KilobyteUnit)
-	c.MustRegisterString("m.8", 10, CounterSemantics, Uint64Type, MegabyteUnit)
-	c.MustRegisterString("m.9", 10, CounterSemantics, Uint64Type, GigabyteUnit)
-	c.MustRegisterString("m.10", 10, CounterSemantics, Uint64Type, TerabyteUnit)
-	c.MustRegisterString("m.11", 10, CounterSemantics, Uint64Type, PetabyteUnit)
-	c.MustRegisterString("m.12", 10, CounterSemantics, Uint64Type, ExabyteUnit)
+	c.MustRegisterString("m.6", 10, Uint64Type, CounterSemantics, ByteUnit)
+	c.MustRegisterString("m.7", 10, Uint64Type, CounterSemantics, KilobyteUnit)
+	c.MustRegisterString("m.8", 10, Uint64Type, CounterSemantics, MegabyteUnit)
+	c.MustRegisterString("m.9", 10, Uint64Type, CounterSemantics, GigabyteUnit)
+	c.MustRegisterString("m.10", 10, Uint64Type, CounterSemantics, TerabyteUnit)
+	c.MustRegisterString("m.11", 10, Uint64Type, CounterSemantics, PetabyteUnit)
+	c.MustRegisterString("m.12", 10, Uint64Type, CounterSemantics, ExabyteUnit)
 
-	c.MustRegisterString("m.13", 10, CounterSemantics, Uint64Type, OneUnit)
+	c.MustRegisterString("m.13", 10, Uint64Type, CounterSemantics, OneUnit)
 
-	c.MustRegisterString("m[a, b].14", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, NanosecondUnit)
-	c.MustRegisterString("m[a, b].15", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, MicrosecondUnit)
-	c.MustRegisterString("m[a, b].16", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, MillisecondUnit)
-	c.MustRegisterString("m[a, b].17", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, SecondUnit)
-	c.MustRegisterString("m[a, b].18", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, MinuteUnit)
-	c.MustRegisterString("m[a, b].19", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, HourUnit)
+	c.MustRegisterString("m[a, b].14", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, NanosecondUnit)
+	c.MustRegisterString("m[a, b].15", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, MicrosecondUnit)
+	c.MustRegisterString("m[a, b].16", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, MillisecondUnit)
+	c.MustRegisterString("m[a, b].17", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, SecondUnit)
+	c.MustRegisterString("m[a, b].18", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, MinuteUnit)
+	c.MustRegisterString("m[a, b].19", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, HourUnit)
 
-	c.MustRegisterString("m[a, b].20", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, ByteUnit)
-	c.MustRegisterString("m[a, b].21", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, KilobyteUnit)
-	c.MustRegisterString("m[a, b].22", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, MegabyteUnit)
-	c.MustRegisterString("m[a, b].23", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, GigabyteUnit)
-	c.MustRegisterString("m[a, b].24", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, TerabyteUnit)
-	c.MustRegisterString("m[a, b].25", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, PetabyteUnit)
-	c.MustRegisterString("m[a, b].26", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, ExabyteUnit)
+	c.MustRegisterString("m[a, b].20", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, ByteUnit)
+	c.MustRegisterString("m[a, b].21", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, KilobyteUnit)
+	c.MustRegisterString("m[a, b].22", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, MegabyteUnit)
+	c.MustRegisterString("m[a, b].23", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, GigabyteUnit)
+	c.MustRegisterString("m[a, b].24", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, TerabyteUnit)
+	c.MustRegisterString("m[a, b].25", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, PetabyteUnit)
+	c.MustRegisterString("m[a, b].26", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, ExabyteUnit)
 
-	c.MustRegisterString("m[a, b].27", Instances{"a": 1, "b": 2}, CounterSemantics, Uint64Type, OneUnit)
+	c.MustRegisterString("m[a, b].27", Instances{"a": 1, "b": 2}, Uint64Type, CounterSemantics, OneUnit)
 
 	c.MustStart()
 	defer c.MustStop()
@@ -737,21 +737,21 @@ func TestWritingDifferentTypes(t *testing.T) {
 		return
 	}
 
-	c.MustRegisterString("m.1", 2147483647, CounterSemantics, Int32Type, OneUnit)
-	c.MustRegisterString("m.2", 2147483647, CounterSemantics, Int64Type, OneUnit)
-	c.MustRegisterString("m.3", 4294967295, CounterSemantics, Uint32Type, OneUnit)
-	c.MustRegisterString("m.4", 4294967295, CounterSemantics, Uint64Type, OneUnit)
-	c.MustRegisterString("m.5", 3.14, CounterSemantics, FloatType, OneUnit)
-	c.MustRegisterString("m.6", 6.28, CounterSemantics, DoubleType, OneUnit)
-	c.MustRegisterString("m.7", "luke", CounterSemantics, StringType, OneUnit)
+	c.MustRegisterString("m.1", 2147483647, Int32Type, CounterSemantics, OneUnit)
+	c.MustRegisterString("m.2", 2147483647, Int64Type, CounterSemantics, OneUnit)
+	c.MustRegisterString("m.3", 4294967295, Uint32Type, CounterSemantics, OneUnit)
+	c.MustRegisterString("m.4", 4294967295, Uint64Type, CounterSemantics, OneUnit)
+	c.MustRegisterString("m.5", 3.14, FloatType, CounterSemantics, OneUnit)
+	c.MustRegisterString("m.6", 6.28, DoubleType, CounterSemantics, OneUnit)
+	c.MustRegisterString("m.7", "luke", StringType, CounterSemantics, OneUnit)
 
-	c.MustRegisterString("m[a, b].8", Instances{"a": 2147483647, "b": -2147483648}, CounterSemantics, Int32Type, OneUnit)
-	c.MustRegisterString("m[a, b].9", Instances{"a": 2147483647, "b": -2147483648}, CounterSemantics, Int64Type, OneUnit)
-	c.MustRegisterString("m[a, b].10", Instances{"a": 4294967295, "b": 0}, CounterSemantics, Uint32Type, OneUnit)
-	c.MustRegisterString("m[a, b].11", Instances{"a": 4294967295, "b": 0}, CounterSemantics, Uint64Type, OneUnit)
-	c.MustRegisterString("m[a, b].12", Instances{"a": 3.14, "b": -3.14}, CounterSemantics, FloatType, OneUnit)
-	c.MustRegisterString("m[a, b].13", Instances{"a": 6.28, "b": -6.28}, CounterSemantics, DoubleType, OneUnit)
-	c.MustRegisterString("m[a, b].14", Instances{"a": "luke", "b": "skywalker"}, CounterSemantics, StringType, OneUnit)
+	c.MustRegisterString("m[a, b].8", Instances{"a": 2147483647, "b": -2147483648}, Int32Type, CounterSemantics, OneUnit)
+	c.MustRegisterString("m[a, b].9", Instances{"a": 2147483647, "b": -2147483648}, Int64Type, CounterSemantics, OneUnit)
+	c.MustRegisterString("m[a, b].10", Instances{"a": 4294967295, "b": 0}, Uint32Type, CounterSemantics, OneUnit)
+	c.MustRegisterString("m[a, b].11", Instances{"a": 4294967295, "b": 0}, Uint64Type, CounterSemantics, OneUnit)
+	c.MustRegisterString("m[a, b].12", Instances{"a": 3.14, "b": -3.14}, FloatType, CounterSemantics, OneUnit)
+	c.MustRegisterString("m[a, b].13", Instances{"a": 6.28, "b": -6.28}, DoubleType, CounterSemantics, OneUnit)
+	c.MustRegisterString("m[a, b].14", Instances{"a": "luke", "b": "skywalker"}, StringType, CounterSemantics, OneUnit)
 
 	c.MustStart()
 	defer c.MustStop()
@@ -774,7 +774,7 @@ func TestMMV2MetricWriting(t *testing.T) {
 	}
 
 	m := c.MustRegisterString("it_takes_a_big_man_to_cry_but_it_takes_a_bigger_man_to_laugh_at_that_man",
-		21, CounterSemantics, Int32Type, OneUnit)
+		21, Int32Type, CounterSemantics, OneUnit)
 
 	c.MustStart()
 	defer c.MustStop()
@@ -819,7 +819,7 @@ func TestMMV2InstanceWriting(t *testing.T) {
 		"a[it_takes_a_big_man_to_cry_but_it_takes_a_bigger_man_to_laugh_at_that_man].b",
 		Instances{
 			"it_takes_a_big_man_to_cry_but_it_takes_a_bigger_man_to_laugh_at_that_man": 32,
-		}, CounterSemantics, Int32Type, OneUnit,
+		}, Int32Type, CounterSemantics, OneUnit,
 	)
 
 	c.MustStart()

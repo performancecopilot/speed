@@ -54,7 +54,7 @@ func TestIdentifierRegex(t *testing.T) {
 func TestStringSingletonConstruction(t *testing.T) {
 	r := NewPCPRegistry()
 
-	m, err := r.AddMetricByString("cow.how.now", 10, CounterSemantics, Int32Type, OneUnit)
+	m, err := r.AddMetricByString("cow.how.now", 10, Int32Type, CounterSemantics, OneUnit)
 	if err != nil {
 		t.Error("Cannot parse, error", err)
 		return
@@ -93,7 +93,7 @@ func TestStringInstanceConstruction(t *testing.T) {
 		"limpy":  10,
 		"grumpy": 20,
 		"chumpy": 30,
-	}, CounterSemantics, Int32Type, OneUnit)
+	}, Int32Type, CounterSemantics, OneUnit)
 	if err != nil {
 		t.Error("Cannot parse, error", err)
 	}
