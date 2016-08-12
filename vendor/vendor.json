@@ -11,6 +11,12 @@
 			"versionExact": "v0.10.0"
 		},
 		{
+			"checksumSHA1": "W7DNxQwdGQ2YO3PR3jARJg6Iqsw=",
+			"path": "github.com/codahale/hdrhistogram",
+			"revision": "f8ad88b59a584afeee9d334eff879b104439117b",
+			"revisionTime": "2016-04-25T23:15:03Z"
+		},
+		{
 			"checksumSHA1": "hBgLmZ/4mCxmnH88mqFKBkpJFUY=",
 			"path": "github.com/mgutz/ansi",
 			"revision": "c286dcecd19ff979eeb73ea444e479b903f2cfcb",
