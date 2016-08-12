@@ -20,7 +20,7 @@ func main() {
 
 	m, err := c.RegisterString(
 		"this.is.a.simple.counter.metric.to.demonstrate.the.RegisterString.function",
-		10, speed.CounterSemantics, speed.Int32Type, speed.OneUnit)
+		10, speed.Int32Type, speed.CounterSemantics, speed.OneUnit)
 	if err != nil {
 		panic(err)
 	}

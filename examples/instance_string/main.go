@@ -21,7 +21,7 @@ func main() {
 		"go":         1,
 		"javascript": 100,
 		"php":        10,
-	}, speed.CounterSemantics, speed.Uint64Type, speed.OneUnit)
+	}, speed.Uint64Type, speed.CounterSemantics, speed.OneUnit)
 	if err != nil {
 		panic(err)
 	}

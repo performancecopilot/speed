@@ -26,7 +26,7 @@ func main() {
 		"Red Hood",
 	}
 
-	m, err := c.RegisterString("bat.names", names[0], speed.InstantSemantics, speed.StringType, speed.OneUnit)
+	m, err := c.RegisterString("bat.names", names[0], speed.StringType, speed.InstantSemantics, speed.OneUnit)
 	if err != nil {
 		panic(err)
 	}
