@@ -138,9 +138,19 @@ func findMetric(metric Metric, metrics map[uint64]mmvdump.Metric) (uint64, mmvdu
 	return 0, nil
 }
 
-func findValue(off uint64, values map[uint64]*mmvdump.Value) (uint64, *mmvdump.Value) {
+func findSingletonValue(off uint64, values map[uint64]*mmvdump.Value) (uint64, *mmvdump.Value) {
 	for voff, v := range values {
 		if uint64(v.Metric) == off {
+			return voff, v
+		}
+	}
+
+	return 0, nil
+}
+
+func findInstanceValue(off, ioff uint64, values map[uint64]*mmvdump.Value) (uint64, *mmvdump.Value) {
+	for voff, v := range values {
+		if uint64(v.Metric) == off && uint64(v.Instance) == ioff {
 			return voff, v
 		}
 	}
@@ -276,7 +286,7 @@ func matchSingletonMetricAndValue(met *PCPSingletonMetric, metrics map[uint64]mm
 
 	matchSingletonMetric(met, metric, strings, t)
 
-	_, mv := findValue(off, values)
+	_, mv := findSingletonValue(off, values)
 	if mv == nil {
 		t.Errorf("expected a value for metric %v", met.name)
 	} else {
@@ -284,7 +294,7 @@ func matchSingletonMetricAndValue(met *PCPSingletonMetric, metrics map[uint64]mm
 	}
 }
 
-func matchInstanceMetricAndValues(met *PCPInstanceMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, strings map[uint64]*mmvdump.String, t *testing.T) {
+func matchInstanceMetricAndValues(met *PCPInstanceMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, instances map[uint64]mmvdump.Instance, strings map[uint64]*mmvdump.String, t *testing.T) {
 	_, metric := findMetric(met, metrics)
 	if metric == nil {
 		t.Errorf("expected a metric of name %v", met.name)
@@ -293,17 +303,19 @@ func matchInstanceMetricAndValues(met *PCPInstanceMetric, metrics map[uint64]mmv
 
 	matchInstanceMetric(met, metric, strings, t)
 
-	// for n, i := range met.vals {
-	// 	_, mv := findValue(off, values)
-	// 	if mv == nil {
-	// 		t.Errorf("expected a value at offset %v", i.offset)
-	// 	} else {
-	// 		matchInstanceValue(mv, i, n, met, t)
-	// 	}
-	// }
+	for n, i := range met.indom.instances {
+		off, _ := findMetric(met, metrics)
+		_, mv := findInstanceValue(off, uint64(i.offset), values)
+
+		if mv == nil {
+			t.Errorf("expected a value at offset %v", i.offset)
+		} else {
+			matchInstanceValue(mv, met.vals[n], n, met, metrics, strings, t)
+		}
+	}
 }
 
-func matchMetricsAndValues(metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, strings map[uint64]*mmvdump.String, c *PCPClient, t *testing.T) {
+func matchMetricsAndValues(metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, instances map[uint64]mmvdump.Instance, strings map[uint64]*mmvdump.String, c *PCPClient, t *testing.T) {
 	if c.Registry().MetricCount() != len(metrics) {
 		t.Errorf("expected %v metrics, got %v", c.Registry().MetricCount(), len(metrics))
 	}
@@ -317,7 +329,7 @@ func matchMetricsAndValues(metrics map[uint64]mmvdump.Metric, values map[uint64]
 		case *PCPSingletonMetric:
 			matchSingletonMetricAndValue(met, metrics, values, strings, t)
 		case *PCPInstanceMetric:
-			matchInstanceMetricAndValues(met, metrics, values, strings, t)
+			matchInstanceMetricAndValues(met, metrics, values, instances, strings, t)
 		}
 	}
 }
@@ -357,7 +369,7 @@ func TestWritingSingletonMetric(t *testing.T) {
 		t.Errorf("expected client to write a ProcessFlag, writing %v", MMVFlag(h.Flag))
 	}
 
-	matchMetricsAndValues(m, v, s, c, t)
+	matchMetricsAndValues(m, v, i, s, c, t)
 
 	// strings
 
@@ -393,8 +405,8 @@ func TestUpdatingSingletonMetric(t *testing.T) {
 	c.MustStart()
 	defer c.MustStop()
 
-	_, _, metrics, values, _, _, strings, err := mmvdump.Dump(c.writer.Bytes())
-	matchMetricsAndValues(metrics, values, strings, c, t)
+	_, _, metrics, values, instances, _, strings, err := mmvdump.Dump(c.writer.Bytes())
+	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 
 	if m.(SingletonMetric).Val().(int32) != 10 {
 		t.Errorf("expected metric value to be 10")
@@ -402,12 +414,12 @@ func TestUpdatingSingletonMetric(t *testing.T) {
 
 	m.(SingletonMetric).MustSet(42)
 
-	_, _, metrics, values, _, _, strings, err = mmvdump.Dump(c.writer.Bytes())
+	_, _, metrics, values, instances, _, strings, err = mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Errorf("cannot get dump, error: %v", err)
 	}
 
-	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 
 	if m.(SingletonMetric).Val().(int32) != 42 {
 		t.Errorf("expected metric value to be 42")
@@ -519,7 +531,7 @@ func TestWritingInstanceMetric(t *testing.T) {
 		t.Errorf("expected client to write a ProcessFlag, writing %v", MMVFlag(h.Flag))
 	}
 
-	matchMetricsAndValues(mets, vals, ss, c, t)
+	matchMetricsAndValues(mets, vals, ins, ss, c, t)
 
 	matchInstancesAndInstanceDomains(ins, ids, ss, c, t)
 
@@ -549,7 +561,7 @@ func TestUpdatingInstanceMetric(t *testing.T) {
 		t.Errorf("cannot get dump, error: %v", err)
 	}
 
-	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 
 	im := m.(InstanceMetric)
@@ -579,7 +591,7 @@ func TestUpdatingInstanceMetric(t *testing.T) {
 		t.Errorf("cannot get dump, error: %v", err)
 	}
 
-	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 
 	v, err = im.ValInstance("a")
@@ -612,7 +624,7 @@ func TestStringValueWriting(t *testing.T) {
 
 	sm := metric.(*PCPSingletonMetric)
 	off, _ := findMetric(sm, m)
-	voff, val := findValue(off, v)
+	voff, val := findSingletonValue(off, v)
 
 	if val == nil {
 		t.Errorf("expected value at %v", voff)
@@ -635,7 +647,7 @@ func TestStringValueWriting(t *testing.T) {
 		return
 	}
 
-	_, val = findValue(off, v)
+	_, val = findSingletonValue(off, v)
 	add := uint64(val.Extra)
 	if str, ok := s[add]; !ok {
 		t.Errorf("expected a string at address %v", add)
@@ -672,7 +684,7 @@ func TestWritingDifferentSemantics(t *testing.T) {
 		t.Errorf("cannot create dump: %v", err)
 	}
 
-	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 }
 
@@ -726,7 +738,7 @@ func TestWritingDifferentUnits(t *testing.T) {
 		return
 	}
 
-	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 }
 
@@ -762,7 +774,7 @@ func TestWritingDifferentTypes(t *testing.T) {
 		return
 	}
 
-	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 }
 
@@ -792,7 +804,7 @@ func TestMMV2MetricWriting(t *testing.T) {
 		t.Error("expected tocs to be 3")
 	}
 
-	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 
 	if len(strings) != 1 {
@@ -838,7 +850,7 @@ func TestMMV2InstanceWriting(t *testing.T) {
 		t.Error("expected tocs to be 3")
 	}
 
-	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 	matchInstancesAndInstanceDomains(instances, indoms, strings, c, t)
 
 	if len(strings) != 2 {
@@ -851,16 +863,16 @@ func toFixed(v float64, p int) float64 {
 }
 
 func matchSingleDump(expected interface{}, m PCPMetric, c *PCPClient, t *testing.T) {
-	_, _, metrics, values, _, _, strings, err := mmvdump.Dump(c.writer.Bytes())
+	_, _, metrics, values, instances, _, strings, err := mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Errorf("cannot get dump: %v", err)
 		return
 	}
 
-	matchMetricsAndValues(metrics, values, strings, c, t)
+	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 
 	off, _ := findMetric(m, metrics)
-	_, v := findValue(off, values)
+	_, v := findSingletonValue(off, values)
 
 	if val, err := mmvdump.FixedVal(v.Val, mmvdump.Type(m.Type())); val != expected {
 		t.Errorf("expected metric to be %v, got %v", expected, val)
