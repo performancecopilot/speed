@@ -70,7 +70,7 @@ func main() {
 	defer client.MustStop()
 
 	time.Sleep(time.Second * 5)
-	err = countmetric.SetInstance("Anvils", 42)
+	err = countmetric.SetInstance(42, "Anvils")
 	if err != nil {
 		panic(err)
 	}

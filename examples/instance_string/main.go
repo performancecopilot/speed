@@ -32,13 +32,13 @@ func main() {
 	metric := m.(speed.InstanceMetric)
 	for i := 0; i < *timelimit; i++ {
 		v, _ := metric.ValInstance("go")
-		metric.MustSetInstance("go", v.(uint64)*2)
+		metric.MustSetInstance(v.(uint64)*2, "go")
 
 		v, _ = metric.ValInstance("javascript")
-		metric.MustSetInstance("javascript", v.(uint64)+10)
+		metric.MustSetInstance(v.(uint64)+10, "javascript")
 
 		v, _ = metric.ValInstance("php")
-		metric.MustSetInstance("php", v.(uint64)+1)
+		metric.MustSetInstance(v.(uint64)+1, "php")
 
 		time.Sleep(time.Second)
 	}
