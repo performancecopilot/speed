@@ -42,7 +42,7 @@ type Registry interface {
 	AddMetric(Metric) error
 
 	// adds a Metric object after parsing the passed string for Instances and InstanceDomains
-	AddMetricByString(name string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error)
+	AddMetricByString(name string, val interface{}, t MetricType, s MetricSemantics, u MetricUnit) (Metric, error)
 }
 
 // PCPRegistry implements a registry for PCP as the client
@@ -335,7 +335,7 @@ func (r *PCPRegistry) addInstanceMetricByString(name string, val interface{}, in
 }
 
 // AddMetricByString dynamically creates a PCPMetric
-func (r *PCPRegistry) AddMetricByString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
+func (r *PCPRegistry) AddMetricByString(str string, val interface{}, t MetricType, s MetricSemantics, u MetricUnit) (Metric, error) {
 	metric, indom, instances, err := parseString(str)
 	if err != nil {
 		return nil, err

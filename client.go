@@ -60,10 +60,10 @@ type Client interface {
 	MustRegister(Metric)
 
 	// adds metric from a string
-	RegisterString(string, interface{}, MetricSemantics, MetricType, MetricUnit) error
+	RegisterString(string, interface{}, MetricType, MetricSemantics, MetricUnit) error
 
 	// tries to add a metric from a string and panics on an error
-	MustRegisterString(string, interface{}, MetricSemantics, MetricType, MetricUnit) error
+	MustRegisterString(string, interface{}, MetricType, MetricSemantics, MetricUnit) error
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -688,13 +688,13 @@ func (c *PCPClient) MustRegisterIndom(indom InstanceDomain) {
 }
 
 // RegisterString is simply a shorthand for Registry().AddMetricByString
-func (c *PCPClient) RegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) (Metric, error) {
-	return c.r.AddMetricByString(str, val, s, t, u)
+func (c *PCPClient) RegisterString(str string, val interface{}, t MetricType, s MetricSemantics, u MetricUnit) (Metric, error) {
+	return c.r.AddMetricByString(str, val, t, s, u)
 }
 
 // MustRegisterString is simply a RegisterString that panics
-func (c *PCPClient) MustRegisterString(str string, val interface{}, s MetricSemantics, t MetricType, u MetricUnit) Metric {
-	if m, err := c.RegisterString(str, val, s, t, u); err != nil {
+func (c *PCPClient) MustRegisterString(str string, val interface{}, t MetricType, s MetricSemantics, u MetricUnit) Metric {
+	if m, err := c.RegisterString(str, val, t, s, u); err != nil {
 		panic(err)
 	} else {
 		return m
