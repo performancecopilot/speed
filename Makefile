@@ -5,6 +5,7 @@ build:
 clean:
 	git clean -Xf
 	rm *_string.go
+	rm mmvdump/*_string.go
 
 gen:
 	go generate
