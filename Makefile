@@ -1,12 +1,13 @@
-build: clean
-	go build ./...
-	go install ./...
-	go generate
+build:
 	go build ./...
 	go install ./...
 
 clean:
 	git clean -Xf
+	rm *_string.go
+
+gen:
+	go generate
 
 deps:
 	go get -u golang.org/x/tools/cmd/stringer
@@ -14,7 +15,7 @@ deps:
 	gometalinter --install
 
 lint:
-	gometalinter ./... --vendor --deadline=10000s --dupl-threshold=150 --disable=interfacer	--disable=gas
+	gometalinter ./... --vendor --deadline=10000s --dupl-threshold=100 --disable=interfacer	--disable=gas
 
 test: 
 	go test ./...

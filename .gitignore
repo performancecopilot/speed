@@ -5,7 +5,4 @@
 # coverage
 *.coverage
 
-# stringer
-*_string.go
-
 .vscode/
