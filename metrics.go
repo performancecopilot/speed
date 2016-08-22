@@ -884,6 +884,21 @@ type PCPCounterVector struct {
 	mutex sync.RWMutex
 }
 
+func generateInstanceMetric(vals map[string]interface{}, name string, instances []string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*pcpInstanceMetric, error) {
+	indomname := name + ".indom"
+	indom, err := NewPCPInstanceDomain(indomname, instances)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create indom, error: %v", err)
+	}
+
+	d, err := newpcpMetricDesc(name, t, s, u, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return newpcpInstanceMetric(vals, indom, d)
+}
+
 // NewPCPCounterVector creates a new instance of a PCPCounterVector
 func NewPCPCounterVector(values map[string]int64, name string, desc ...string) (*PCPCounterVector, error) {
 	instances, i := make([]string, len(values)), 0
@@ -894,18 +909,7 @@ func NewPCPCounterVector(values map[string]int64, name string, desc ...string) (
 		vals[k] = v
 	}
 
-	indomname := name + ".indom"
-	indom, err := NewPCPInstanceDomain(indomname, instances)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create indom, error: %v", err)
-	}
-
-	d, err := newpcpMetricDesc(name, Int64Type, CounterSemantics, OneUnit, desc...)
-	if err != nil {
-		return nil, err
-	}
-
-	im, err := newpcpInstanceMetric(vals, indom, d)
+	im, err := generateInstanceMetric(vals, name, instances, Int64Type, CounterSemantics, OneUnit, desc...)
 	if err != nil {
 		return nil, err
 	}
@@ -1014,18 +1018,7 @@ func NewPCPGaugeVector(values map[string]float64, name string, desc ...string) (
 		vals[k] = v
 	}
 
-	indomname := name + ".indom"
-	indom, err := NewPCPInstanceDomain(indomname, instances)
-	if err != nil {
-		return nil, fmt.Errorf("cannot create indom, error: %v", err)
-	}
-
-	d, err := newpcpMetricDesc(name, DoubleType, InstantSemantics, OneUnit, desc...)
-	if err != nil {
-		return nil, err
-	}
-
-	im, err := newpcpInstanceMetric(vals, indom, d)
+	im, err := generateInstanceMetric(vals, name, instances, DoubleType, InstantSemantics, OneUnit, desc...)
 	if err != nil {
 		return nil, err
 	}
