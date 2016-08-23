@@ -1101,6 +1101,11 @@ type Histogram interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
+// HistogramBucket is a single histogram bucket within a fixed range
+type HistogramBucket struct {
+	From, To, count int64
+}
+
 // PCPHistogram implements a histogram for PCP backed by the coda hale hdrhistogram
 // https://github.com/codahale/hdrhistogram
 type PCPHistogram struct {
@@ -1109,29 +1114,60 @@ type PCPHistogram struct {
 	h     *histogram.Histogram
 }
 
+// the maximum and minimum values that can be recorded by a histogram
+const (
+	HistogramMin = 0
+	HistogramMax = 3600000000
+)
+
+func normalize(low, high int64, sigfigures int) (int64, int64, int) {
+	if low < HistogramMin {
+		low = HistogramMin
+	}
+
+	if low > HistogramMax {
+		low = HistogramMax
+	}
+
+	if high < HistogramMin {
+		high = HistogramMin
+	}
+
+	if high > HistogramMax {
+		high = HistogramMax
+	}
+
+	if sigfigures < 1 {
+		sigfigures = 1
+	}
+
+	if sigfigures > 5 {
+		sigfigures = 5
+	}
+
+	return low, high, sigfigures
+}
+
 // NewPCPHistogram returns a new instance of PCPHistogram
-func NewPCPHistogram(name string, low, high int64, desc ...string) (*PCPHistogram, error) {
-	h := histogram.New(low, high, 5)
-
-	d, err := newpcpMetricDesc(name, DoubleType, InstantSemantics, OneUnit, desc...)
-	if err != nil {
-		return nil, err
+// the lowest value for low is 0
+// the highest value for high is 3,600,000,000
+// the value of sigfigures can be between 1 and 5
+func NewPCPHistogram(name string, low, high int64, sigfigures int, desc ...string) (*PCPHistogram, error) {
+	if low > high {
+		return nil, errors.New("low cannot be larger than high")
 	}
 
-	ins := Instances{
-		"min":                float64(0),
-		"max":                float64(0),
-		"mean":               float64(0),
-		"variance":           float64(0),
-		"standard_deviation": float64(0),
+	low, high, sigfigures = normalize(low, high, sigfigures)
+
+	h := histogram.New(low, high, sigfigures)
+
+	instances := []string{"min", "max", "mean", "variance", "standard_deviation"}
+	vals := make(Instances)
+	for _, s := range instances {
+		vals[s] = float64(0)
 	}
 
-	ind, err := NewPCPInstanceDomain(name+".indom", ins.Keys())
-	if err != nil {
-		return nil, err
-	}
-
-	m, err := newpcpInstanceMetric(ins, ind, d)
+	m, err := generateInstanceMetric(vals, name, instances, DoubleType, InstantSemantics, OneUnit, desc...)
 	if err != nil {
 		return nil, err
 	}
@@ -1175,7 +1211,7 @@ func (h *PCPHistogram) update() error {
 		return err
 	}
 
-	if err := updateinstance("mean", float64(h.h.Mean())); err != nil {
+	if err := updateinstance("mean", h.h.Mean()); err != nil {
 		return err
 	}
 
