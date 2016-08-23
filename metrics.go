@@ -1096,6 +1096,7 @@ type Histogram interface {
 	Mean() float64              // Mean of all recorded data
 	Variance() float64          // Variance of all recorded data
 	StandardDeviation() float64 // StandardDeviation of all recorded data
+	Percentile(float64) float64 // Percentile returns the value at the passed percentile
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1159,41 +1160,33 @@ func (h *PCPHistogram) Min() int64 {
 }
 
 func (h *PCPHistogram) update() error {
-	if val := float64(h.h.Min()); h.vals["min"].val != val {
-		err := h.setInstance(val, "min")
-		if err != nil {
-			return err
+	updateinstance := func(instance string, val float64) error {
+		if h.vals[instance].val != val {
+			return h.setInstance(val, instance)
 		}
+		return nil
 	}
 
-	if val := float64(h.h.Max()); h.vals["max"].val != val {
-		err := h.setInstance(val, "max")
-		if err != nil {
-			return err
-		}
+	if err := updateinstance("min", float64(h.h.Min())); err != nil {
+		return err
 	}
 
-	if val := h.h.Mean(); h.vals["mean"].val != val {
-		err := h.setInstance(val, "mean")
-		if err != nil {
-			return err
-		}
+	if err := updateinstance("max", float64(h.h.Max())); err != nil {
+		return err
+	}
+
+	if err := updateinstance("mean", float64(h.h.Mean())); err != nil {
+		return err
 	}
 
 	stddev := h.h.StdDev()
 
-	if val := stddev * stddev; h.vals["variance"].val != val {
-		err := h.setInstance(val, "variance")
-		if err != nil {
-			return err
-		}
+	if err := updateinstance("standard_deviation", stddev); err != nil {
+		return err
 	}
 
-	if h.vals["standard_deviation"].val != stddev {
-		err := h.setInstance(stddev, "standard_deviation")
-		if err != nil {
-			return err
-		}
+	if err := updateinstance("variance", stddev*stddev); err != nil {
+		return err
 	}
 
 	return nil
@@ -1209,12 +1202,7 @@ func (h *PCPHistogram) Record(val int64) error {
 		return err
 	}
 
-	err = h.update()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return h.update()
 }
 
 // MustRecord panics if Record fails
@@ -1234,8 +1222,7 @@ func (h *PCPHistogram) RecordN(val, n int64) error {
 		return err
 	}
 
-	h.update()
-	return nil
+	return h.update()
 }
 
 // MustRecordN panics if RecordN fails
@@ -1265,3 +1252,6 @@ func (h *PCPHistogram) Variance() float64 {
 	defer h.mutex.RUnlock()
 	return h.vals["variance"].val.(float64)
 }
+
+// Percentile returns the value at the passed percentile
+func (h *PCPHistogram) Percentile(p float64) int64 { return h.h.ValueAtQuantile(p) }
