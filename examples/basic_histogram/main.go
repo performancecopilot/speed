@@ -16,7 +16,7 @@ func main() {
 		panic(err)
 	}
 
-	m, err := speed.NewPCPHistogram("hist", 0, max, "a sample histogram")
+	m, err := speed.NewPCPHistogram("hist", 0, max, 5, "a sample histogram")
 	if err != nil {
 		panic(err)
 	}
