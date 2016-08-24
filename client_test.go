@@ -11,10 +11,6 @@ import (
 	"github.com/performancecopilot/speed/mmvdump"
 )
 
-/**
- * TODO: figure out how to match instance metric values
- */
-
 func TestMmvFileLocation(t *testing.T) {
 	l, present := config["PCP_TMP_DIR"]
 
@@ -215,7 +211,7 @@ func matchMetricDesc(desc *pcpMetricDesc, metric mmvdump.Metric, strings map[uin
 	}
 }
 
-func matchSingletonMetric(m *PCPSingletonMetric, metric mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
+func matchSingletonMetric(m *pcpSingletonMetric, metric mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
 	if metric.Indom() != mmvdump.NoIndom {
 		t.Error("expected indom to be null")
 	}
@@ -223,7 +219,7 @@ func matchSingletonMetric(m *PCPSingletonMetric, metric mmvdump.Metric, strings 
 	matchMetricDesc(m.pcpMetricDesc, metric, strings, t)
 }
 
-func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, metrics map[uint64]mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
+func matchSingletonValue(m *pcpSingletonMetric, value *mmvdump.Value, metrics map[uint64]mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
 	off, met := findMetric(m, metrics)
 	if met == nil {
 		t.Errorf("expected to find metric with name %v", m.Name())
@@ -247,7 +243,7 @@ func matchSingletonValue(m *PCPSingletonMetric, value *mmvdump.Value, metrics ma
 	}
 }
 
-func matchInstanceMetric(m *PCPInstanceMetric, met mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
+func matchInstanceMetric(m *pcpInstanceMetric, met mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
 	if uint32(met.Indom()) != m.indom.id {
 		t.Errorf("expected indom id to be %d, got %d", m.indom.id, met.Indom())
 	}
@@ -255,7 +251,7 @@ func matchInstanceMetric(m *PCPInstanceMetric, met mmvdump.Metric, strings map[u
 	matchMetricDesc(m.pcpMetricDesc, met, strings, t)
 }
 
-func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCPInstanceMetric, metrics map[uint64]mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
+func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *pcpInstanceMetric, metrics map[uint64]mmvdump.Metric, strings map[uint64]*mmvdump.String, t *testing.T) {
 	if v.Instance == 0 {
 		t.Errorf("expected instance offset to not be 0")
 	}
@@ -277,7 +273,7 @@ func matchInstanceValue(v *mmvdump.Value, i *instanceValue, ins string, met *PCP
 	}
 }
 
-func matchSingletonMetricAndValue(met *PCPSingletonMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, strings map[uint64]*mmvdump.String, t *testing.T) {
+func matchSingletonMetricAndValue(met *pcpSingletonMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, strings map[uint64]*mmvdump.String, t *testing.T) {
 	off, metric := findMetric(met, metrics)
 
 	if metric == nil {
@@ -295,7 +291,7 @@ func matchSingletonMetricAndValue(met *PCPSingletonMetric, metrics map[uint64]mm
 	}
 }
 
-func matchInstanceMetricAndValues(met *PCPInstanceMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, instances map[uint64]mmvdump.Instance, strings map[uint64]*mmvdump.String, t *testing.T) {
+func matchInstanceMetricAndValues(met *pcpInstanceMetric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, instances map[uint64]mmvdump.Instance, strings map[uint64]*mmvdump.String, t *testing.T) {
 	_, metric := findMetric(met, metrics)
 	if metric == nil {
 		t.Errorf("expected a metric of name %v", met.name)
@@ -328,9 +324,21 @@ func matchMetricsAndValues(metrics map[uint64]mmvdump.Metric, values map[uint64]
 	for _, m := range c.r.metrics {
 		switch met := m.(type) {
 		case *PCPSingletonMetric:
-			matchSingletonMetricAndValue(met, metrics, values, strings, t)
+			matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
 		case *PCPInstanceMetric:
-			matchInstanceMetricAndValues(met, metrics, values, instances, strings, t)
+			matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
+		case *PCPCounter:
+			matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
+		case *PCPGauge:
+			matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
+		case *PCPTimer:
+			matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
+		case *PCPCounterVector:
+			matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
+		case *PCPGaugeVector:
+			matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
+		case *PCPHistogram:
+			matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
 		}
 	}
 }
