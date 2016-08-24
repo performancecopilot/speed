@@ -264,6 +264,9 @@ type InstanceMetric interface {
 
 	// tries to set the value of a particular instance and panics on error
 	MustSetInstance(interface{}, string)
+
+	// returns a slice containing all instances in the metric
+	Instances() []string
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -810,6 +813,10 @@ func (m *pcpInstanceMetric) setInstance(val interface{}, instance string) error 
 
 // Indom returns the instance domain for the metric
 func (m *pcpInstanceMetric) Indom() *PCPInstanceDomain { return m.indom }
+
+// Instances returns a slice containing all instances in the InstanceMetric
+// basically a shorthand for metric.Indom().Instances()
+func (m *pcpInstanceMetric) Instances() []string { return m.indom.Instances() }
 
 ///////////////////////////////////////////////////////////////////////////////
 
