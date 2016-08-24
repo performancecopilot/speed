@@ -1101,11 +1101,6 @@ type Histogram interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// HistogramBucket is a single histogram bucket within a fixed range
-type HistogramBucket struct {
-	From, To, count int64
-}
-
 // PCPHistogram implements a histogram for PCP backed by the coda hale hdrhistogram
 // https://github.com/codahale/hdrhistogram
 type PCPHistogram struct {
@@ -1291,3 +1286,18 @@ func (h *PCPHistogram) Variance() float64 {
 
 // Percentile returns the value at the passed percentile
 func (h *PCPHistogram) Percentile(p float64) int64 { return h.h.ValueAtQuantile(p) }
+
+// HistogramBucket is a single histogram bucket within a fixed range
+type HistogramBucket struct {
+	From, To, Count int64
+}
+
+// Buckets returns a list of histogram buckets
+func (h *PCPHistogram) Buckets() []*HistogramBucket {
+	b := h.h.Distribution()
+	buckets := make([]*HistogramBucket, len(b))
+	for i := 0; i < len(b); i++ {
+		buckets[i] = &HistogramBucket{b[i].From, b[i].To, b[i].Count}
+	}
+	return buckets
+}
