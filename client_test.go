@@ -312,6 +312,27 @@ func matchInstanceMetricAndValues(met *pcpInstanceMetric, metrics map[uint64]mmv
 	}
 }
 
+func matchMetricAndValue(m Metric, metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, instances map[uint64]mmvdump.Instance, strings map[uint64]*mmvdump.String, c *PCPClient, t *testing.T) {
+	switch met := m.(type) {
+	case *PCPSingletonMetric:
+		matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
+	case *PCPInstanceMetric:
+		matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
+	case *PCPCounter:
+		matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
+	case *PCPGauge:
+		matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
+	case *PCPTimer:
+		matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
+	case *PCPCounterVector:
+		matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
+	case *PCPGaugeVector:
+		matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
+	case *PCPHistogram:
+		matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
+	}
+}
+
 func matchMetricsAndValues(metrics map[uint64]mmvdump.Metric, values map[uint64]*mmvdump.Value, instances map[uint64]mmvdump.Instance, strings map[uint64]*mmvdump.String, c *PCPClient, t *testing.T) {
 	if c.Registry().MetricCount() != len(metrics) {
 		t.Errorf("expected %v metrics, got %v", c.Registry().MetricCount(), len(metrics))
@@ -322,24 +343,7 @@ func matchMetricsAndValues(metrics map[uint64]mmvdump.Metric, values map[uint64]
 	}
 
 	for _, m := range c.r.metrics {
-		switch met := m.(type) {
-		case *PCPSingletonMetric:
-			matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
-		case *PCPInstanceMetric:
-			matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
-		case *PCPCounter:
-			matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
-		case *PCPGauge:
-			matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
-		case *PCPTimer:
-			matchSingletonMetricAndValue(met.pcpSingletonMetric, metrics, values, strings, t)
-		case *PCPCounterVector:
-			matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
-		case *PCPGaugeVector:
-			matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
-		case *PCPHistogram:
-			matchInstanceMetricAndValues(met.pcpInstanceMetric, metrics, values, instances, strings, t)
-		}
+		matchMetricAndValue(m, metrics, values, instances, strings, c, t)
 	}
 }
 
