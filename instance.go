@@ -3,6 +3,15 @@ package speed
 // Instances defines a valid collection of instance name and values
 type Instances map[string]interface{}
 
+// Keys collects and returns all the keys in all instance values
+func (i Instances) Keys() []string {
+	s := make([]string, 0, len(i))
+	for k := range i {
+		s = append(s, k)
+	}
+	return s
+}
+
 // pcpInstance wraps a PCP compatible Instance
 type pcpInstance struct {
 	name   string

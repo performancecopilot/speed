@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	histogram "github.com/codahale/hdrhistogram"
 	"github.com/performancecopilot/speed/bytewriter"
 )
 
@@ -1075,3 +1076,228 @@ func (g *PCPGaugeVector) Dec(inc float64, instance string) error { return g.Inc(
 
 // MustDec panics if Dec fails
 func (g *PCPGaugeVector) MustDec(inc float64, instance string) { g.MustInc(-inc, instance) }
+
+///////////////////////////////////////////////////////////////////////////////
+
+// Histogram defines a metric that records a distribution of data
+type Histogram interface {
+	Max() int64 // Maximum value recorded so far
+	Min() int64 // Minimum value recorded so far
+
+	High() int64 // Highest allowed value
+	Low() int64  // Lowest allowed value
+
+	Record(int64) error         // Records a new value
+	RecordN(int64, int64) error // Records multiple instances of the same value
+
+	MustRecord(int64)
+	MustRecordN(int64, int64)
+
+	Mean() float64              // Mean of all recorded data
+	Variance() float64          // Variance of all recorded data
+	StandardDeviation() float64 // StandardDeviation of all recorded data
+	Percentile(float64) float64 // Percentile returns the value at the passed percentile
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+// PCPHistogram implements a histogram for PCP backed by the coda hale hdrhistogram
+// https://github.com/codahale/hdrhistogram
+type PCPHistogram struct {
+	*pcpInstanceMetric
+	mutex sync.RWMutex
+	h     *histogram.Histogram
+}
+
+// the maximum and minimum values that can be recorded by a histogram
+const (
+	HistogramMin = 0
+	HistogramMax = 3600000000
+)
+
+func normalize(low, high int64, sigfigures int) (int64, int64, int) {
+	if low < HistogramMin {
+		low = HistogramMin
+	}
+
+	if low > HistogramMax {
+		low = HistogramMax
+	}
+
+	if high < HistogramMin {
+		high = HistogramMin
+	}
+
+	if high > HistogramMax {
+		high = HistogramMax
+	}
+
+	if sigfigures < 1 {
+		sigfigures = 1
+	}
+
+	if sigfigures > 5 {
+		sigfigures = 5
+	}
+
+	return low, high, sigfigures
+}
+
+// NewPCPHistogram returns a new instance of PCPHistogram
+// the lowest value for low is 0
+// the highest value for high is 3,600,000,000
+// the value of sigfigures can be between 1 and 5
+func NewPCPHistogram(name string, low, high int64, sigfigures int, desc ...string) (*PCPHistogram, error) {
+	if low > high {
+		return nil, errors.New("low cannot be larger than high")
+	}
+
+	low, high, sigfigures = normalize(low, high, sigfigures)
+
+	h := histogram.New(low, high, sigfigures)
+
+	instances := []string{"min", "max", "mean", "variance", "standard_deviation"}
+	vals := make(Instances)
+	for _, s := range instances {
+		vals[s] = float64(0)
+	}
+
+	m, err := generateInstanceMetric(vals, name, instances, DoubleType, InstantSemantics, OneUnit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PCPHistogram{m, sync.RWMutex{}, h}, nil
+}
+
+// High returns the maximum recordable value
+func (h *PCPHistogram) High() int64 { return h.h.LowestTrackableValue() }
+
+// Low returns the minimum recordable value
+func (h *PCPHistogram) Low() int64 { return h.h.HighestTrackableValue() }
+
+// Max returns the maximum recorded value so far
+func (h *PCPHistogram) Max() int64 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return int64(h.vals["max"].val.(float64))
+}
+
+// Min returns the minimum recorded value so far
+func (h *PCPHistogram) Min() int64 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return int64(h.vals["min"].val.(float64))
+}
+
+func (h *PCPHistogram) update() error {
+	updateinstance := func(instance string, val float64) error {
+		if h.vals[instance].val != val {
+			return h.setInstance(val, instance)
+		}
+		return nil
+	}
+
+	if err := updateinstance("min", float64(h.h.Min())); err != nil {
+		return err
+	}
+
+	if err := updateinstance("max", float64(h.h.Max())); err != nil {
+		return err
+	}
+
+	if err := updateinstance("mean", h.h.Mean()); err != nil {
+		return err
+	}
+
+	stddev := h.h.StdDev()
+
+	if err := updateinstance("standard_deviation", stddev); err != nil {
+		return err
+	}
+
+	if err := updateinstance("variance", stddev*stddev); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Record records a new value
+func (h *PCPHistogram) Record(val int64) error {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	err := h.h.RecordValue(val)
+	if err != nil {
+		return err
+	}
+
+	return h.update()
+}
+
+// MustRecord panics if Record fails
+func (h *PCPHistogram) MustRecord(val int64) {
+	if err := h.Record(val); err != nil {
+		panic(err)
+	}
+}
+
+// RecordN records multiple instances of the same value
+func (h *PCPHistogram) RecordN(val, n int64) error {
+	h.mutex.Lock()
+	defer h.mutex.Unlock()
+
+	err := h.h.RecordValues(val, n)
+	if err != nil {
+		return err
+	}
+
+	return h.update()
+}
+
+// MustRecordN panics if RecordN fails
+func (h *PCPHistogram) MustRecordN(val, n int64) {
+	if err := h.RecordN(val, n); err != nil {
+		panic(err)
+	}
+}
+
+// Mean returns the mean of all values recorded so far
+func (h *PCPHistogram) Mean() float64 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.vals["mean"].val.(float64)
+}
+
+// StandardDeviation returns the standard deviation of all values recorded so far
+func (h *PCPHistogram) StandardDeviation() float64 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.vals["standard_deviation"].val.(float64)
+}
+
+// Variance returns the variance of all values recorded so far
+func (h *PCPHistogram) Variance() float64 {
+	h.mutex.RLock()
+	defer h.mutex.RUnlock()
+	return h.vals["variance"].val.(float64)
+}
+
+// Percentile returns the value at the passed percentile
+func (h *PCPHistogram) Percentile(p float64) int64 { return h.h.ValueAtQuantile(p) }
+
+// HistogramBucket is a single histogram bucket within a fixed range
+type HistogramBucket struct {
+	From, To, Count int64
+}
+
+// Buckets returns a list of histogram buckets
+func (h *PCPHistogram) Buckets() []*HistogramBucket {
+	b := h.h.Distribution()
+	buckets := make([]*HistogramBucket, len(b))
+	for i := 0; i < len(b); i++ {
+		buckets[i] = &HistogramBucket{b[i].From, b[i].To, b[i].Count}
+	}
+	return buckets
+}
