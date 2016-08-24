@@ -902,15 +902,12 @@ func generateInstanceMetric(vals map[string]interface{}, name string, instances 
 
 // NewPCPCounterVector creates a new instance of a PCPCounterVector
 func NewPCPCounterVector(values map[string]int64, name string, desc ...string) (*PCPCounterVector, error) {
-	instances, i := make([]string, len(values)), 0
-	vals := make(map[string]interface{})
+	vals := make(Instances)
 	for k, v := range values {
-		instances[i] = k
-		i++
 		vals[k] = v
 	}
 
-	im, err := generateInstanceMetric(vals, name, instances, Int64Type, CounterSemantics, OneUnit, desc...)
+	im, err := generateInstanceMetric(vals, name, vals.Keys(), Int64Type, CounterSemantics, OneUnit, desc...)
 	if err != nil {
 		return nil, err
 	}
@@ -1011,15 +1008,12 @@ type PCPGaugeVector struct {
 
 // NewPCPGaugeVector creates a new instance of a PCPGaugeVector
 func NewPCPGaugeVector(values map[string]float64, name string, desc ...string) (*PCPGaugeVector, error) {
-	instances, i := make([]string, len(values)), 0
-	vals := make(map[string]interface{})
+	vals := make(Instances)
 	for k, v := range values {
-		instances[i] = k
-		i++
 		vals[k] = v
 	}
 
-	im, err := generateInstanceMetric(vals, name, instances, DoubleType, InstantSemantics, OneUnit, desc...)
+	im, err := generateInstanceMetric(vals, name, vals.Keys(), DoubleType, InstantSemantics, OneUnit, desc...)
 	if err != nil {
 		return nil, err
 	}
