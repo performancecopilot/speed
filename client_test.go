@@ -1151,11 +1151,15 @@ func TestHistogram(t *testing.T) {
 	matchInstancesAndInstanceDomains(i, id, s, c, t)
 
 	for i := int64(1); i <= 100; i++ {
-		hist.RecordValues(i, i)
-		h.RecordN(i, i)
+		err = hist.RecordValues(i, i)
+		if err != nil {
+			t.Errorf("hdrhistogram couldn't record, error: %v", err)
+		}
+
+		h.MustRecordN(i, i)
 	}
 
-	_, _, m, v, i, id, s, err = mmvdump.Dump(c.writer.Bytes())
+	_, _, m, v, _, _, _, err = mmvdump.Dump(c.writer.Bytes())
 	if err != nil {
 		t.Fatalf("cannot create dump, error: %v", err)
 	}
