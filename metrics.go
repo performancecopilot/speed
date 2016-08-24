@@ -870,16 +870,19 @@ type CounterVector interface {
 
 	Set(int64, string) error
 	MustSet(int64, string)
+	SetAll(int64)
 
 	Inc(int64, string) error
 	MustInc(int64, string)
+	IncAll(int64)
 
 	Up(string)
+	UpAll()
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// PCPCounterVector implements a PCP counter vector
+// PCPCounterVector implements a CounterVector
 type PCPCounterVector struct {
 	*pcpInstanceMetric
 	mutex sync.RWMutex
@@ -952,6 +955,13 @@ func (c *PCPCounterVector) MustSet(val int64, instance string) {
 	}
 }
 
+// SetAll sets all instances to the same value and panics on an error
+func (c *PCPCounterVector) SetAll(val int64) {
+	for ins := range c.indom.instances {
+		c.MustSet(val, ins)
+	}
+}
+
 // Inc increments the value of a particular instance of PCPCounterVector
 func (c *PCPCounterVector) Inc(inc int64, instance string) error {
 	if inc < 0 {
@@ -977,8 +987,18 @@ func (c *PCPCounterVector) MustInc(inc int64, instance string) {
 	}
 }
 
+// IncAll increments all instances by the same value and panics on an error
+func (c *PCPCounterVector) IncAll(val int64) {
+	for ins := range c.indom.instances {
+		c.MustInc(val, ins)
+	}
+}
+
 // Up increments the value of a particular instance ny 1
 func (c *PCPCounterVector) Up(instance string) { c.MustInc(1, instance) }
+
+// UpAll ups all instances and panics on an error
+func (c *PCPCounterVector) UpAll() { c.IncAll(1) }
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -990,17 +1010,20 @@ type GaugeVector interface {
 
 	Set(float64, string) error
 	MustSet(float64, string)
+	SetAll(float64)
 
 	Inc(float64, string) error
 	MustInc(float64, string)
+	IncAll(float64)
 
 	Dec(float64, string) error
 	MustDec(float64, string)
+	DecAll(float64)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// PCPGaugeVector implements a PCP counter vector
+// PCPGaugeVector implements a GaugeVector
 type PCPGaugeVector struct {
 	*pcpInstanceMetric
 	mutex sync.RWMutex
@@ -1021,7 +1044,7 @@ func NewPCPGaugeVector(values map[string]float64, name string, desc ...string) (
 	return &PCPGaugeVector{im, sync.RWMutex{}}, nil
 }
 
-// Val returns the value of a particular instance of PCPCounterVector
+// Val returns the value of a particular instance of PCPGaugeVector
 func (g *PCPGaugeVector) Val(instance string) (float64, error) {
 	val, err := g.valInstance(instance)
 	if err != nil {
@@ -1034,7 +1057,7 @@ func (g *PCPGaugeVector) Val(instance string) (float64, error) {
 	return val.(float64), nil
 }
 
-// Set sets the value of a particular instance of PCPCounterVector
+// Set sets the value of a particular instance of PCPGaugeVector
 func (g *PCPGaugeVector) Set(val float64, instance string) error {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
@@ -1048,7 +1071,14 @@ func (g *PCPGaugeVector) MustSet(val float64, instance string) {
 	}
 }
 
-// Inc increments the value of a particular instance of PCPCounterVector
+// SetAll sets all instances to the same value and panics on an error
+func (g *PCPGaugeVector) SetAll(val float64) {
+	for ins := range g.indom.instances {
+		g.MustSet(val, ins)
+	}
+}
+
+// Inc increments the value of a particular instance of PCPGaugeVector
 func (g *PCPGaugeVector) Inc(inc float64, instance string) error {
 	v, err := g.Val(instance)
 	if err != nil {
@@ -1065,11 +1095,21 @@ func (g *PCPGaugeVector) MustInc(inc float64, instance string) {
 	}
 }
 
-// Dec increments the value of a particular instance of PCPCounterVector
+// IncAll increments all instances by the same value and panics on an error
+func (g *PCPGaugeVector) IncAll(val float64) {
+	for ins := range g.indom.instances {
+		g.MustInc(val, ins)
+	}
+}
+
+// Dec decrements the value of a particular instance of PCPGaugeVector
 func (g *PCPGaugeVector) Dec(inc float64, instance string) error { return g.Inc(-inc, instance) }
 
 // MustDec panics if Dec fails
 func (g *PCPGaugeVector) MustDec(inc float64, instance string) { g.MustInc(-inc, instance) }
+
+// DecAll decrements all instances by the same value and panics on an error
+func (g *PCPGaugeVector) DecAll(val float64) { g.IncAll(-val) }
 
 ///////////////////////////////////////////////////////////////////////////////
 
