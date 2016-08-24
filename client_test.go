@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/codahale/hdrhistogram"
 	"github.com/performancecopilot/speed/mmvdump"
 )
 
@@ -1120,5 +1121,72 @@ func TestGaugeVector(t *testing.T) {
 		t.Errorf("expected m.1[m2] to be 2.4, got %v", val)
 	} else if err != nil {
 		t.Errorf("cannot retrieve m.1[m2] value, error: %v", err)
+	}
+}
+
+func TestHistogram(t *testing.T) {
+	hist := hdrhistogram.New(0, 100, 5)
+
+	h, err := NewPCPHistogram("test.hist", 0, 100, 5)
+	if err != nil {
+		t.Fatalf("cannot create metric, error: %v", err)
+	}
+
+	c, err := NewPCPClient("test")
+	if err != nil {
+		t.Fatalf("cannot create client, error: %v", err)
+	}
+
+	c.MustRegister(h)
+
+	c.MustStart()
+	defer c.MustStop()
+
+	_, _, m, v, i, id, s, err := mmvdump.Dump(c.writer.Bytes())
+	if err != nil {
+		t.Fatalf("cannot create dump, error: %v", err)
+	}
+
+	matchMetricsAndValues(m, v, i, s, c, t)
+	matchInstancesAndInstanceDomains(i, id, s, c, t)
+
+	for i := int64(1); i <= 100; i++ {
+		hist.RecordValues(i, i)
+		h.RecordN(i, i)
+	}
+
+	_, _, m, v, i, id, s, err = mmvdump.Dump(c.writer.Bytes())
+	if err != nil {
+		t.Fatalf("cannot create dump, error: %v", err)
+	}
+
+	cases := [...]struct {
+		ins string
+		val float64
+	}{
+		{"mean", hist.Mean()},
+		{"mean", h.Mean()},
+
+		{"variance", math.Pow(hist.StdDev(), 2)},
+		{"variance", h.Variance()},
+
+		{"standard_deviation", hist.StdDev()},
+		{"standard_deviation", h.StandardDeviation()},
+
+		{"max", float64(hist.Max())},
+		{"max", float64(h.Max())},
+
+		{"min", float64(hist.Min())},
+		{"min", float64(h.Min())},
+	}
+
+	for _, c := range cases {
+		off := h.indom.instances[c.ins].offset
+		moff, _ := findMetric(h, m)
+		_, dv := findInstanceValue(moff, uint64(off), v)
+		val, _ := mmvdump.FixedVal(uint64(dv.Val), mmvdump.DoubleType)
+		if c.val != val {
+			t.Errorf("expected %v to be %v, got %v", c.ins, c.val, val)
+		}
 	}
 }
