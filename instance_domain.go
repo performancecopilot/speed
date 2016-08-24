@@ -89,9 +89,10 @@ func (indom *PCPInstanceDomain) InstanceCount() int {
 
 // Instances returns a slice of defined instances for the instance domain
 func (indom *PCPInstanceDomain) Instances() []string {
-	var ans []string
+	ans, i := make([]string, len(indom.instances)), 0
 	for k := range indom.instances {
-		ans = append(ans, k)
+		ans[i] = k
+		i++
 	}
 	return ans
 }
