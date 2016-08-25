@@ -60,10 +60,10 @@ type Client interface {
 	MustRegister(Metric)
 
 	// adds metric from a string
-	RegisterString(string, interface{}, MetricType, MetricSemantics, MetricUnit) error
+	RegisterString(string, interface{}, MetricType, MetricSemantics, MetricUnit) (Metric, error)
 
 	// tries to add a metric from a string and panics on an error
-	MustRegisterString(string, interface{}, MetricType, MetricSemantics, MetricUnit) error
+	MustRegisterString(string, interface{}, MetricType, MetricSemantics, MetricUnit) Metric
 }
 
 ///////////////////////////////////////////////////////////////////////////////
