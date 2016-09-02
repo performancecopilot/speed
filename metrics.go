@@ -523,27 +523,34 @@ func (c *PCPCounter) Val() int64 {
 
 // Set sets the value of the counter
 func (c *PCPCounter) Set(val int64) error {
-	v := c.Val()
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	v := c.val.(int64)
 
 	if val < v {
 		return fmt.Errorf("cannot set counter to %v, current value is %v and PCP counters cannot go backwards", val, v)
 	}
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 
 	return c.set(val)
 }
 
 // Inc increases the stored counter's value by the passed increment
 func (c *PCPCounter) Inc(val int64) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	if val < 0 {
 		return errors.New("cannot decrement a counter")
 	}
 
-	v := c.Val()
+	if val == 0 {
+		return nil
+	}
+
+	v := c.val.(int64)
 	v += val
-	return c.Set(v)
+	return c.set(v)
 }
 
 // MustInc is Inc that panics
@@ -620,8 +627,15 @@ func (g *PCPGauge) MustSet(val float64) {
 
 // Inc adds a value to the existing Gauge value
 func (g *PCPGauge) Inc(val float64) error {
-	v := g.Val()
-	return g.Set(v + val)
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+
+	if val == 0 {
+		return nil
+	}
+
+	v := g.val.(float64)
+	return g.set(v + val)
 }
 
 // MustInc will panic if Inc fails
@@ -873,7 +887,7 @@ func (m *PCPInstanceMetric) MustSetInstance(val interface{}, instance string) {
 type CounterVector interface {
 	Metric
 
-	Val(string) int64
+	Val(string) (int64, error)
 
 	Set(int64, string) error
 	MustSet(int64, string)
@@ -940,17 +954,17 @@ func (c *PCPCounterVector) Val(instance string) (int64, error) {
 
 // Set sets the value of a particular instance of PCPCounterVector
 func (c *PCPCounterVector) Set(val int64, instance string) error {
-	v, err := c.Val(instance)
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
+	v, err := c.valInstance(instance)
 	if err != nil {
 		return err
 	}
 
-	if val < v {
+	if val < v.(int64) {
 		return fmt.Errorf("cannot set instance %s to a lesser value %v", instance, val)
 	}
-
-	c.mutex.Lock()
-	defer c.mutex.Unlock()
 
 	return c.setInstance(val, instance)
 }
@@ -971,6 +985,9 @@ func (c *PCPCounterVector) SetAll(val int64) {
 
 // Inc increments the value of a particular instance of PCPCounterVector
 func (c *PCPCounterVector) Inc(inc int64, instance string) error {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+
 	if inc < 0 {
 		return errors.New("increment cannot be negative")
 	}
@@ -979,12 +996,12 @@ func (c *PCPCounterVector) Inc(inc int64, instance string) error {
 		return nil
 	}
 
-	v, err := c.Val(instance)
+	v, err := c.valInstance(instance)
 	if err != nil {
 		return err
 	}
 
-	return c.Set(v+inc, instance)
+	return c.setInstance(v.(int64)+inc, instance)
 }
 
 // MustInc panics if Inc fails
@@ -1013,7 +1030,7 @@ func (c *PCPCounterVector) UpAll() { c.IncAll(1) }
 type GaugeVector interface {
 	Metric
 
-	Val(string) float64
+	Val(string) (float64, error)
 
 	Set(float64, string) error
 	MustSet(float64, string)
@@ -1053,13 +1070,13 @@ func NewPCPGaugeVector(values map[string]float64, name string, desc ...string) (
 
 // Val returns the value of a particular instance of PCPGaugeVector
 func (g *PCPGaugeVector) Val(instance string) (float64, error) {
+	g.mutex.RLock()
+	defer g.mutex.RUnlock()
+
 	val, err := g.valInstance(instance)
 	if err != nil {
 		return 0, err
 	}
-
-	g.mutex.RLock()
-	defer g.mutex.RUnlock()
 
 	return val.(float64), nil
 }
@@ -1087,12 +1104,15 @@ func (g *PCPGaugeVector) SetAll(val float64) {
 
 // Inc increments the value of a particular instance of PCPGaugeVector
 func (g *PCPGaugeVector) Inc(inc float64, instance string) error {
-	v, err := g.Val(instance)
+	g.mutex.Lock()
+	defer g.mutex.Unlock()
+
+	v, err := g.valInstance(instance)
 	if err != nil {
 		return err
 	}
 
-	return g.Set(v+inc, instance)
+	return g.setInstance(v.(float64)+inc, instance)
 }
 
 // MustInc panics if Inc fails
@@ -1137,7 +1157,7 @@ type Histogram interface {
 	Mean() float64              // Mean of all recorded data
 	Variance() float64          // Variance of all recorded data
 	StandardDeviation() float64 // StandardDeviation of all recorded data
-	Percentile(float64) float64 // Percentile returns the value at the passed percentile
+	Percentile(float64) int64   // Percentile returns the value at the passed percentile
 }
 
 ///////////////////////////////////////////////////////////////////////////////
