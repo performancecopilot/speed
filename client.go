@@ -121,6 +121,11 @@ type PCPClient struct {
 
 // NewPCPClient initializes a new PCPClient object
 func NewPCPClient(name string) (*PCPClient, error) {
+	return NewPCPClientWithRegistry(name, NewPCPRegistry())
+}
+
+// NewPCPClientWithRegistry initializes a new PCPClient object with the given registry
+func NewPCPClientWithRegistry(name string, registry *PCPRegistry) (*PCPClient, error) {
 	fileLocation, err := mmvFileLocation(name)
 	if err != nil {
 		return nil, err
@@ -130,7 +135,7 @@ func NewPCPClient(name string) (*PCPClient, error) {
 
 	return &PCPClient{
 		loc:       fileLocation,
-		r:         NewPCPRegistry(),
+		r:         registry,
 		clusterID: hash(name, PCPClusterIDBitLength),
 		flag:      ProcessFlag,
 	}, nil
