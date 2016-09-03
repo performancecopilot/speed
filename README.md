@@ -216,3 +216,11 @@ m, err := speed.NewPCPHistogram("hist", 0, 1000, 5)
 and the visualization I got
 
 ![screenshot from 2016-08-27 01 05 56](https://cloud.githubusercontent.com/assets/16324837/18172229/45b0442c-7082-11e6-9edd-ab6f91dc9f2e.png)
+
+## Go Kit
+
+support for the [go kit](https://gokit.io) microservice library is implemented at [suyash/kit](https://github.com/suyash/kit)
+
+the examples have been ported [in a separate tree](https://github.com/suyash/kit/tree/pcp-examples/examples).
+
+[stringsvc2 has some screenshots](https://github.com/suyash/kit/tree/pcp-examples/examples/stringsvc2#stringsvc2)
