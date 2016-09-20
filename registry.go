@@ -156,11 +156,13 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 		}
 	}
 
-	log.WithFields(logrus.Fields{
-		"prefix":        "registry",
-		"name":          indom.Name(),
-		"instanceCount": indom.InstanceCount(),
-	}).Info("added new instance domain")
+	if logging {
+		log.WithFields(logrus.Fields{
+			"prefix":        "registry",
+			"name":          indom.Name(),
+			"instanceCount": indom.InstanceCount(),
+		}).Info("added new instance domain")
+	}
 
 	if indom.(*PCPInstanceDomain).shortDescription != "" {
 		r.stringcount++
@@ -224,13 +226,15 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 
 	r.addMetric(pcpm)
 
-	log.WithFields(logrus.Fields{
-		"prefix":    "registry",
-		"name":      m.Name(),
-		"type":      m.Type(),
-		"unit":      m.Unit(),
-		"semantics": m.Semantics(),
-	}).Info("added new metric")
+	if logging {
+		log.WithFields(logrus.Fields{
+			"prefix":    "registry",
+			"name":      m.Name(),
+			"type":      m.Type(),
+			"unit":      m.Unit(),
+			"semantics": m.Semantics(),
+		}).Info("added new metric")
+	}
 
 	return nil
 }

@@ -131,7 +131,9 @@ func NewPCPClientWithRegistry(name string, registry *PCPRegistry) (*PCPClient, e
 		return nil, err
 	}
 
-	clientlogger.WithField("location", fileLocation).Info("deduced location to write the MMV file")
+	if logging {
+		clientlogger.WithField("location", fileLocation).Info("deduced location to write the MMV file")
+	}
 
 	return &PCPClient{
 		loc:       fileLocation,
@@ -203,13 +205,17 @@ func (c *PCPClient) Start() error {
 
 	writer, err := bytewriter.NewMemoryMappedWriter(c.loc, l)
 	if err != nil {
-		clientlogger.WithField("error", err).Error("cannot create MemoryMappedBuffer")
+		if logging {
+			clientlogger.WithField("error", err).Error("cannot create MemoryMappedBuffer")
+		}
 		return err
 	}
 	c.writer = writer
 
 	c.start()
-	clientlogger.Info("written the different components, the registered metrics should be visible now")
+	if logging {
+		clientlogger.Info("written the different components, the registered metrics should be visible now")
+	}
 
 	c.r.mapped = true
 
@@ -641,7 +647,9 @@ func (c *PCPClient) Stop() error {
 		return errors.New("trying to stop an already stopped mapping")
 	}
 
-	clientlogger.Info("stopping the client")
+	if logging {
+		clientlogger.Info("stopping the client")
+	}
 
 	c.stop()
 
@@ -650,11 +658,15 @@ func (c *PCPClient) Stop() error {
 	err := c.writer.(*bytewriter.MemoryMappedWriter).Unmap(EraseFileOnStop)
 	c.writer = nil
 	if err != nil {
-		clientlogger.WithField("error", err).Error("error unmapping MemoryMappedBuffer")
+		if logging {
+			clientlogger.WithField("error", err).Error("error unmapping MemoryMappedBuffer")
+		}
 		return err
 	}
 
-	clientlogger.Info("unmapped the memory mapped file")
+	if logging {
+		clientlogger.Info("unmapped the memory mapped file")
+	}
 
 	return nil
 }

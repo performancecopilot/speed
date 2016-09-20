@@ -20,9 +20,18 @@ const Version = "1.0.0-alpha"
 
 var log = logrus.New()
 
+var logging bool
+
 func initLogging() {
 	log.Formatter = new(prefixed.TextFormatter)
 	log.Level = logrus.InfoLevel
+	logging = false
+}
+
+// EnableLogging logging enables logging for logrus if true is passed
+// and disables it if false is passed.
+func EnableLogging(enable bool) {
+	logging = enable
 }
 
 // init maintains a central location of all things that happen when the package is initialized
@@ -31,7 +40,7 @@ func init() {
 	initLogging()
 
 	err := initConfig()
-	if err != nil {
+	if err != nil && logging {
 		log.WithFields(logrus.Fields{
 			"prefix": "config",
 			"error":  err,

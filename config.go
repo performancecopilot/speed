@@ -31,10 +31,12 @@ func initConfig() error {
 	}
 	rootPath = r
 
-	log.WithFields(logrus.Fields{
-		"prefix":   "config",
-		"rootPath": rootPath,
-	}).Info("detected root directory for PCP")
+	if logging {
+		log.WithFields(logrus.Fields{
+			"prefix":   "config",
+			"rootPath": rootPath,
+		}).Info("detected root directory for PCP")
+	}
 
 	c, ok := os.LookupEnv("PCP_CONF")
 	if !ok {
@@ -42,10 +44,12 @@ func initConfig() error {
 	}
 	confPath = c
 
-	log.WithFields(logrus.Fields{
-		"prefix":   "config",
-		"confPath": confPath,
-	}).Info("detected directory for PCP config file")
+	if logging {
+		log.WithFields(logrus.Fields{
+			"prefix":   "config",
+			"confPath": confPath,
+		}).Info("detected directory for PCP config file")
+	}
 
 	f, err := os.Open(confPath)
 	if err != nil {
@@ -64,7 +68,9 @@ func initConfig() error {
 		}
 	}
 
-	log.WithFields(logrus.Fields{"prefix": "config"}).Info("successfully read PCP config file")
+	if logging {
+		log.WithFields(logrus.Fields{"prefix": "config"}).Info("successfully read PCP config file")
+	}
 
 	return nil
 }
