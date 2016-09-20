@@ -20,7 +20,7 @@ script:
   - make test
   - make race
   - make lint
-  - "$HOME/gopath/bin/goveralls -service=travis-ci"
+  - "$HOME/gopath/bin/goveralls -service=travis-ci -package=speed -v"
 notifications:
   email:
     on_success: change
