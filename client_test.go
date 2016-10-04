@@ -1139,7 +1139,7 @@ func TestGaugeVector(t *testing.T) {
 func TestHistogram(t *testing.T) {
 	hist := hdrhistogram.New(0, 100, 5)
 
-	h, err := NewPCPHistogram("test.hist", 0, 100, 5)
+	h, err := NewPCPHistogram("test.hist", 0, 100, 5, OneUnit)
 	if err != nil {
 		t.Fatalf("cannot create metric, error: %v", err)
 	}

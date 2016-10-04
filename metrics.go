@@ -1226,12 +1226,14 @@ func normalize(low, high int64, sigfigures int) (int64, int64, int) {
 }
 
 // NewPCPHistogram returns a new instance of PCPHistogram.
-// The lowest value for low is 0.
-// The highest value for high is 3,600,000,000.
-// The value of sigfigures can be between 1 and 5.
+// The lowest value for `low` is 0.
+// The highest value for `high` is 3,600,000,000.
+// `low` **must** be less than `high`.
+// The value of `sigfigures` can be between 1 and 5.
+// It also requires a unit to be explicitly passed for construction.
 // Optionally, a couple of description strings may be passed as the short and
 // long descriptions of the metric.
-func NewPCPHistogram(name string, low, high int64, sigfigures int, desc ...string) (*PCPHistogram, error) {
+func NewPCPHistogram(name string, low, high int64, sigfigures int, unit MetricUnit, desc ...string) (*PCPHistogram, error) {
 	if low > high {
 		return nil, errors.New("low cannot be larger than high")
 	}
@@ -1246,7 +1248,7 @@ func NewPCPHistogram(name string, low, high int64, sigfigures int, desc ...strin
 		vals[s] = float64(0)
 	}
 
-	m, err := generateInstanceMetric(vals, name, instances, DoubleType, InstantSemantics, OneUnit, desc...)
+	m, err := generateInstanceMetric(vals, name, instances, DoubleType, InstantSemantics, unit, desc...)
 	if err != nil {
 		return nil, err
 	}
