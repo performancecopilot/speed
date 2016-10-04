@@ -11,10 +11,10 @@ import (
 	"github.com/performancecopilot/speed/bytewriter"
 )
 
-// MetricType is an enumerated type representing all valid types for a metric
+// MetricType is an enumerated type representing all valid types for a metric.
 type MetricType int32
 
-// Possible values for a MetricType
+// Possible values for a MetricType.
 const (
 	Int32Type MetricType = iota
 	Uint32Type
@@ -60,7 +60,7 @@ func (m MetricType) isCompatibleFloat(val float64) bool {
 	}
 }
 
-// IsCompatible checks if the passed value is compatible with the current MetricType
+// IsCompatible checks if the passed value is compatible with the current MetricType.
 func (m MetricType) IsCompatible(val interface{}) bool {
 	switch v := val.(type) {
 	case int:
@@ -85,7 +85,7 @@ func (m MetricType) IsCompatible(val interface{}) bool {
 	return false
 }
 
-// resolveInt will resolve an int to one of the 4 compatible types
+// resolveInt will resolve an int to one of the 4 compatible types.
 func (m MetricType) resolveInt(val interface{}) interface{} {
 	if vi, isInt := val.(int); isInt {
 		switch m {
@@ -109,7 +109,7 @@ func (m MetricType) resolveInt(val interface{}) interface{} {
 	return val
 }
 
-// resolveFloat will resolve a float64 to one of the 2 compatible types
+// resolveFloat will resolve a float64 to one of the 2 compatible types.
 func (m MetricType) resolveFloat(val interface{}) interface{} {
 	_, isFloat64 := val.(float64)
 	if isFloat64 && m == FloatType {
@@ -128,17 +128,17 @@ func (m MetricType) resolve(val interface{}) interface{} {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// MetricUnit defines the interface for a unit type for speed
+// MetricUnit defines the interface for a unit type for speed.
 type MetricUnit interface {
 	// return 32 bit PMAPI representation for the unit
 	// see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/pmapi.h#L61-L101
 	PMAPI() uint32
 }
 
-// SpaceUnit is an enumerated type representing all units for space
+// SpaceUnit is an enumerated type representing all units for space.
 type SpaceUnit uint32
 
-// Possible values for SpaceUnit
+// Possible values for SpaceUnit.
 const (
 	ByteUnit SpaceUnit = 1<<28 | iota<<16
 	KilobyteUnit
@@ -157,11 +157,11 @@ func (s SpaceUnit) PMAPI() uint32 {
 	return uint32(s)
 }
 
-// TimeUnit is an enumerated type representing all possible units for representing time
+// TimeUnit is an enumerated type representing all possible units for representing time.
 type TimeUnit uint32
 
-// Possible Values for TimeUnit
-// for time units bits 4-7 are 1 and bits 17-20 are scale
+// Possible Values for TimeUnit.
+// for time units bits 4-7 are 1 and bits 17-20 are scale.
 const (
 	NanosecondUnit TimeUnit = 1<<24 | iota<<12
 	MicrosecondUnit
@@ -173,21 +173,21 @@ const (
 
 //go:generate stringer -type=TimeUnit
 
-// PMAPI returns the PMAPI representation for a TimeUnit
+// PMAPI returns the PMAPI representation for a TimeUnit.
 func (t TimeUnit) PMAPI() uint32 {
 	return uint32(t)
 }
 
-// CountUnit is a type representing a counted quantity
+// CountUnit is a type representing a counted quantity.
 type CountUnit uint32
 
-// OneUnit represents the only CountUnit
-// for count units bits 8-11 are 1 and bits 21-24 are scale
+// OneUnit represents the only CountUnit.
+// For count units bits 8-11 are 1 and bits 21-24 are scale.
 const OneUnit CountUnit = 1<<20 | iota<<8
 
 //go:generate stringer -type=CountUnit
 
-// PMAPI returns the PMAPI representation for a CountUnit
+// PMAPI returns the PMAPI representation for a CountUnit.
 func (c CountUnit) PMAPI() uint32 {
 	return uint32(c)
 }
@@ -195,10 +195,10 @@ func (c CountUnit) PMAPI() uint32 {
 ///////////////////////////////////////////////////////////////////////////////
 
 // MetricSemantics represents an enumerated type representing the possible
-// values for the semantics of a metric
+// values for the semantics of a metric.
 type MetricSemantics int32
 
-// Possible values for MetricSemantics
+// Possible values for MetricSemantics.
 const (
 	NoSemantics MetricSemantics = iota
 	CounterSemantics
@@ -212,7 +212,7 @@ const (
 ///////////////////////////////////////////////////////////////////////////////
 
 // Metric defines the general interface a type needs to implement to qualify
-// as a valid PCP metric
+// as a valid PCP metric.
 type Metric interface {
 	// gets the unique id generated for this metric
 	ID() uint32
@@ -235,7 +235,7 @@ type Metric interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// SingletonMetric defines the interface for a metric that stores only one value
+// SingletonMetric defines the interface for a metric that stores only one value.
 type SingletonMetric interface {
 	Metric
 
@@ -252,7 +252,7 @@ type SingletonMetric interface {
 ///////////////////////////////////////////////////////////////////////////////
 
 // InstanceMetric defines the interface for a metric that stores multiple values
-// in instances and instance domains
+// in instances and instance domains.
 type InstanceMetric interface {
 	Metric
 
@@ -271,7 +271,7 @@ type InstanceMetric interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// PCPMetric defines the interface for a metric that is compatible with PCP
+// PCPMetric defines the interface for a metric that is compatible with PCP.
 type PCPMetric interface {
 	Metric
 
@@ -285,16 +285,16 @@ type PCPMetric interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// PCPMetricItemBitLength is the maximum bit size of a PCP Metric id
+// PCPMetricItemBitLength is the maximum bit size of a PCP Metric id.
 //
 // see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
 const PCPMetricItemBitLength = 10
 
 // pcpMetricDesc is a metric metadata wrapper
-// each metric type can wrap its metadata by containing a pcpMetricDesc type and only define its own
-// specific properties assuming pcpMetricDesc will handle the rest
+// each metric type can wrap its metadata by containing a pcpMetricDesc type and
+// only define its own specific properties assuming pcpMetricDesc will handle the rest.
 //
-// when writing, this type is supposed to map directly to the pmDesc struct as defined in PCP core
+// when writing, this type is supposed to map directly to the pmDesc struct as defined in PCP core.
 type pcpMetricDesc struct {
 	id                                uint32          // unique metric id
 	name                              string          // the name
@@ -304,7 +304,7 @@ type pcpMetricDesc struct {
 	shortDescription, longDescription string
 }
 
-// newpcpMetricDesc creates a new Metric Description wrapper type
+// newpcpMetricDesc creates a new Metric Description wrapper type.
 func newpcpMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*pcpMetricDesc, error) {
 	if n == "" {
 		return nil, errors.New("Metric name cannot be empty")
@@ -335,40 +335,40 @@ func newpcpMetricDesc(n string, t MetricType, s MetricSemantics, u MetricUnit, d
 	}, nil
 }
 
-// ID returns the generated id for PCPMetric
+// ID returns the generated id for PCPMetric.
 func (md *pcpMetricDesc) ID() uint32 { return md.id }
 
-// Name returns the generated id for PCPMetric
+// Name returns the generated id for PCPMetric.
 func (md *pcpMetricDesc) Name() string {
 	return md.name
 }
 
-// Semantics returns the current stored value for PCPMetric
+// Semantics returns the current stored value for PCPMetric.
 func (md *pcpMetricDesc) Semantics() MetricSemantics { return md.sem }
 
-// Unit returns the unit for PCPMetric
+// Unit returns the unit for PCPMetric.
 func (md *pcpMetricDesc) Unit() MetricUnit { return md.u }
 
-// Type returns the type for PCPMetric
+// Type returns the type for PCPMetric.
 func (md *pcpMetricDesc) Type() MetricType { return md.t }
 
-// ShortDescription returns the shortdesc value
+// ShortDescription returns the shortdesc value.
 func (md *pcpMetricDesc) ShortDescription() string { return md.shortDescription }
 
-// LongDescription returns the longdesc value
+// LongDescription returns the longdesc value.
 func (md *pcpMetricDesc) LongDescription() string { return md.longDescription }
 
-// Description returns the description for PCPMetric
+// Description returns the description for PCPMetric.
 func (md *pcpMetricDesc) Description() string {
 	return md.shortDescription + "\n" + md.longDescription
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// updateClosure is a closure that will write the modified value of a metric on disk
+// updateClosure is a closure that will write the modified value of a metric on disk.
 type updateClosure func(interface{}) error
 
-// newupdateClosure creates a new update closure for an offset, type and buffer
+// newupdateClosure creates a new update closure for an offset, type and buffer.
 func newupdateClosure(offset int, writer bytewriter.Writer) updateClosure {
 	return func(val interface{}) error {
 		if _, isString := val.(string); isString {
@@ -382,14 +382,14 @@ func newupdateClosure(offset int, writer bytewriter.Writer) updateClosure {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// pcpSingletonMetric defines an embeddable base singleton metric
+// pcpSingletonMetric defines an embeddable base singleton metric.
 type pcpSingletonMetric struct {
 	*pcpMetricDesc
 	val    interface{}
 	update updateClosure
 }
 
-// newpcpSingletonMetric creates a new instance of pcpSingletonMetric
+// newpcpSingletonMetric creates a new instance of pcpSingletonMetric.
 func newpcpSingletonMetric(val interface{}, desc *pcpMetricDesc) (*pcpSingletonMetric, error) {
 	if !desc.t.IsCompatible(val) {
 		return nil, fmt.Errorf("type %v is not compatible with value %v(%T)", desc.t, val, val)
@@ -399,7 +399,7 @@ func newpcpSingletonMetric(val interface{}, desc *pcpMetricDesc) (*pcpSingletonM
 	return &pcpSingletonMetric{desc, val, nil}, nil
 }
 
-// set Sets the current value of pcpSingletonMetric
+// set Sets the current value of pcpSingletonMetric.
 func (m *pcpSingletonMetric) set(val interface{}) error {
 	if !m.t.IsCompatible(val) {
 		return fmt.Errorf("value %v is incompatible with MetricType %v", val, m.t)
@@ -425,7 +425,7 @@ func (m *pcpSingletonMetric) Indom() *PCPInstanceDomain { return nil }
 ///////////////////////////////////////////////////////////////////////////////
 
 // PCPSingletonMetric defines a singleton metric with no instance domain
-// only a value and a valueoffset
+// only a value and a valueoffset.
 type PCPSingletonMetric struct {
 	*pcpSingletonMetric
 	mutex sync.RWMutex
@@ -433,7 +433,7 @@ type PCPSingletonMetric struct {
 
 // NewPCPSingletonMetric creates a new instance of PCPSingletonMetric
 // it takes 2 extra optional strings as short and long description parameters,
-// which on not being present are set blank
+// which on not being present are set to blank strings.
 func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPSingletonMetric, error) {
 	d, err := newpcpMetricDesc(name, t, s, u, desc...)
 	if err != nil {
@@ -448,7 +448,7 @@ func NewPCPSingletonMetric(val interface{}, name string, t MetricType, s MetricS
 	return &PCPSingletonMetric{sm, sync.RWMutex{}}, nil
 }
 
-// Val returns the current Set value of PCPSingletonMetric
+// Val returns the current Set value of PCPSingletonMetric.
 func (m *PCPSingletonMetric) Val() interface{} {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
@@ -456,7 +456,7 @@ func (m *PCPSingletonMetric) Val() interface{} {
 	return m.val
 }
 
-// Set Sets the current value of PCPSingletonMetric
+// Set Sets the current value of PCPSingletonMetric.
 func (m *PCPSingletonMetric) Set(val interface{}) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -464,7 +464,7 @@ func (m *PCPSingletonMetric) Set(val interface{}) error {
 	return m.set(val)
 }
 
-// MustSet is a Set that panics
+// MustSet is a Set that panics on failure.
 func (m *PCPSingletonMetric) MustSet(val interface{}) {
 	if err := m.Set(val); err != nil {
 		panic(err)
@@ -477,7 +477,7 @@ func (m *PCPSingletonMetric) String() string {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// Counter defines a metric that holds a single value that can only be incremented
+// Counter defines a metric that holds a single value that can only be incremented.
 type Counter interface {
 	Metric
 
@@ -492,13 +492,18 @@ type Counter interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// PCPCounter implements a PCP compatible Counter Metric
+// PCPCounter implements a PCP compatible Counter Metric.
 type PCPCounter struct {
 	*pcpSingletonMetric
 	mutex sync.RWMutex
 }
 
-// NewPCPCounter creates a new PCPCounter instance
+// NewPCPCounter creates a new PCPCounter instance.
+// It requires an initial int64 value and a metric name for construction.
+// optionally it can also take a couple of description strings that are used as
+// short and long descriptions respectively.
+// Internally it creates a PCP SingletonMetric with Int64Type, CounterSemantics
+// and CountUnit.
 func NewPCPCounter(val int64, name string, desc ...string) (*PCPCounter, error) {
 	d, err := newpcpMetricDesc(name, Int64Type, CounterSemantics, OneUnit, desc...)
 	if err != nil {
@@ -513,7 +518,7 @@ func NewPCPCounter(val int64, name string, desc ...string) (*PCPCounter, error) 
 	return &PCPCounter{sm, sync.RWMutex{}}, nil
 }
 
-// Val returns the current value of the counter
+// Val returns the current value of the counter.
 func (c *PCPCounter) Val() int64 {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -521,7 +526,7 @@ func (c *PCPCounter) Val() int64 {
 	return c.val.(int64)
 }
 
-// Set sets the value of the counter
+// Set sets the value of the counter.
 func (c *PCPCounter) Set(val int64) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -535,7 +540,7 @@ func (c *PCPCounter) Set(val int64) error {
 	return c.set(val)
 }
 
-// Inc increases the stored counter's value by the passed increment
+// Inc increases the stored counter's value by the passed increment.
 func (c *PCPCounter) Inc(val int64) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -553,19 +558,20 @@ func (c *PCPCounter) Inc(val int64) error {
 	return c.set(v)
 }
 
-// MustInc is Inc that panics
+// MustInc is Inc that panics on failure.
 func (c *PCPCounter) MustInc(val int64) {
 	if err := c.Inc(val); err != nil {
 		panic(err)
 	}
 }
 
-// Up increases the counter by 1
+// Up increases the counter by 1.
 func (c *PCPCounter) Up() { c.MustInc(1) }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// Gauge defines a metric that holds a single double value that can be incremented or decremented
+// Gauge defines a metric that holds a single double value that can be
+// incremented or decremented.
 type Gauge interface {
 	Metric
 
@@ -589,7 +595,12 @@ type PCPGauge struct {
 	mutex sync.RWMutex
 }
 
-// NewPCPGauge creates a new PCPGauge instance
+// NewPCPGauge creates a new PCPGauge instance.
+// Tt requires an initial float64 value and a metric name for construction.
+// Optionally it can also take a couple of description strings that are used as
+// short and long descriptions respectively.
+// Internally it creates a PCP SingletonMetric with DoubleType, InstantSemantics
+// and CountUnit.
 func NewPCPGauge(val float64, name string, desc ...string) (*PCPGauge, error) {
 	d, err := newpcpMetricDesc(name, DoubleType, InstantSemantics, OneUnit, desc...)
 	if err != nil {
@@ -604,28 +615,28 @@ func NewPCPGauge(val float64, name string, desc ...string) (*PCPGauge, error) {
 	return &PCPGauge{sm, sync.RWMutex{}}, nil
 }
 
-// Val returns the current value of the Gauge
+// Val returns the current value of the Gauge.
 func (g *PCPGauge) Val() float64 {
 	g.mutex.RLock()
 	defer g.mutex.RUnlock()
 	return g.val.(float64)
 }
 
-// Set sets the current value of the Gauge
+// Set sets the current value of the Gauge.
 func (g *PCPGauge) Set(val float64) error {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
 	return g.set(val)
 }
 
-// MustSet will panic if Set fails
+// MustSet will panic if Set fails.
 func (g *PCPGauge) MustSet(val float64) {
 	if err := g.Set(val); err != nil {
 		panic(err)
 	}
 }
 
-// Inc adds a value to the existing Gauge value
+// Inc adds a value to the existing Gauge value.
 func (g *PCPGauge) Inc(val float64) error {
 	g.mutex.Lock()
 	defer g.mutex.Unlock()
@@ -638,19 +649,19 @@ func (g *PCPGauge) Inc(val float64) error {
 	return g.set(v + val)
 }
 
-// MustInc will panic if Inc fails
+// MustInc will panic if Inc fails.
 func (g *PCPGauge) MustInc(val float64) {
 	if err := g.Inc(val); err != nil {
 		panic(err)
 	}
 }
 
-// Dec adds a value to the existing Gauge value
+// Dec adds a value to the existing Gauge value.
 func (g *PCPGauge) Dec(val float64) error {
 	return g.Inc(-val)
 }
 
-// MustDec will panic if Dec fails
+// MustDec will panic if Dec fails.
 func (g *PCPGauge) MustDec(val float64) {
 	if err := g.Dec(val); err != nil {
 		panic(err)
@@ -660,9 +671,9 @@ func (g *PCPGauge) MustDec(val float64) {
 ///////////////////////////////////////////////////////////////////////////////
 
 // Timer defines a metric that accumulates time periods
-// Start signals the beginning of monitoring
-// End signals the end of monitoring and adding the elapsed time to the accumulated time
-// and returning it
+// Start signals the beginning of monitoring.
+// End signals the end of monitoring and adding the elapsed time to the
+// accumulated time, and returning it.
 type Timer interface {
 	Metric
 
@@ -681,7 +692,10 @@ type PCPTimer struct {
 	since   time.Time
 }
 
-// NewPCPTimer creates a new PCPTimer instance of the specified unit
+// NewPCPTimer creates a new PCPTimer instance of the specified unit.
+// It requires a metric name and a TimeUnit for construction.
+// It can optionally take a couple of description strings.
+// Internally it uses a PCP SingletonMetric.
 func NewPCPTimer(name string, unit TimeUnit, desc ...string) (*PCPTimer, error) {
 	d, err := newpcpMetricDesc(name, DoubleType, DiscreteSemantics, unit, desc...)
 	if err != nil {
@@ -696,7 +710,7 @@ func NewPCPTimer(name string, unit TimeUnit, desc ...string) (*PCPTimer, error) 
 	return &PCPTimer{sm, sync.Mutex{}, false, time.Time{}}, nil
 }
 
-// Start signals the timer to start monitoring
+// Start signals the timer to start monitoring.
 func (t *PCPTimer) Start() error {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
@@ -710,7 +724,7 @@ func (t *PCPTimer) Start() error {
 	return nil
 }
 
-// Stop signals the timer to end monitoring and return elapsed time so far
+// Stop signals the timer to end monitoring and return elapsed time so far.
 func (t *PCPTimer) Stop() (float64, error) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
@@ -759,14 +773,14 @@ func newinstanceValue(val interface{}) *instanceValue {
 }
 
 // pcpInstanceMetric represents a PCPMetric that can have multiple values
-// over multiple instances in an instance domain
+// over multiple instances in an instance domain.
 type pcpInstanceMetric struct {
 	*pcpMetricDesc
 	indom *PCPInstanceDomain
 	vals  map[string]*instanceValue
 }
 
-// newpcpInstanceMetric creates a new instance of PCPSingletonMetric
+// newpcpInstanceMetric creates a new instance of PCPSingletonMetric.
 func newpcpInstanceMetric(vals Instances, indom *PCPInstanceDomain, desc *pcpMetricDesc) (*pcpInstanceMetric, error) {
 	if len(vals) != indom.InstanceCount() {
 		return nil, errors.New("values for all instances in the instance domain only should be passed")
@@ -799,7 +813,7 @@ func (m *pcpInstanceMetric) valInstance(instance string) (interface{}, error) {
 	return m.vals[instance].val, nil
 }
 
-// setInstance sets the value for a particular instance of the metric
+// setInstance sets the value for a particular instance of the metric.
 func (m *pcpInstanceMetric) setInstance(val interface{}, instance string) error {
 	if !m.t.IsCompatible(val) {
 		return errors.New("the value is incompatible with this metrics MetricType")
@@ -825,25 +839,25 @@ func (m *pcpInstanceMetric) setInstance(val interface{}, instance string) error 
 	return nil
 }
 
-// Indom returns the instance domain for the metric
+// Indom returns the instance domain for the metric.
 func (m *pcpInstanceMetric) Indom() *PCPInstanceDomain { return m.indom }
 
-// Instances returns a slice containing all instances in the InstanceMetric
-// basically a shorthand for metric.Indom().Instances()
+// Instances returns a slice containing all instances in the InstanceMetric.
+// Basically a shorthand for metric.Indom().Instances().
 func (m *pcpInstanceMetric) Instances() []string { return m.indom.Instances() }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 // PCPInstanceMetric represents a PCPMetric that can have multiple values
-// over multiple instances in an instance domain
+// over multiple instances in an instance domain.
 type PCPInstanceMetric struct {
 	*pcpInstanceMetric
 	mutex sync.RWMutex
 }
 
-// NewPCPInstanceMetric creates a new instance of PCPSingletonMetric
+// NewPCPInstanceMetric creates a new instance of PCPSingletonMetric.
 // it takes 2 extra optional strings as short and long description parameters,
-// which on not being present are set blank
+// which on not being present are set to empty strings.
 func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*PCPInstanceMetric, error) {
 	d, err := newpcpMetricDesc(name, t, s, u, desc...)
 	if err != nil {
@@ -858,7 +872,7 @@ func NewPCPInstanceMetric(vals Instances, name string, indom *PCPInstanceDomain,
 	return &PCPInstanceMetric{im, sync.RWMutex{}}, nil
 }
 
-// ValInstance returns the value for a particular instance of the metric
+// ValInstance returns the value for a particular instance of the metric.
 func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
 	m.mutex.RLock()
 	defer m.mutex.RUnlock()
@@ -866,7 +880,7 @@ func (m *PCPInstanceMetric) ValInstance(instance string) (interface{}, error) {
 	return m.valInstance(instance)
 }
 
-// SetInstance sets the value for a particular instance of the metric
+// SetInstance sets the value for a particular instance of the metric.
 func (m *PCPInstanceMetric) SetInstance(val interface{}, instance string) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
@@ -874,7 +888,7 @@ func (m *PCPInstanceMetric) SetInstance(val interface{}, instance string) error 
 	return m.setInstance(val, instance)
 }
 
-// MustSetInstance is a SetInstance that panics
+// MustSetInstance is a SetInstance that panics.
 func (m *PCPInstanceMetric) MustSetInstance(val interface{}, instance string) {
 	if err := m.SetInstance(val, instance); err != nil {
 		panic(err)
@@ -883,7 +897,7 @@ func (m *PCPInstanceMetric) MustSetInstance(val interface{}, instance string) {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// CounterVector defines a Counter on multiple instances
+// CounterVector defines a Counter on multiple instances.
 type CounterVector interface {
 	Metric
 
@@ -924,7 +938,11 @@ func generateInstanceMetric(vals map[string]interface{}, name string, instances 
 	return newpcpInstanceMetric(vals, indom, d)
 }
 
-// NewPCPCounterVector creates a new instance of a PCPCounterVector
+// NewPCPCounterVector creates a new instance of a PCPCounterVector.
+// it requires a metric name and a set of instance names and values as a map.
+// it can optionally accept a couple of strings as short and long descriptions
+// of the metric.
+// Internally it uses a PCP InstanceMetric with Int64Type, CounterSemantics and CountUnit.
 func NewPCPCounterVector(values map[string]int64, name string, desc ...string) (*PCPCounterVector, error) {
 	vals := make(Instances)
 	for k, v := range values {
@@ -939,7 +957,7 @@ func NewPCPCounterVector(values map[string]int64, name string, desc ...string) (
 	return &PCPCounterVector{im, sync.RWMutex{}}, nil
 }
 
-// Val returns the value of a particular instance of PCPCounterVector
+// Val returns the value of a particular instance of PCPCounterVector.
 func (c *PCPCounterVector) Val(instance string) (int64, error) {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
@@ -952,7 +970,7 @@ func (c *PCPCounterVector) Val(instance string) (int64, error) {
 	return v.(int64), nil
 }
 
-// Set sets the value of a particular instance of PCPCounterVector
+// Set sets the value of a particular instance of PCPCounterVector.
 func (c *PCPCounterVector) Set(val int64, instance string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -969,21 +987,21 @@ func (c *PCPCounterVector) Set(val int64, instance string) error {
 	return c.setInstance(val, instance)
 }
 
-// MustSet panics if Set fails
+// MustSet panics if Set fails.
 func (c *PCPCounterVector) MustSet(val int64, instance string) {
 	if err := c.Set(val, instance); err != nil {
 		panic(err)
 	}
 }
 
-// SetAll sets all instances to the same value and panics on an error
+// SetAll sets all instances to the same value and panics on an error.
 func (c *PCPCounterVector) SetAll(val int64) {
 	for ins := range c.indom.instances {
 		c.MustSet(val, ins)
 	}
 }
 
-// Inc increments the value of a particular instance of PCPCounterVector
+// Inc increments the value of a particular instance of PCPCounterVector.
 func (c *PCPCounterVector) Inc(inc int64, instance string) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
@@ -1004,24 +1022,24 @@ func (c *PCPCounterVector) Inc(inc int64, instance string) error {
 	return c.setInstance(v.(int64)+inc, instance)
 }
 
-// MustInc panics if Inc fails
+// MustInc panics if Inc fails.
 func (c *PCPCounterVector) MustInc(inc int64, instance string) {
 	if err := c.Inc(inc, instance); err != nil {
 		panic(err)
 	}
 }
 
-// IncAll increments all instances by the same value and panics on an error
+// IncAll increments all instances by the same value and panics on an error.
 func (c *PCPCounterVector) IncAll(val int64) {
 	for ins := range c.indom.instances {
 		c.MustInc(val, ins)
 	}
 }
 
-// Up increments the value of a particular instance ny 1
+// Up increments the value of a particular instance ny 1.
 func (c *PCPCounterVector) Up(instance string) { c.MustInc(1, instance) }
 
-// UpAll ups all instances and panics on an error
+// UpAll ups all instances and panics on an error.
 func (c *PCPCounterVector) UpAll() { c.IncAll(1) }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1053,7 +1071,10 @@ type PCPGaugeVector struct {
 	mutex sync.RWMutex
 }
 
-// NewPCPGaugeVector creates a new instance of a PCPGaugeVector
+// NewPCPGaugeVector creates a new instance of a PCPGaugeVector.
+// It requires a name and map of instance names to their values.
+// Optionally, it can also accept a couple of strings providing more details
+// about the metric.
 func NewPCPGaugeVector(values map[string]float64, name string, desc ...string) (*PCPGaugeVector, error) {
 	vals := make(Instances)
 	for k, v := range values {
@@ -1204,10 +1225,12 @@ func normalize(low, high int64, sigfigures int) (int64, int64, int) {
 	return low, high, sigfigures
 }
 
-// NewPCPHistogram returns a new instance of PCPHistogram
-// the lowest value for low is 0
-// the highest value for high is 3,600,000,000
-// the value of sigfigures can be between 1 and 5
+// NewPCPHistogram returns a new instance of PCPHistogram.
+// The lowest value for low is 0.
+// The highest value for high is 3,600,000,000.
+// The value of sigfigures can be between 1 and 5.
+// Optionally, a couple of description strings may be passed as the short and
+// long descriptions of the metric.
 func NewPCPHistogram(name string, low, high int64, sigfigures int, desc ...string) (*PCPHistogram, error) {
 	if low > high {
 		return nil, errors.New("low cannot be larger than high")
@@ -1231,20 +1254,20 @@ func NewPCPHistogram(name string, low, high int64, sigfigures int, desc ...strin
 	return &PCPHistogram{m, sync.RWMutex{}, h}, nil
 }
 
-// High returns the maximum recordable value
+// High returns the maximum recordable value.
 func (h *PCPHistogram) High() int64 { return h.h.LowestTrackableValue() }
 
-// Low returns the minimum recordable value
+// Low returns the minimum recordable value.
 func (h *PCPHistogram) Low() int64 { return h.h.HighestTrackableValue() }
 
-// Max returns the maximum recorded value so far
+// Max returns the maximum recorded value so far.
 func (h *PCPHistogram) Max() int64 {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 	return int64(h.vals["max"].val.(float64))
 }
 
-// Min returns the minimum recorded value so far
+// Min returns the minimum recorded value so far.
 func (h *PCPHistogram) Min() int64 {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
@@ -1284,7 +1307,7 @@ func (h *PCPHistogram) update() error {
 	return nil
 }
 
-// Record records a new value
+// Record records a new value.
 func (h *PCPHistogram) Record(val int64) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
@@ -1297,14 +1320,14 @@ func (h *PCPHistogram) Record(val int64) error {
 	return h.update()
 }
 
-// MustRecord panics if Record fails
+// MustRecord panics if Record fails.
 func (h *PCPHistogram) MustRecord(val int64) {
 	if err := h.Record(val); err != nil {
 		panic(err)
 	}
 }
 
-// RecordN records multiple instances of the same value
+// RecordN records multiple instances of the same value.
 func (h *PCPHistogram) RecordN(val, n int64) error {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
@@ -1317,43 +1340,43 @@ func (h *PCPHistogram) RecordN(val, n int64) error {
 	return h.update()
 }
 
-// MustRecordN panics if RecordN fails
+// MustRecordN panics if RecordN fails.
 func (h *PCPHistogram) MustRecordN(val, n int64) {
 	if err := h.RecordN(val, n); err != nil {
 		panic(err)
 	}
 }
 
-// Mean returns the mean of all values recorded so far
+// Mean returns the mean of all values recorded so far.
 func (h *PCPHistogram) Mean() float64 {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 	return h.vals["mean"].val.(float64)
 }
 
-// StandardDeviation returns the standard deviation of all values recorded so far
+// StandardDeviation returns the standard deviation of all values recorded so far.
 func (h *PCPHistogram) StandardDeviation() float64 {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 	return h.vals["standard_deviation"].val.(float64)
 }
 
-// Variance returns the variance of all values recorded so far
+// Variance returns the variance of all values recorded so far.
 func (h *PCPHistogram) Variance() float64 {
 	h.mutex.RLock()
 	defer h.mutex.RUnlock()
 	return h.vals["variance"].val.(float64)
 }
 
-// Percentile returns the value at the passed percentile
+// Percentile returns the value at the passed percentile.
 func (h *PCPHistogram) Percentile(p float64) int64 { return h.h.ValueAtQuantile(p) }
 
-// HistogramBucket is a single histogram bucket within a fixed range
+// HistogramBucket is a single histogram bucket within a fixed range.
 type HistogramBucket struct {
 	From, To, Count int64
 }
 
-// Buckets returns a list of histogram buckets
+// Buckets returns a list of histogram buckets.
 func (h *PCPHistogram) Buckets() []*HistogramBucket {
 	b := h.h.Distribution()
 	buckets := make([]*HistogramBucket, len(b))
