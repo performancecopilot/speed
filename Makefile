@@ -19,19 +19,22 @@ lint:
 	gometalinter ./... --vendor --deadline=10000s --dupl-threshold=100 --disable=interfacer	--disable=gas
 
 test: 
-	go test ./...
+	go test -v ./...
 
 race:
-	go test -race ./...
+	go test -v -race ./...
 
 cover: coverage
 coverage:
-	go test -coverprofile=speed.coverage
+	go test -v -coverprofile=speed.coverage
 	go tool cover -html=speed.coverage
 
-	go test -coverprofile=bytebuffer.coverage ./bytebuffer/
+	go test -v -coverprofile=bytebuffer.coverage ./bytebuffer/
 	go tool cover -html=bytebuffer.coverage
+
+	go test -v -coverprofile=mmvdump.coverage ./mmvdump/
+	go tool cover -html=mmvdump.coverage
 
 bench: benchmark
 benchmark:
-	go test -bench ./...
+	go test -v -bench ./...
