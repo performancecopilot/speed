@@ -6,6 +6,31 @@ Golang implementation of the Performance Co-Pilot (PCP) instrumentation API
 
 [![Build Status](https://travis-ci.org/performancecopilot/speed.svg?branch=master)](https://travis-ci.org/performancecopilot/speed) [![Coverage Status](https://coveralls.io/repos/github/performancecopilot/speed/badge.svg?branch=master)](https://coveralls.io/github/performancecopilot/speed?branch=master) [![GoDoc](https://godoc.org/github.com/performancecopilot/speed?status.svg)](https://godoc.org/github.com/performancecopilot/speed) [![Go Report Card](https://goreportcard.com/badge/github.com/performancecopilot/speed)](https://goreportcard.com/report/github.com/performancecopilot/speed)
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Install](#install)
+  - [Prerequisites](#prerequisites)
+    - [PCP](#pcp)
+    - [Go](#go)
+    - [[Optional] [Vector](http://vectoross.io/)](#optional-vectorhttpvectorossio)
+  - [Getting the library](#getting-the-library)
+  - [Getting the examples](#getting-the-examples)
+- [Walkthrough](#walkthrough)
+  - [SingletonMetric](#singletonmetric)
+  - [InstanceMetric](#instancemetric)
+  - [Counter](#counter)
+  - [CounterVector](#countervector)
+  - [Gauge](#gauge)
+  - [GaugeVector](#gaugevector)
+  - [Timer](#timer)
+  - [Histogram](#histogram)
+- [Visualization through Vector](#visualization-through-vector)
+- [Go Kit](#go-kit)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Install
 
 ### Prerequisites
@@ -217,10 +242,8 @@ and the visualization I got
 
 ![screenshot from 2016-08-27 01 05 56](https://cloud.githubusercontent.com/assets/16324837/18172229/45b0442c-7082-11e6-9edd-ab6f91dc9f2e.png)
 
-## Go Kit
+## [Go Kit](https://gokit.io)
 
-support for the [go kit](https://gokit.io) microservice library is implemented at [suyash/kit](https://github.com/suyash/kit)
+Go kit provides [a wrapper package](https://godoc.org/github.com/go-kit/kit/metrics/pcp) over speed that can be used for building microservices that expose metrics using PCP.
 
-the examples have been ported [in a separate tree](https://github.com/suyash/kit/tree/pcp-examples/examples).
-
-[stringsvc2 has some screenshots](https://github.com/suyash/kit/tree/pcp-examples/examples/stringsvc2#stringsvc2)
+For modified versions of the examples in go-kit that use pcp to report metrics, see [suyash/kit-pcp-examples](https://github.com/suyash/kit-pcp-examples)
