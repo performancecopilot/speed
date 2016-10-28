@@ -16,7 +16,7 @@ import (
 )
 
 // Version is the last tagged version of the package
-const Version = "1.0.0-alpha"
+const Version = "1.0.0"
 
 var log = logrus.New()
 
