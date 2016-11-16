@@ -96,6 +96,10 @@ func TestTocCountAndLength(t *testing.T) {
 
 func TestMapping(t *testing.T) {
 	c, err := NewPCPClient("test")
+	if err != nil {
+		t.Fatal("Cannot create client")
+	}
+
 	_, err = c.RegisterString("test.1", 2, Int32Type, CounterSemantics, OneUnit)
 	if err != nil {
 		t.Error("Cannot Register")
@@ -419,6 +423,10 @@ func TestUpdatingSingletonMetric(t *testing.T) {
 	defer c.MustStop()
 
 	_, _, metrics, values, instances, _, strings, err := mmvdump.Dump(c.writer.Bytes())
+	if err != nil {
+		t.Fatal("Cannot extract dump from the writer buffer")
+	}
+
 	matchMetricsAndValues(metrics, values, instances, strings, c, t)
 
 	if m.(SingletonMetric).Val().(int32) != 10 {

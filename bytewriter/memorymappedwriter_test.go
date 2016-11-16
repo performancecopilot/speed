@@ -13,34 +13,33 @@ func TestMemoryMappedWriter(t *testing.T) {
 	if _, err := os.Stat(loc); err == nil {
 		err = os.Remove(loc)
 		if err != nil {
-			t.Error("Cannot proceed with test as cannot remove spec file")
-			return
+			t.Fatal("Cannot proceed with test as cannot remove spec file")
 		}
 	}
 
 	w, err := NewMemoryMappedWriter(loc, 10)
 	if err != nil {
-		t.Error("Cannot proceed with test as create writer failed:", err)
-		return
+		t.Fatal("Cannot proceed with test as create writer failed:", err)
 	}
 
 	if _, err = os.Stat(loc); err != nil {
-		t.Errorf("No File created at %v despite the Buffer being initialized", loc)
-		return
+		t.Fatalf("No File created at %v despite the Buffer being initialized", loc)
 	}
 
 	_, err = w.WriteString("x", 5)
 	if err != nil {
-		t.Error("Cannot Write to MemoryMappedWriter")
-		return
+		t.Fatal("Cannot Write to MemoryMappedWriter")
 	}
 
 	reader, err := os.Open(loc)
+	if err != nil {
+		t.Fatal("Cannot open memory mapped file")
+	}
+
 	data := make([]byte, 10)
 	_, err = reader.Read(data)
 	if err != nil {
-		t.Error("Cannot read data from memory mapped file")
-		return
+		t.Fatal("Cannot read data from memory mapped file")
 	}
 
 	if data[5] != 'x' {
