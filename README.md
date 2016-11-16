@@ -2,7 +2,7 @@
 
 Golang implementation of the Performance Co-Pilot (PCP) instrumentation API
 
-> [A **Google Summer of Code 2016** project!](https://summerofcode.withgoogle.com/projects/#6178186094182400)
+> [A **Google Summer of Code 2016** project!](https://summerofcode.withgoogle.com/archive/2016/projects/5093214348378112/)
 
 [![Build Status](https://travis-ci.org/performancecopilot/speed.svg?branch=master)](https://travis-ci.org/performancecopilot/speed) [![Coverage Status](https://coveralls.io/repos/github/performancecopilot/speed/badge.svg?branch=master)](https://coveralls.io/github/performancecopilot/speed?branch=master) [![GoDoc](https://godoc.org/github.com/performancecopilot/speed?status.svg)](https://godoc.org/github.com/performancecopilot/speed) [![Go Report Card](https://goreportcard.com/badge/github.com/performancecopilot/speed)](https://goreportcard.com/report/github.com/performancecopilot/speed)
 
