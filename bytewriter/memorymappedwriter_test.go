@@ -46,7 +46,11 @@ func TestMemoryMappedWriter(t *testing.T) {
 		t.Error("Data Written in buffer not getting reflected in file")
 	}
 
-	err = w.Unmap(true)
+	testUnmap(w, loc, t)
+}
+
+func testUnmap(w *MemoryMappedWriter, loc string, t *testing.T) {
+	var err = w.Unmap(true)
 	if err != nil {
 		t.Error(err)
 	}
