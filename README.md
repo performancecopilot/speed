@@ -105,7 +105,7 @@ A SingletonMetric supports a `Val` method that returns the metric value and a `S
 
 ### [InstanceMetric](https://godoc.org/github.com/performancecopilot/speed#InstanceMetric)
 
-An `InstanceMetric` is a single metric object containing multiple values of the same type for multiple instances. It alse __requires__ an instance domain along with type, semantics and unit for construction, and optionally takes a couple of description strings. A simple construction
+An `InstanceMetric` is a single metric object containing multiple values of the same type for multiple instances. It also __requires__ an instance domain along with type, semantics and unit for construction, and optionally takes a couple of description strings. A simple construction
 
 ```go
 indom, err := speed.NewPCPInstanceDomain(
