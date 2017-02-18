@@ -2,7 +2,7 @@ language: go
 go:
   - 1.6.4
   - 1.7.5
-  - 1.8rc3
+  - 1.8
   - tip
 env:
   global:
@@ -16,9 +16,8 @@ before_install:
 install: true
 before_script:
   - make
-  - make clean
+  - make clean_string
 script:
-  - make test
   - make race
   - make lint
   - "$HOME/gopath/bin/goveralls -v -service=travis-ci -package=."
