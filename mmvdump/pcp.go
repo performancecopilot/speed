@@ -10,7 +10,7 @@ const (
 	// StringMax is the maximum allowed length of a string
 	StringMax = 256
 
-	// NoIndom is a constant used to indicate abscence of an indom from a metric
+	// NoIndom is a constant used to indicate absence of an indom from a metric
 	NoIndom = -1
 )
 
