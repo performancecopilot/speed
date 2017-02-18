@@ -4,6 +4,8 @@ build:
 
 clean:
 	git clean -Xf
+
+clean_string:
 	rm *_string.go
 	rm mmvdump/*_string.go
 
