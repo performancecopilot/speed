@@ -118,6 +118,7 @@ type ProductBuilder struct {
 	name      string
 }
 
+// NewProductBuilder creates a new instance of ProductBuilder
 func NewProductBuilder(name string, client speed.Client) *ProductBuilder {
 	completed, err := speed.NewPCPCounter(0, "products."+name+".count")
 	if err != nil {
@@ -140,10 +141,12 @@ func NewProductBuilder(name string, client speed.Client) *ProductBuilder {
 	}
 }
 
+// Difficulty sets the upper bound on the sleep time
 func (p *ProductBuilder) Difficulty(bound int) {
 	p.bound = bound
 }
 
+// Build sleeps for a random time, then adds that value to totalTime
 func (p *ProductBuilder) Build() {
 	elapsed := rand.Intn(p.bound)
 
@@ -153,6 +156,7 @@ func (p *ProductBuilder) Build() {
 	p.completed.Up()
 }
 
+// Start starts an infinite loop calling Build and logging the value of completed
 func (p *ProductBuilder) Start() {
 	for {
 		p.Build()
@@ -191,6 +195,6 @@ func forever() {
 
 	// block forever
 	// TODO: maybe use signal.Notify and shut down gracefully
-	for {
+	switch {
 	}
 }
