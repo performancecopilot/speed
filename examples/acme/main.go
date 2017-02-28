@@ -17,6 +17,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -49,7 +50,7 @@ func serial() {
 		"Most popular products produced by the Acme Corporation",
 	)
 	if err != nil {
-		panic(err)
+		log.Fatalf("could not create indom, err: %v", err)
 	}
 
 	countmetric, err := speed.NewPCPInstanceMetric(
@@ -68,7 +69,7 @@ func serial() {
 		 factory since starting the Acme production application.  Quality guaranteed.`,
 	)
 	if err != nil {
-		panic(err)
+		log.Fatalf("could not create countmetric, err: %v", err)
 	}
 
 	timemetric, err := speed.NewPCPInstanceMetric(
@@ -85,12 +86,12 @@ func serial() {
 		"Machine time spent producing Acme products",
 	)
 	if err != nil {
-		panic(err)
+		log.Fatalf("could not create timemetric, err: %v", err)
 	}
 
 	client, err := speed.NewPCPClient("acme")
 	if err != nil {
-		panic(err)
+		log.Fatalf("could not create client, err: %v", err)
 	}
 
 	client.MustRegisterIndom(indom)
@@ -103,7 +104,7 @@ func serial() {
 	time.Sleep(time.Second * 5)
 	err = countmetric.SetInstance(42, "Anvils")
 	if err != nil {
-		panic(err)
+		log.Fatalf("could not set countmetric[\"Anvils\"], err: %v", err)
 	}
 	time.Sleep(time.Second * 5)
 }
@@ -120,12 +121,12 @@ type ProductBuilder struct {
 func NewProductBuilder(name string, client speed.Client) *ProductBuilder {
 	completed, err := speed.NewPCPCounter(0, "products."+name+".count")
 	if err != nil {
-		panic(err)
+		log.Fatalf("could not create completed, err: %v", err)
 	}
 
 	totalTime, err := speed.NewPCPGauge(0, "products."+name+".time")
 	if err != nil {
-		panic(err)
+		log.Fatalf("could not create totalTime, err: %v", err)
 	}
 
 	client.MustRegister(completed)
@@ -162,7 +163,7 @@ func (p *ProductBuilder) Start() {
 func forever() {
 	client, err := speed.NewPCPClient("acme")
 	if err != nil {
-		panic(err)
+		log.Fatalf("could not create client, err: %v", err)
 	}
 
 	rockets := NewProductBuilder("Rockets", client)
