@@ -1,14 +1,45 @@
-// A golang implementation of the acme factory example from mmv.py in PCP core
+// A golang implementation of the acme factory examples from python and Java APIs
+//
+// The python implementation is in mmv.py in PCP core
 // (https://github.com/performancecopilot/pcp/blob/master/src/python/pcp/mmv.py#L21-L70)
+//
+// The Java implementation is in examples in parfait core
+// (https://github.com/performancecopilot/parfait/tree/master/examples/acme)
+//
+// To run the python version of the example that exits do
+// go run examples/acme/main.go
+//
+// To run the java version of the example that runs forever, simply add a --forever
+// flag
+// go run examples/acme/main.go --forever
 package main
 
 import (
+	"flag"
+	"fmt"
+	"math/rand"
 	"time"
 
 	"github.com/performancecopilot/speed"
 )
 
+var runforever bool
+
+func init() {
+	flag.BoolVar(&runforever, "forever", false, "if enabled, runs the forever running version of this example")
+}
+
 func main() {
+	flag.Parse()
+
+	if runforever {
+		forever()
+	} else {
+		serial()
+	}
+}
+
+func serial() {
 	instances := []string{"Anvils", "Rockets", "Giant_Rubber_Bands"}
 
 	indom, err := speed.NewPCPInstanceDomain(
@@ -75,4 +106,90 @@ func main() {
 		panic(err)
 	}
 	time.Sleep(time.Second * 5)
+}
+
+// ProductBuilder is based on ProductBuilder in the parfait example
+// https://github.com/performancecopilot/parfait/blob/master/examples/acme/src/main/java/ProductBuilder.java
+type ProductBuilder struct {
+	completed speed.Counter
+	totalTime speed.Gauge
+	bound     int
+	name      string
+}
+
+func NewProductBuilder(name string, client speed.Client) *ProductBuilder {
+	completed, err := speed.NewPCPCounter(0, "products."+name+".count")
+	if err != nil {
+		panic(err)
+	}
+
+	totalTime, err := speed.NewPCPGauge(0, "products."+name+".time")
+	if err != nil {
+		panic(err)
+	}
+
+	client.MustRegister(completed)
+	client.MustRegister(totalTime)
+
+	return &ProductBuilder{
+		name:      name,
+		bound:     500,
+		completed: completed,
+		totalTime: totalTime,
+	}
+}
+
+func (p *ProductBuilder) Difficulty(bound int) {
+	p.bound = bound
+}
+
+func (p *ProductBuilder) Build() {
+	elapsed := rand.Intn(p.bound)
+
+	time.Sleep(time.Duration(elapsed) * time.Millisecond)
+
+	p.totalTime.MustInc(float64(elapsed))
+	p.completed.Up()
+}
+
+func (p *ProductBuilder) Start() {
+	for {
+		p.Build()
+		fmt.Printf("Built %d %s\n", p.completed.Val(), p.name)
+	}
+}
+
+func forever() {
+	client, err := speed.NewPCPClient("acme")
+	if err != nil {
+		panic(err)
+	}
+
+	rockets := NewProductBuilder("Rockets", client)
+	anvils := NewProductBuilder("Anvils", client)
+	gbrs := NewProductBuilder("Giant_Rubber_Bands", client)
+
+	rockets.Difficulty(4500)
+	anvils.Difficulty(1500)
+	gbrs.Difficulty(2500)
+
+	go func() {
+		rockets.Start()
+	}()
+
+	go func() {
+		anvils.Start()
+	}()
+
+	go func() {
+		gbrs.Start()
+	}()
+
+	client.MustStart()
+	defer client.MustStop()
+
+	// block forever
+	// TODO: maybe use signal.Notify and shut down gracefully
+	for {
+	}
 }
