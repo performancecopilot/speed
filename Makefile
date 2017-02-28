@@ -14,11 +14,11 @@ gen:
 
 deps:
 	go get -u golang.org/x/tools/cmd/stringer
-	go get -u github.com/alecthomas/gometalinter
-	gometalinter --install
+	go get -u gopkg.in/alecthomas/gometalinter.v1
+	gometalinter.v1 --install
 
 lint:
-	gometalinter ./... --vendor --deadline=10000s --dupl-threshold=100 --disable=interfacer	--disable=gas
+	gometalinter.v1 ./... --vendor --deadline=10000s --dupl-threshold=100 --disable=interfacer --disable=gas
 
 test: 
 	go test -v ./...
