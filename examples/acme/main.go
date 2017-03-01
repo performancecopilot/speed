@@ -195,6 +195,5 @@ func forever() {
 
 	// block forever
 	// TODO: maybe use signal.Notify and shut down gracefully
-	switch {
-	}
+	select {}
 }
