@@ -79,7 +79,7 @@ will run the binary, running the example
 
 There are 3 main components defined in the library, a [__Client__](https://godoc.org/github.com/performancecopilot/speed#Client), a [__Registry__](https://godoc.org/github.com/performancecopilot/speed#Registry) and a [__Metric__](https://godoc.org/github.com/performancecopilot/speed#Metric). A client is created using an application name, and the same name is used to create a memory mapped file in `PCP_TMP_DIR`. Each client contains a registry of metrics that it holds, and will publish on being activated. It also has a `SetFlag` method allowing you to set a mmv flag while a mapping is not active, to one of three values, [`NoPrefixFlag`, `ProcessFlag` and `SentinelFlag`](https://godoc.org/github.com/performancecopilot/speed#MMVFlag). The ProcessFlag is the default and reports metrics prefixed with the application name (i.e. like `mmv.app_name.metric.name`). Setting it to `NoPrefixFlag` will report metrics without being prefixed with the application name (i.e. like `mmv.metric.name`) which can lead to namespace collisions, so be sure of what you're doing.
 
-A client can register metrics to report through 2 interfaces, the first is the `Register` method, that takes a raw metric object. The other is using `RegisterString`, that can take a string with metrics and instances to register similar to the interface in parfait, along with type, semantics and unit, in that order. A client can be activated by calling the `Start` method, deactivated by the `Stop` method. While a client is active, no new metrics can be registered.
+A client can register metrics to report through 2 interfaces, the first is the `Register` method, that takes a raw metric object. The other is using `RegisterString`, that can take a string with metrics and instances to register similar to the interface in parfait, along with type, semantics and unit, in that order. A client can be activated by calling the `Start` method, deactivated by the `Stop` method. While a client is active, no new metrics can be registered but it is possible to stop existing client for metric registration.
 
 Each client contains an instance of the `Registry` interface, which can give different information like the number of registered metrics and instance domains. It also exports methods to register metrics and instance domains.
 
@@ -247,3 +247,7 @@ and the visualization I got
 Go kit provides [a wrapper package](https://godoc.org/github.com/go-kit/kit/metrics/pcp) over speed that can be used for building microservices that expose metrics using PCP.
 
 For modified versions of the examples in go-kit that use pcp to report metrics, see [suyash/kit-pcp-examples](https://github.com/suyash/kit-pcp-examples)
+
+## Projects using Speed
+
+* https://github.com/lzap/pcp-mmvstatsd
