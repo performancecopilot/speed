@@ -119,7 +119,7 @@ func TestMapping(t *testing.T) {
 	EraseFileOnStop = true
 	err = c.Stop()
 	if err != nil {
-		t.Error("Cannot stop a mapping")
+		t.Errorf("Cannot stop a mapping, error: %v", err)
 	}
 
 	if _, err = os.Stat(loc); err == nil {

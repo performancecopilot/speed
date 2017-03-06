@@ -3,7 +3,7 @@ package speed
 import (
 	"bufio"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 
 	"github.com/Sirupsen/logrus"
@@ -40,7 +40,7 @@ func initConfig() error {
 
 	c, ok := os.LookupEnv("PCP_CONF")
 	if !ok {
-		c = path.Join(rootPath, "etc", "pcp.conf")
+		c = filepath.Join(rootPath, "etc", "pcp.conf")
 	}
 	confPath = c
 
