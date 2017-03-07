@@ -2,13 +2,13 @@ package bytewriter
 
 import (
 	"os"
-	"path"
+	"path/filepath"
 	"testing"
 )
 
 func TestMemoryMappedWriter(t *testing.T) {
 	filename := "bytebuffer_memorymappedwriter_test.tmp"
-	loc := path.Join(os.TempDir(), filename)
+	loc := filepath.Join(os.TempDir(), filename)
 
 	if _, err := os.Stat(loc); err == nil {
 		err = os.Remove(loc)
@@ -46,12 +46,15 @@ func TestMemoryMappedWriter(t *testing.T) {
 		t.Error("Data Written in buffer not getting reflected in file")
 	}
 
+	if err = reader.Close(); err != nil {
+		t.Error("Cannot close file reader")
+	}
+
 	testUnmap(w, loc, t)
 }
 
 func testUnmap(w *MemoryMappedWriter, loc string, t *testing.T) {
-	var err = w.Unmap(true)
-	if err != nil {
+	if err := w.Unmap(true); err != nil {
 		t.Error(err)
 	}
 

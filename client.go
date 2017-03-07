@@ -3,7 +3,7 @@ package speed
 import (
 	"errors"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -76,12 +76,12 @@ func mmvFileLocation(name string) (string, error) {
 	tdir, present := config["PCP_TMP_DIR"]
 	var loc string
 	if present {
-		loc = path.Join(rootPath, tdir)
+		loc = filepath.Join(rootPath, tdir)
 	} else {
 		loc = os.TempDir()
 	}
 
-	return path.Join(loc, "mmv", name), nil
+	return filepath.Join(loc, "mmv", name), nil
 }
 
 // PCPClusterIDBitLength is the bit length of the cluster id
