@@ -6,7 +6,7 @@ import (
 	"regexp"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // Registry defines a valid set of instance domains and metrics
@@ -157,11 +157,11 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 	}
 
 	if logging {
-		log.WithFields(logrus.Fields{
-			"prefix":        "registry",
-			"name":          indom.Name(),
-			"instanceCount": indom.InstanceCount(),
-		}).Info("added new instance domain")
+		logger.Info("added new instance domain",
+			zap.String("module", "registry"),
+			zap.String("name", indom.Name()),
+			zap.Int("instanceCount", indom.InstanceCount()),
+		)
 	}
 
 	if indom.(*PCPInstanceDomain).shortDescription != "" {
@@ -227,13 +227,12 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 	r.addMetric(pcpm)
 
 	if logging {
-		log.WithFields(logrus.Fields{
-			"prefix":    "registry",
-			"name":      m.Name(),
-			"type":      m.Type(),
-			"unit":      m.Unit(),
-			"semantics": m.Semantics(),
-		}).Info("added new metric")
+		logger.Info("added new metric",
+			zap.String("module", "registry"),
+			zap.String("name", m.Name()),
+			zap.String("type", m.Type().String()),
+			zap.String("semantics", m.Semantics().String()),
+		)
 	}
 
 	return nil

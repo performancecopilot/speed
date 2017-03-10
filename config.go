@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"github.com/Sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // rootPath stores path to the pcp root installation
@@ -32,10 +32,10 @@ func initConfig() error {
 	rootPath = r
 
 	if logging {
-		log.WithFields(logrus.Fields{
-			"prefix":   "config",
-			"rootPath": rootPath,
-		}).Info("detected root directory for PCP")
+		logger.Info("detected root directory for PCP",
+			zap.String("module", "config"),
+			zap.String("rootPath", rootPath),
+		)
 	}
 
 	c, ok := os.LookupEnv("PCP_CONF")
@@ -45,10 +45,10 @@ func initConfig() error {
 	confPath = c
 
 	if logging {
-		log.WithFields(logrus.Fields{
-			"prefix":   "config",
-			"confPath": confPath,
-		}).Info("detected directory for PCP config file")
+		logger.Info("detected directory for PCP config file",
+			zap.String("module", "config"),
+			zap.String("confPath", confPath),
+		)
 	}
 
 	f, err := os.Open(confPath)
@@ -69,7 +69,9 @@ func initConfig() error {
 	}
 
 	if logging {
-		log.WithFields(logrus.Fields{"prefix": "config"}).Info("successfully read PCP config file")
+		logger.Info("successfully read PCP config file",
+			zap.String("module", "config"),
+		)
 	}
 
 	return nil
