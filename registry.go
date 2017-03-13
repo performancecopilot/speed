@@ -232,6 +232,7 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 			zap.String("name", m.Name()),
 			zap.String("type", m.Type().String()),
 			zap.String("semantics", m.Semantics().String()),
+			zap.String("unit", m.Unit().String()),
 		)
 	}
 
