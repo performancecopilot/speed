@@ -18,9 +18,9 @@ deps:
 	gometalinter.v1 --install
 
 lint:
-	gometalinter.v1 ./... --vendor --deadline=10000s --dupl-threshold=100 --disable=interfacer --disable=gas
+	gometalinter.v1 ./... --vendor --deadline=1h --dupl-threshold=100 --disable=interfacer --disable=gas
 
-test: 
+test:
 	go test -v ./...
 
 race:
