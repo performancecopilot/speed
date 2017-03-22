@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -18,12 +19,12 @@ func main() {
 		"Number of Requests",
 	)
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create counter, error: ", err)
 	}
 
 	client, err := speed.NewPCPClient("example")
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create client, error: ", err)
 	}
 
 	client.MustRegister(metric)
@@ -34,7 +35,7 @@ func main() {
 	http.HandleFunc("/increment", handleIncrement)
 	go func() {
 		if err := http.ListenAndServe(":8080", nil); err != nil {
-			panic(err)
+			log.Fatal("Could not listen on port, error: ", err)
 		}
 	}()
 

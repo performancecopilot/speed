@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"time"
 
 	"github.com/performancecopilot/speed"
@@ -14,7 +15,7 @@ func main() {
 
 	c, err := speed.NewPCPClient("strings")
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create client, error: ", err)
 	}
 
 	m, err := c.RegisterString("language[go, javascript, php].users", speed.Instances{
@@ -23,7 +24,7 @@ func main() {
 		"php":        10,
 	}, speed.Uint64Type, speed.CounterSemantics, speed.OneUnit)
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not register string, error: ", err)
 	}
 
 	c.MustStart()

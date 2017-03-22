@@ -3,6 +3,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"time"
 
 	"github.com/performancecopilot/speed"
@@ -15,14 +16,14 @@ func main() {
 
 	c, err := speed.NewPCPClient("strings")
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create client, error: ", err)
 	}
 
 	m, err := c.RegisterString(
 		"this.is.a.simple.counter.metric.to.demonstrate.the.RegisterString.function",
 		10, speed.Int32Type, speed.CounterSemantics, speed.OneUnit)
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not register string, error: ", err)
 	}
 
 	c.MustStart()

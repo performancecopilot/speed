@@ -50,7 +50,7 @@ func serial() {
 		"Most popular products produced by the Acme Corporation",
 	)
 	if err != nil {
-		log.Fatalf("could not create indom, err: %v", err)
+		log.Fatal("Could not create indom, error: ", err)
 	}
 
 	countmetric, err := speed.NewPCPInstanceMetric(
@@ -69,7 +69,7 @@ func serial() {
 		 factory since starting the Acme production application.  Quality guaranteed.`,
 	)
 	if err != nil {
-		log.Fatalf("could not create countmetric, err: %v", err)
+		log.Fatal("Could not create countmetric, error: ", err)
 	}
 
 	timemetric, err := speed.NewPCPInstanceMetric(
@@ -86,12 +86,12 @@ func serial() {
 		"Machine time spent producing Acme products",
 	)
 	if err != nil {
-		log.Fatalf("could not create timemetric, err: %v", err)
+		log.Fatal("Could not create timemetric, error: ", err)
 	}
 
 	client, err := speed.NewPCPClient("acme")
 	if err != nil {
-		log.Fatalf("could not create client, err: %v", err)
+		log.Fatal("Could not create client, error: ", err)
 	}
 
 	client.MustRegisterIndom(indom)
@@ -104,7 +104,7 @@ func serial() {
 	time.Sleep(time.Second * 5)
 	err = countmetric.SetInstance(42, "Anvils")
 	if err != nil {
-		log.Fatalf("could not set countmetric[\"Anvils\"], err: %v", err)
+		log.Fatal("Could not set countmetric[\"Anvils\"], error: ", err)
 	}
 	time.Sleep(time.Second * 5)
 }
@@ -122,12 +122,12 @@ type ProductBuilder struct {
 func NewProductBuilder(name string, client speed.Client) *ProductBuilder {
 	completed, err := speed.NewPCPCounter(0, "products."+name+".count")
 	if err != nil {
-		log.Fatalf("could not create completed, err: %v", err)
+		log.Fatal("Could not create completed, error: ", err)
 	}
 
 	totalTime, err := speed.NewPCPGauge(0, "products."+name+".time")
 	if err != nil {
-		log.Fatalf("could not create totalTime, err: %v", err)
+		log.Fatal("Could not create totalTime, error: ", err)
 	}
 
 	client.MustRegister(completed)
@@ -167,7 +167,7 @@ func (p *ProductBuilder) Start() {
 func forever() {
 	client, err := speed.NewPCPClient("acme")
 	if err != nil {
-		log.Fatalf("could not create client, err: %v", err)
+		log.Fatal("Could not create client, error: ", err)
 	}
 
 	rockets := NewProductBuilder("Rockets", client)

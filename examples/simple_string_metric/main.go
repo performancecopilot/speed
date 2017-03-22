@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"log"
 	"time"
 
 	"github.com/performancecopilot/speed"
@@ -14,7 +15,7 @@ func main() {
 
 	c, err := speed.NewPCPClient("stringtest")
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create client, error: ", err)
 	}
 
 	names := []string{
@@ -28,7 +29,7 @@ func main() {
 
 	m, err := c.RegisterString("bat.names", names[0], speed.StringType, speed.InstantSemantics, speed.OneUnit)
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not register string, error: ", err)
 	}
 
 	c.MustStart()
