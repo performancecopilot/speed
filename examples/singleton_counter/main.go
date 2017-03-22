@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/performancecopilot/speed"
@@ -19,17 +20,17 @@ func main() {
 		"A Simple Metric",
 	)
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create counter, error: ", err)
 	}
 
 	client, err := speed.NewPCPClient("singletoncounter")
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create client, error: ", err)
 	}
 
 	err = client.Register(metric)
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not register metric, error: ", err)
 	}
 
 	client.MustStart()

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/performancecopilot/speed"
@@ -18,12 +19,12 @@ func main() {
 		"This is a simple counter metric to demonstrate the speed API",
 	)
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create singelton metric, error: ", err)
 	}
 
 	client, err := speed.NewPCPClient("simple")
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create client, error: ", err)
 	}
 
 	client.MustRegister(metric)

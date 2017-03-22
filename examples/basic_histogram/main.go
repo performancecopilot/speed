@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
 	"time"
 
@@ -13,12 +14,12 @@ func main() {
 
 	c, err := speed.NewPCPClient("histogram_test")
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create client, error: ", err)
 	}
 
 	m, err := speed.NewPCPHistogram("hist", 0, max, 5, speed.OneUnit, "a sample histogram")
 	if err != nil {
-		panic(err)
+		log.Fatal("Could not create histogram, error: ", err)
 	}
 
 	c.MustRegister(m)
