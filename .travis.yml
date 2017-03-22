@@ -15,10 +15,8 @@ before_install:
 install: true
 before_script:
   - make
-  - make clean_string
 script:
   - make race
-  - make lint
   - "$HOME/gopath/bin/goveralls -v -service=travis-ci -package=."
 notifications:
   email:

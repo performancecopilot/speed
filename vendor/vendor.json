@@ -3,18 +3,10 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "DWPL08pD/SQ2GzLfoR7ZXnjj7Sw=",
-			"path": "github.com/Sirupsen/logrus",
-			"revision": "4b6ea7319e214d98c938f12692336f7ca9348d6b",
-			"revisionTime": "2016-03-17T14:11:10Z",
-			"version": "v0.10.0",
-			"versionExact": "v0.10.0"
-		},
-		{
-			"checksumSHA1": "W7DNxQwdGQ2YO3PR3jARJg6Iqsw=",
+			"checksumSHA1": "7gK+lSShSu1NRw83/A95BcgMqsI=",
 			"path": "github.com/codahale/hdrhistogram",
-			"revision": "f8ad88b59a584afeee9d334eff879b104439117b",
-			"revisionTime": "2016-04-25T23:15:03Z"
+			"revision": "3a0bb77429bd3a61596f5e8a3172445844342120",
+			"revisionTime": "2016-10-10T02:54:55Z"
 		},
 		{
 			"checksumSHA1": "zYnPsNAVm1/ViwCkN++dX2JQhBo=",
@@ -23,22 +15,52 @@
 			"revisionTime": "2016-05-12T03:30:02Z"
 		},
 		{
-			"checksumSHA1": "hBgLmZ/4mCxmnH88mqFKBkpJFUY=",
-			"path": "github.com/mgutz/ansi",
-			"revision": "c286dcecd19ff979eeb73ea444e479b903f2cfcb",
-			"revisionTime": "2015-09-14T16:22:38Z"
+			"checksumSHA1": "6NS7FWJl1FobB+Xfe4SzBGD+75g=",
+			"path": "go.uber.org/atomic",
+			"revision": "3b8db5e93c4c02efbc313e17b2e796b0914a01fb",
+			"revisionTime": "2016-12-15T19:56:52Z"
 		},
 		{
-			"checksumSHA1": "78ZklhBVMCDjf6qLiyQp3mTbGXo=",
-			"path": "github.com/x-cray/logrus-prefixed-formatter",
-			"revision": "78e945f7d6bfe5a81ce6121d92d8118e44303e58",
-			"revisionTime": "2016-06-25T16:39:23Z"
+			"checksumSHA1": "VWFArgivOXPn38VfAx+ZNocusUo=",
+			"path": "go.uber.org/zap",
+			"revision": "14d784558fd634fc33059b52572035ed2a1a99f3",
+			"revisionTime": "2017-03-09T18:33:58Z"
 		},
 		{
-			"checksumSHA1": "8fD/im5Kwvy3JgmxulDTambmE8w=",
-			"path": "golang.org/x/sys/unix",
-			"revision": "a408501be4d17ee978c04a618e7a1b22af058c0e",
-			"revisionTime": "2016-07-03T23:56:20Z"
+			"checksumSHA1": "3S+mwcCDqfnHXPCwtw6Y95SQSPs=",
+			"path": "go.uber.org/zap/buffer",
+			"revision": "4e517d38b2138e59475d6468e7a6b626eecdaa66",
+			"revisionTime": "2017-03-07T21:47:39Z"
+		},
+		{
+			"checksumSHA1": "2hFf4IKGIpZac1I8ywe0GvzQC9U=",
+			"path": "go.uber.org/zap/internal/bufferpool",
+			"revision": "4e517d38b2138e59475d6468e7a6b626eecdaa66",
+			"revisionTime": "2017-03-07T21:47:39Z"
+		},
+		{
+			"checksumSHA1": "uC0L9eCSAYcCWNC8udJk/t1vvIU=",
+			"path": "go.uber.org/zap/internal/color",
+			"revision": "4e517d38b2138e59475d6468e7a6b626eecdaa66",
+			"revisionTime": "2017-03-07T21:47:39Z"
+		},
+		{
+			"checksumSHA1": "b80CJExrVpXu3SA1iCQ6uLqTn2c=",
+			"path": "go.uber.org/zap/internal/exit",
+			"revision": "4e517d38b2138e59475d6468e7a6b626eecdaa66",
+			"revisionTime": "2017-03-07T21:47:39Z"
+		},
+		{
+			"checksumSHA1": "d64rk9Ro96tHlg+Ld69Vq2bMVto=",
+			"path": "go.uber.org/zap/internal/multierror",
+			"revision": "4e517d38b2138e59475d6468e7a6b626eecdaa66",
+			"revisionTime": "2017-03-07T21:47:39Z"
+		},
+		{
+			"checksumSHA1": "6j0XvFthtbhYHQa0NKdW09RiuWA=",
+			"path": "go.uber.org/zap/zapcore",
+			"revision": "4e517d38b2138e59475d6468e7a6b626eecdaa66",
+			"revisionTime": "2017-03-07T21:47:39Z"
 		}
 	],
 	"rootPath": "github.com/performancecopilot/speed"

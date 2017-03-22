@@ -10,28 +10,67 @@ package speed
 
 import (
 	"hash/fnv"
+	"io"
+	"os"
 
-	"github.com/Sirupsen/logrus"
-	prefixed "github.com/x-cray/logrus-prefixed-formatter"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // Version is the last tagged version of the package
 const Version = "1.0.0"
 
-var log = logrus.New()
-
 var logging bool
+var logWriters = []zapcore.WriteSyncer{os.Stdout}
+var logger *zap.Logger
+var zapEncoderConfig = zapcore.EncoderConfig{
+	TimeKey:        "ts",
+	LevelKey:       "level",
+	NameKey:        "logger",
+	CallerKey:      "caller",
+	MessageKey:     "msg",
+	StacktraceKey:  "stacktrace",
+	EncodeLevel:    zapcore.LowercaseLevelEncoder,
+	EncodeTime:     zapcore.ISO8601TimeEncoder,
+	EncodeDuration: zapcore.SecondsDurationEncoder,
+}
 
 func initLogging() {
-	log.Formatter = new(prefixed.TextFormatter)
-	log.Level = logrus.InfoLevel
 	logging = false
+	initializeLogger()
 }
 
 // EnableLogging logging enables logging for logrus if true is passed
 // and disables it if false is passed.
 func EnableLogging(enable bool) {
 	logging = enable
+}
+
+// AddLogWriter adds a new io.Writer as a target for writing
+// logs.
+func AddLogWriter(writer io.Writer) {
+	logWriters = append(logWriters, zapcore.AddSync(writer))
+	initializeLogger()
+}
+
+// SetLogWriters will set the passed io.Writer instances as targets for
+// writing logs.
+func SetLogWriters(writers ...io.Writer) {
+	writesyncers := make([]zapcore.WriteSyncer, 0, len(writers))
+	for _, w := range writers {
+		writesyncers = append(writesyncers, zapcore.AddSync(w))
+	}
+
+	logWriters = writesyncers
+	initializeLogger()
+}
+
+func initializeLogger() {
+	ws := zap.CombineWriteSyncers(logWriters...)
+	logger = zap.New(zapcore.NewCore(
+		zapcore.NewConsoleEncoder(zapEncoderConfig),
+		ws, zapcore.InfoLevel,
+	))
 }
 
 // init maintains a central location of all things that happen when the package is initialized
@@ -41,10 +80,10 @@ func init() {
 
 	err := initConfig()
 	if err != nil && logging {
-		log.WithFields(logrus.Fields{
-			"prefix": "config",
-			"error":  err,
-		}).Error("error initializing config. maybe PCP isn't installed properly")
+		logger.Error("error initializing config. maybe PCP isn't installed properly",
+			zap.String("module", "config"),
+			zap.Error(err),
+		)
 	}
 }
 

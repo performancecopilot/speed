@@ -130,6 +130,8 @@ func (m MetricType) resolve(val interface{}) interface{} {
 
 // MetricUnit defines the interface for a unit type for speed.
 type MetricUnit interface {
+	fmt.Stringer
+
 	// return 32 bit PMAPI representation for the unit
 	// see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/pmapi.h#L61-L101
 	PMAPI() uint32

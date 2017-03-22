@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/performancecopilot/speed/bytewriter"
 )
 
@@ -33,8 +35,6 @@ const MaxDataValueSize = 16
 
 // EraseFileOnStop if set to true, will also delete the memory mapped file
 var EraseFileOnStop = false
-
-var clientlogger = log.WithField("prefix", "client")
 
 // Client defines the interface for a type that can talk to an instrumentation agent
 type Client interface {
@@ -132,7 +132,10 @@ func NewPCPClientWithRegistry(name string, registry *PCPRegistry) (*PCPClient, e
 	}
 
 	if logging {
-		clientlogger.WithField("location", fileLocation).Info("deduced location to write the MMV file")
+		logger.Info("deduced location to write the MMV file",
+			zap.String("module", "client"),
+			zap.String("location", fileLocation),
+		)
 	}
 
 	return &PCPClient{
@@ -206,7 +209,10 @@ func (c *PCPClient) Start() error {
 	writer, err := bytewriter.NewMemoryMappedWriter(c.loc, l)
 	if err != nil {
 		if logging {
-			clientlogger.WithField("error", err).Error("cannot create MemoryMappedBuffer")
+			logger.Info("cannot create MemoryMappedBuffer",
+				zap.String("module", "client"),
+				zap.Error(err),
+			)
 		}
 		return err
 	}
@@ -214,7 +220,9 @@ func (c *PCPClient) Start() error {
 
 	c.start()
 	if logging {
-		clientlogger.Info("written the different components, the registered metrics should be visible now")
+		logger.Info("written the different components, the registered metrics should be visible now",
+			zap.String("module", "client"),
+		)
 	}
 
 	c.r.mapped = true
@@ -648,7 +656,9 @@ func (c *PCPClient) Stop() error {
 	}
 
 	if logging {
-		clientlogger.Info("stopping the client")
+		logger.Info("stopping the client",
+			zap.String("module", "client"),
+		)
 	}
 
 	c.stop()
@@ -659,13 +669,18 @@ func (c *PCPClient) Stop() error {
 	c.writer = nil
 	if err != nil {
 		if logging {
-			clientlogger.WithField("error", err).Error("error unmapping MemoryMappedBuffer")
+			logger.Info("error unmapping MemoryMappedBuffer",
+				zap.String("module", "client"),
+				zap.Error(err),
+			)
 		}
 		return err
 	}
 
 	if logging {
-		clientlogger.Info("unmapped the memory mapped file")
+		logger.Info("unmapped the memory mapped file",
+			zap.String("module", "client"),
+		)
 	}
 
 	return nil
