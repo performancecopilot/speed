@@ -137,12 +137,14 @@ func writeValue(
 	v := values[offset]
 	m := metrics[v.Metric]
 
-	_, err := fmt.Fprintf(w, "\t[%v/%v] %v", m.Item(), offset, metricName(m, header, strings))
-	if err != nil {
+	if _, err := fmt.Fprintf(w, "\t[%v/%v] %v", m.Item(), offset, metricName(m, header, strings)); err != nil {
 		return err
 	}
 
-	var a interface{}
+	var (
+		a   interface{}
+		err error
+	)
 
 	if m.Typ() != StringType {
 		a, err = FixedVal(v.Val, m.Typ())
@@ -159,7 +161,9 @@ func writeValue(
 
 	if m.Indom() != NoIndom && m.Indom() != 0 {
 		i := instances[v.Instance]
-		fmt.Fprintf(w, "[%d or \"%s\"]", i.Internal(), instanceName(i, header, strings))
+		if _, err := fmt.Fprintf(w, "[%d or \"%s\"]", i.Internal(), instanceName(i, header, strings)); err != nil {
+			return err
+		}
 	}
 
 	_, err = fmt.Fprintf(w, " = %v\n", a)
@@ -221,13 +225,19 @@ func writeComponents(
 			writeItem = func(off uint64) error { return writeString(w, off, strings) }
 		}
 
-		fmt.Fprintf(w, "TOC[%v], offset: %v, %v offset: %v (%v entries)\n", ti, toff, itemtype, toc.Offset, toc.Count)
+		if _, err := fmt.Fprintf(w, "TOC[%v], offset: %v, %v offset: %v (%v entries)\n", ti, toff, itemtype, toc.Offset, toc.Count); err != nil {
+			return err
+		}
+
 		for i, offset := int32(0), toc.Offset; i < toc.Count; i, offset = i+1, offset+itemsize {
 			if err := writeItem(offset); err != nil {
 				return err
 			}
 		}
-		fmt.Println()
+
+		if _, err := fmt.Fprintln(w); err != nil {
+			return err
+		}
 
 		toff += TocLength
 	}
@@ -247,15 +257,16 @@ func Write(
 	indoms map[uint64]*InstanceDomain,
 	strings map[uint64]*String,
 ) error {
-	fmt.Fprintf(w, `
-Version   = %v
+	if _, err := fmt.Fprintf(w, `Version   = %v
 Generated = %v
 Toc Count = %v
 Cluster   = %v
 Process   = %v
 Flags     = 0x%x
 
-`, header.Version, header.G1, header.Toc, header.Cluster, header.Process, int(header.Flag))
+`, header.Version, header.G1, header.Toc, header.Cluster, header.Process, int(header.Flag)); err != nil {
+		return err
+	}
 
 	return writeComponents(w, header, tocs, metrics, values, instances, indoms, strings)
 }
