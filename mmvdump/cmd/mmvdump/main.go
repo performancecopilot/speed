@@ -28,7 +28,7 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Printf("File      = %v", file)
+	fmt.Printf("File      = %v\n", file)
 	if err := mmvdump.Write(os.Stdout, header, tocs, metrics, values, instances, indoms, strings); err != nil {
 		panic(err)
 	}
