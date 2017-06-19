@@ -1,36 +1,16 @@
 package mmvdump
 
 import (
-	"os"
+	"bytes"
+	"io/ioutil"
 	"testing"
 )
 
-func data(filename string) []byte {
-	f, err := os.Open(filename)
-	if err != nil {
-		panic(err)
-	}
-
-	s, err := os.Stat(filename)
-	if err != nil {
-		panic(err)
-	}
-
-	data := make([]byte, s.Size())
-	n, err := f.Read(data)
-	if err != nil {
-		panic(err)
-	}
-
-	if int64(n) != s.Size() {
-		panic("Could not read complete file" + filename + " into memory")
-	}
-
-	return data
-}
-
 func TestMmvDump1(t *testing.T) {
-	d := data("testdata/test1.mmv")
+	d, err := ioutil.ReadFile("testdata/test1.mmv")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	h, tocs, metrics, values, instances, indoms, strings, err := Dump(d)
 	if err != nil {
@@ -64,5 +44,43 @@ func TestMmvDump1(t *testing.T) {
 
 	if len(instances) != 0 {
 		t.Errorf("expected number of instances %d, got %d", 0, len(instances))
+	}
+}
+
+func TestInputs(t *testing.T) {
+	for _, c := range []struct {
+		input, output string
+	}{
+		{"testdata/test1.mmv", "testdata/output1.golden"},
+		{"testdata/test2.mmv", "testdata/output2.golden"},
+		{"testdata/test3.mmv", "testdata/output3.golden"},
+		{"testdata/test4.mmv", "testdata/output4.golden"},
+	} {
+		data, err := ioutil.ReadFile(c.input)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		header, tocs, metrics, values, instances, indoms, strings, err := Dump(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		var b = new(bytes.Buffer)
+		err = Write(b, header, tocs, metrics, values, instances, indoms, strings)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		expected, err := ioutil.ReadFile(c.output)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		actual := b.Bytes()
+
+		if bytes.Compare(expected, actual) != 0 {
+			t.Fatalf("Failed for input %s", c.input)
+		}
 	}
 }
