@@ -1,14 +1,13 @@
 package speed
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/pkg/errors"
 
 	"github.com/performancecopilot/speed/bytewriter"
 )
@@ -128,14 +127,7 @@ func NewPCPClient(name string) (*PCPClient, error) {
 func NewPCPClientWithRegistry(name string, registry *PCPRegistry) (*PCPClient, error) {
 	fileLocation, err := mmvFileLocation(name)
 	if err != nil {
-		return nil, err
-	}
-
-	if logging {
-		logger.Info("deduced location to write the MMV file",
-			zap.String("module", "client"),
-			zap.String("location", fileLocation),
-		)
+		return nil, errors.Wrap(err, "could not get a location for storing MMV file")
 	}
 
 	return &PCPClient{
@@ -208,25 +200,12 @@ func (c *PCPClient) Start() error {
 
 	writer, err := bytewriter.NewMemoryMappedWriter(c.loc, l)
 	if err != nil {
-		if logging {
-			logger.Info("cannot create MemoryMappedBuffer",
-				zap.String("module", "client"),
-				zap.Error(err),
-			)
-		}
-		return err
+		return errors.Wrap(err, "cannot create MemoryMappedBuffer in client")
 	}
+
 	c.writer = writer
-
 	c.start()
-	if logging {
-		logger.Info("written the different components, the registered metrics should be visible now",
-			zap.String("module", "client"),
-		)
-	}
-
 	c.r.mapped = true
-
 	return nil
 }
 
@@ -655,12 +634,6 @@ func (c *PCPClient) Stop() error {
 		return errors.New("trying to stop an already stopped mapping")
 	}
 
-	if logging {
-		logger.Info("stopping the client",
-			zap.String("module", "client"),
-		)
-	}
-
 	c.stop()
 
 	c.r.mapped = false
@@ -668,19 +641,7 @@ func (c *PCPClient) Stop() error {
 	err := c.writer.(*bytewriter.MemoryMappedWriter).Unmap(EraseFileOnStop)
 	c.writer = nil
 	if err != nil {
-		if logging {
-			logger.Info("error unmapping MemoryMappedBuffer",
-				zap.String("module", "client"),
-				zap.Error(err),
-			)
-		}
-		return err
-	}
-
-	if logging {
-		logger.Info("unmapped the memory mapped file",
-			zap.String("module", "client"),
-		)
+		return errors.Wrap(err, "client: error unmapping MemoryMappedBuffer")
 	}
 
 	return nil

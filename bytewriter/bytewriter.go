@@ -3,7 +3,8 @@ package bytewriter
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 // assumes Little Endian, use _arch.go to set it to BigEndian for those archs
@@ -34,7 +35,7 @@ func (w *ByteWriter) Write(data []byte, offset int) (int, error) {
 	l := len(data)
 
 	if offset+l > w.Len() {
-		return -1, fmt.Errorf("cannot write %v bytes at offset %v", l, offset)
+		return -1, errors.Errorf("cannot write %v bytes at offset %v", l, offset)
 	}
 
 	for i := 0; i < l; i++ {

@@ -1,10 +1,11 @@
 package bytewriter
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
+
 	mmap "github.com/edsrzf/mmap-go"
+	"github.com/pkg/errors"
 )
 
 // MemoryMappedWriter is a ByteBuffer that is also mapped into memory
@@ -41,7 +42,7 @@ func NewMemoryMappedWriter(loc string, size int) (*MemoryMappedWriter, error) {
 		return nil, err
 	}
 	if l < size {
-		return nil, fmt.Errorf("Could not initialize %d bytes", size)
+		return nil, errors.Errorf("Could not initialize %d bytes", size)
 	}
 
 	b, err := mmap.Map(f, mmap.RDWR, 0)

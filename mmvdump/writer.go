@@ -3,6 +3,8 @@ package mmvdump
 import (
 	"fmt"
 	"io"
+
+	"github.com/pkg/errors"
 )
 
 func instanceName(m Instance, header *Header, strings map[uint64]*String) string {
@@ -154,7 +156,7 @@ func writeValue(
 	} else {
 		v, ok := strings[uint64(v.Extra)]
 		if !ok {
-			return fmt.Errorf("invalid string address")
+			return errors.Errorf("invalid string address")
 		}
 		a = string(v.Payload[:])
 	}

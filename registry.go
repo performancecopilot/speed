@@ -1,12 +1,11 @@
 package speed
 
 import (
-	"errors"
 	"fmt"
 	"regexp"
 	"sync"
 
-	"go.uber.org/zap"
+	"github.com/pkg/errors"
 )
 
 // Registry defines a valid set of instance domains and metrics
@@ -156,14 +155,6 @@ func (r *PCPRegistry) AddInstanceDomain(indom InstanceDomain) error {
 		}
 	}
 
-	if logging {
-		logger.Info("added new instance domain",
-			zap.String("module", "registry"),
-			zap.String("name", indom.Name()),
-			zap.Int("instanceCount", indom.InstanceCount()),
-		)
-	}
-
 	if indom.(*PCPInstanceDomain).shortDescription != "" {
 		r.stringcount++
 	}
@@ -225,17 +216,6 @@ func (r *PCPRegistry) AddMetric(m Metric) error {
 	defer r.metricslock.Unlock()
 
 	r.addMetric(pcpm)
-
-	if logging {
-		logger.Info("added new metric",
-			zap.String("module", "registry"),
-			zap.String("name", m.Name()),
-			zap.String("type", m.Type().String()),
-			zap.String("semantics", m.Semantics().String()),
-			zap.String("unit", m.Unit().String()),
-		)
-	}
-
 	return nil
 }
 
@@ -322,7 +302,7 @@ func (r *PCPRegistry) addInstanceMetricByString(name string, val interface{}, in
 	} else if r.instanceDomains[indom].MatchInstances(instances) {
 		id = r.instanceDomains[indom]
 	} else {
-		return nil, fmt.Errorf("a different instance domain under the name %v already exists in the registry", indom)
+		return nil, errors.Errorf("a different instance domain under the name %v already exists in the registry", indom)
 	}
 
 	m, err := NewPCPInstanceMetric(mp, name, id.(*PCPInstanceDomain), t, s, u)
