@@ -5,8 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-
-	"go.uber.org/zap"
 )
 
 // rootPath stores path to the pcp root installation
@@ -31,25 +29,11 @@ func initConfig() error {
 	}
 	rootPath = r
 
-	if logging {
-		logger.Info("detected root directory for PCP",
-			zap.String("module", "config"),
-			zap.String("rootPath", rootPath),
-		)
-	}
-
 	c, ok := os.LookupEnv("PCP_CONF")
 	if !ok {
 		c = filepath.Join(rootPath, "etc", "pcp.conf")
 	}
 	confPath = c
-
-	if logging {
-		logger.Info("detected directory for PCP config file",
-			zap.String("module", "config"),
-			zap.String("confPath", confPath),
-		)
-	}
 
 	f, err := os.Open(confPath)
 	if err != nil {
@@ -66,12 +50,6 @@ func initConfig() error {
 			matches := re.FindStringSubmatch(t)
 			config[matches[1]] = matches[2]
 		}
-	}
-
-	if logging {
-		logger.Info("successfully read PCP config file",
-			zap.String("module", "config"),
-		)
 	}
 
 	return nil

@@ -1,8 +1,9 @@
 package speed
 
 import (
-	"errors"
 	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 // InstanceDomain defines the interface for an instance domain
@@ -55,7 +56,7 @@ func NewPCPInstanceDomain(name string, instances []string, desc ...string) (*PCP
 
 	for _, instance := range instances {
 		if len(instance) > StringLength {
-			return nil, fmt.Errorf("instance name %v is too long", instance)
+			return nil, errors.Errorf("instance name %v is too long", instance)
 		}
 
 		imap[instance] = newpcpInstance(instance)

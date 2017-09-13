@@ -14,11 +14,11 @@
 package mmvdump
 
 import (
-	"errors"
-	"fmt"
 	"math"
 	"sync"
 	"unsafe"
+
+	"github.com/pkg/errors"
 )
 
 func readHeader(data []byte) (*Header, error) {
@@ -29,11 +29,11 @@ func readHeader(data []byte) (*Header, error) {
 	header := (*Header)(unsafe.Pointer(&data[0]))
 
 	if m := header.Magic[:3]; string(m) != "MMV" {
-		return nil, fmt.Errorf("Bad Magic: %v", string(m))
+		return nil, errors.Errorf("Bad Magic: %v", string(m))
 	}
 
 	if header.G1 != header.G2 {
-		return nil, fmt.Errorf("Mismatched version numbers, %v and %v", header.G1, header.G2)
+		return nil, errors.Errorf("Mismatched version numbers, %v and %v", header.G1, header.G2)
 	}
 
 	return header, nil

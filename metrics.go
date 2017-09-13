@@ -1,13 +1,14 @@
 package speed
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"sync"
 	"time"
 
 	histogram "github.com/codahale/hdrhistogram"
+	"github.com/pkg/errors"
+
 	"github.com/performancecopilot/speed/bytewriter"
 )
 
@@ -394,7 +395,7 @@ type pcpSingletonMetric struct {
 // newpcpSingletonMetric creates a new instance of pcpSingletonMetric.
 func newpcpSingletonMetric(val interface{}, desc *pcpMetricDesc) (*pcpSingletonMetric, error) {
 	if !desc.t.IsCompatible(val) {
-		return nil, fmt.Errorf("type %v is not compatible with value %v(%T)", desc.t, val, val)
+		return nil, errors.Errorf("type %v is not compatible with value %v(%T)", desc.t, val, val)
 	}
 
 	val = desc.t.resolve(val)
@@ -404,7 +405,7 @@ func newpcpSingletonMetric(val interface{}, desc *pcpMetricDesc) (*pcpSingletonM
 // set Sets the current value of pcpSingletonMetric.
 func (m *pcpSingletonMetric) set(val interface{}) error {
 	if !m.t.IsCompatible(val) {
-		return fmt.Errorf("value %v is incompatible with MetricType %v", val, m.t)
+		return errors.Errorf("value %v is incompatible with MetricType %v", val, m.t)
 	}
 
 	val = m.t.resolve(val)
@@ -536,7 +537,7 @@ func (c *PCPCounter) Set(val int64) error {
 	v := c.val.(int64)
 
 	if val < v {
-		return fmt.Errorf("cannot set counter to %v, current value is %v and PCP counters cannot go backwards", val, v)
+		return errors.Errorf("cannot set counter to %v, current value is %v and PCP counters cannot go backwards", val, v)
 	}
 
 	return c.set(val)
@@ -793,11 +794,11 @@ func newpcpInstanceMetric(vals Instances, indom *PCPInstanceDomain, desc *pcpMet
 	for name := range indom.instances {
 		val, present := vals[name]
 		if !present {
-			return nil, fmt.Errorf("Instance %v not initialized", name)
+			return nil, errors.Errorf("Instance %v not initialized", name)
 		}
 
 		if !desc.t.IsCompatible(val) {
-			return nil, fmt.Errorf("value %v is incompatible with type %v for Instance %v", val, desc.t, name)
+			return nil, errors.Errorf("value %v is incompatible with type %v for Instance %v", val, desc.t, name)
 		}
 
 		val = desc.t.resolve(val)
@@ -809,7 +810,7 @@ func newpcpInstanceMetric(vals Instances, indom *PCPInstanceDomain, desc *pcpMet
 
 func (m *pcpInstanceMetric) valInstance(instance string) (interface{}, error) {
 	if !m.indom.HasInstance(instance) {
-		return nil, fmt.Errorf("%v is not an instance of this metric", instance)
+		return nil, errors.Errorf("%v is not an instance of this metric", instance)
 	}
 
 	return m.vals[instance].val, nil
@@ -822,7 +823,7 @@ func (m *pcpInstanceMetric) setInstance(val interface{}, instance string) error 
 	}
 
 	if !m.indom.HasInstance(instance) {
-		return fmt.Errorf("%v is not an instance of this metric", instance)
+		return errors.Errorf("%v is not an instance of this metric", instance)
 	}
 
 	val = m.t.resolve(val)
@@ -929,7 +930,7 @@ func generateInstanceMetric(vals map[string]interface{}, name string, instances 
 	indomname := name + ".indom"
 	indom, err := NewPCPInstanceDomain(indomname, instances)
 	if err != nil {
-		return nil, fmt.Errorf("cannot create indom, error: %v", err)
+		return nil, errors.Errorf("cannot create indom, error: %v", err)
 	}
 
 	d, err := newpcpMetricDesc(name, t, s, u, desc...)
@@ -983,7 +984,7 @@ func (c *PCPCounterVector) Set(val int64, instance string) error {
 	}
 
 	if val < v.(int64) {
-		return fmt.Errorf("cannot set instance %s to a lesser value %v", instance, val)
+		return errors.Errorf("cannot set instance %s to a lesser value %v", instance, val)
 	}
 
 	return c.setInstance(val, instance)
