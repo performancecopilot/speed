@@ -1,5 +1,7 @@
 package mmvdump
 
+import "strconv"
+
 // MMVVersion is the current mmv format version
 const MMVVersion = 1
 
@@ -208,7 +210,162 @@ const (
 	OneUnit Unit = 1<<20 | iota<<8
 )
 
-//go:generate stringer --type=Unit
+// SpaceScale gets the Space Scale of a unit
+//
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#398
+func (u Unit) SpaceScale() uint8 {
+	return uint8((u >> 16) & 0xF)
+}
+
+// TimeScale gets the Time Scale of a unit
+//
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#402
+func (u Unit) TimeScale() uint8 {
+	return uint8((u >> 12) & 0xF)
+}
+
+// CountScale gets the Count Scale of a unit
+//
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#406
+func (u Unit) CountScale() uint8 {
+	return uint8((u >> 8) & 0xF)
+}
+
+// SpaceDim gets the space dimension of the unit
+// the right shift is on int32 to get an arithmetic right shift as
+// the dimension is serialized in 2s complement form
+//
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#410
+func (u Unit) SpaceDim() int8 {
+	return int8(int32(u) >> 28)
+}
+
+// TimeDim gets the time dimension of the unit
+// the right shift is on int32 to get an arithmetic right shift as
+// the dimension is serialized in 2s complement form
+//
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#410
+func (u Unit) TimeDim() int8 {
+	return int8(int32(u<<4) >> 28)
+}
+
+// CountDim gets the count dimension of the unit
+// the right shift is on int32 to get an arithmetic right shift as
+// the dimension is serialized in 2s complement form
+//
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#410
+func (u Unit) CountDim() int8 {
+	return int8(int32(u<<8) >> 28)
+}
+
+func abs(dim int8) int8 {
+	if dim < 0 {
+		return -dim
+	}
+
+	return dim
+}
+
+func stringSpaceDim(scale uint8, dim int8) string {
+	suf := ""
+	if abs(dim) > 1 {
+		suf = "^" + strconv.Itoa(int(dim))
+	}
+
+	switch scale {
+	case 0:
+		return "B" + suf
+	case 1:
+		return "KiB" + suf
+	case 2:
+		return "MiB" + suf
+	case 3:
+		return "GiB" + suf
+	case 4:
+		return "TiB" + suf
+	case 5:
+		return "PiB" + suf
+	case 6:
+		return "EiB" + suf
+	default:
+		return "<invalid>"
+	}
+}
+
+func stringTimeDim(scale uint8, dim int8) string {
+	suf := ""
+	if abs(dim) > 1 {
+		suf = "^" + strconv.Itoa(int(dim))
+	}
+
+	switch scale {
+	case 0:
+		return "nsec" + suf
+	case 1:
+		return "usec" + suf
+	case 2:
+		return "msec" + suf
+	case 3:
+		return "sec" + suf
+	case 4:
+		return "min" + suf
+	case 5:
+		return "hr" + suf
+	default:
+		return "<invalid>"
+	}
+}
+
+func stringCountDim(scale uint8, dim int8) string {
+	suf := ""
+	if abs(dim) > 1 {
+		suf = "^" + strconv.Itoa(int(dim))
+	}
+
+	switch scale {
+	case 0:
+		return "count" + suf
+	default:
+		return "<invalid>"
+	}
+}
+
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#454
+func (u Unit) String() string {
+	ss, sd, ts, td, cs, cd := u.SpaceScale(), u.SpaceDim(), u.TimeScale(), u.TimeDim(), u.CountScale(), u.CountDim()
+
+	ans := ""
+
+	if sd > 0 {
+		ans += stringSpaceDim(ss, sd)
+	}
+
+	if td > 0 {
+		ans += stringTimeDim(ts, td)
+	}
+
+	if cd > 0 {
+		ans += stringCountDim(cs, cd)
+	}
+
+	if sd < 0 || td < 0 || cd < 0 {
+		ans += " / "
+
+		if sd < 0 {
+			ans += stringSpaceDim(ss, sd)
+		}
+
+		if td < 0 {
+			ans += stringTimeDim(ts, td)
+		}
+
+		if cd < 0 {
+			ans += stringCountDim(cs, cd)
+		}
+	}
+
+	return ans
+}
 
 // Semantics represents an enumerated type representing all possible semantics of a metric
 type Semantics int32
