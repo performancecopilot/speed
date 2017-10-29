@@ -208,7 +208,7 @@ func (m *metricUnit) SpaceScale() SpaceUnit {
 		panic("no space scale on unit")
 	}
 
-	return SpaceUnit(uint8((m.repr >> 16) & 0xF))
+	return SpaceUnit(1<<28 | (uint32((m.repr>>16)&0xF))<<16)
 }
 
 // https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#410
@@ -223,7 +223,7 @@ func (m *metricUnit) TimeScale() TimeUnit {
 		panic("no time scale on unit")
 	}
 
-	return TimeUnit(uint8((m.repr >> 12) & 0xF))
+	return TimeUnit(1<<24 | (uint32((m.repr>>12)&0xF))<<12)
 }
 
 // https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#410
@@ -238,7 +238,7 @@ func (m *metricUnit) CountScale() CountUnit {
 		panic("no count scale on unit")
 	}
 
-	return CountUnit(uint8((m.repr >> 8) & 0xF))
+	return CountUnit(1<<20 | (uint32((m.repr>>8)&0xF))>>8)
 }
 
 func (m *metricUnit) String() string {

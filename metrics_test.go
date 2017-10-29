@@ -110,3 +110,25 @@ func TestResolve(t *testing.T) {
 		}
 	}
 }
+
+func TestComposition(t *testing.T) {
+	ms := MegabyteUnit.Time(SecondUnit, -1)
+
+	if ms.String() != "MegabyteUnit^1SecondUnit^-1" {
+		t.Errorf("expected ms.String() to be MegabyteUnit^1SecondUnit^-1, got %s", ms.String())
+	}
+
+	if ms.PMAPI() != 520237056 {
+		t.Errorf("expected ms.PMAPI() to be 520237056, got %v", ms.PMAPI())
+	}
+
+	hz := NewMetricUnit().Time(SecondUnit, -1)
+
+	if hz.String() != "SecondUnit^-1" {
+		t.Errorf("expected hz.String() to be SecondUnit^-1, got %s", ms.String())
+	}
+
+	if hz.PMAPI() != 251670528 {
+		t.Errorf("expected hz.PMAPI() to be 251670528, got %v", hz.PMAPI())
+	}
+}
