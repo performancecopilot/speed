@@ -8,9 +8,11 @@ environment:
     - environment:
       GOVERSION: 1.6.4
     - environment:
-      GOVERSION: 1.7.5
+      GOVERSION: 1.7.6
     - environment:
-      GOVERSION: 1.8.3
+      GOVERSION: 1.8.5
+    - environment:
+      GOVERSION: 1.9.2
 
 install:
   - rmdir c:\go /s /q
