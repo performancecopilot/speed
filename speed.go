@@ -17,7 +17,7 @@ import (
 )
 
 // Version is the last tagged version of the package
-const Version = "2.0.0"
+const Version = "3.0.0"
 
 // init maintains a central location of all things that happen when the package is initialized
 // instead of everything being scattered in multiple source files

@@ -1,4 +1,11 @@
 
+v3.0.0 / 2017-10-30
+==================
+
+  * metrics: add support for multidimensional composite metrics (#50)
+  * speed: remove logging from library (#49) (**BREAKING**)
+  * add mmvdump tests (#48)
+
 v2.0.0 / 2017-04-05
 ===================
 
