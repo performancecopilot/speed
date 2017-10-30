@@ -131,4 +131,15 @@ func TestComposition(t *testing.T) {
 	if hz.PMAPI() != 251670528 {
 		t.Errorf("expected hz.PMAPI() to be 251670528, got %v", hz.PMAPI())
 	}
+
+	cs1 := OneUnit.Space(MegabyteUnit, 2).Time(SecondUnit, -2)
+	cs2 := NewMetricUnit().Time(SecondUnit, -2).Space(MegabyteUnit, 2).Count(OneUnit, 1)
+
+	if cs1.PMAPI() != cs2.PMAPI() {
+		t.Errorf("expected %v to be equal to %v", cs1.PMAPI(), cs2.PMAPI())
+	}
+
+	if cs1.String() != cs2.String() {
+		t.Errorf("expected %v to be equal to %v", cs1.String(), cs2.String())
+	}
 }
