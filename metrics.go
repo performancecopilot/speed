@@ -3,6 +3,7 @@ package speed
 import (
 	"fmt"
 	"math"
+	"strconv"
 	"sync"
 	"time"
 
@@ -136,6 +137,128 @@ type MetricUnit interface {
 	// return 32 bit PMAPI representation for the unit
 	// see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/pmapi.h#L61-L101
 	PMAPI() uint32
+
+	// add a space unit to the current unit at a specific dimension
+	Space(SpaceUnit, int8) MetricUnit
+
+	// add a time unit to the current unit at a specific dimension
+	Time(TimeUnit, int8) MetricUnit
+
+	// add a count unit to the current unit at a specific dimension
+	Count(CountUnit, int8) MetricUnit
+}
+
+// internal struct for supporting composite units,
+// based on the implementation inside hornet
+//
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#327
+type metricUnit struct {
+	repr uint32
+}
+
+// NewMetricUnit returns a new object for initialization
+func NewMetricUnit() MetricUnit {
+	return &metricUnit{}
+}
+
+func (m *metricUnit) PMAPI() uint32 { return m.repr }
+
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#375
+func (m *metricUnit) Space(s SpaceUnit, dimension int8) MetricUnit {
+	if dimension < -8 || dimension > 7 {
+		panic("dimension has to be between -8 and 7 inclusive")
+	}
+
+	m.repr |= uint32(s)
+	m.repr |= (uint32(dimension) & 0xF) << 28
+	return m
+}
+
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#383
+func (m *metricUnit) Time(t TimeUnit, dimension int8) MetricUnit {
+	if dimension < -8 || dimension > 7 {
+		panic("dimension has to be between -8 and 7 inclusive")
+	}
+
+	m.repr |= uint32(t)
+	m.repr |= (uint32(dimension) & 0xF) << 24
+	return m
+}
+
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#391
+func (m *metricUnit) Count(c CountUnit, dimension int8) MetricUnit {
+	if dimension < -8 || dimension > 7 {
+		panic("dimension has to be between -8 and 7 inclusive")
+	}
+
+	m.repr |= uint32(c)
+	m.repr |= (uint32(dimension) & 0xF) << 20
+	return m
+}
+
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#410
+func (m *metricUnit) SpaceDim() int8 {
+	return int8(int32(m.repr) >> 28)
+}
+
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#398
+func (m *metricUnit) SpaceScale() SpaceUnit {
+	d := m.SpaceDim()
+	if d == 0 {
+		panic("no space scale on unit")
+	}
+
+	return SpaceUnit(1<<28 | (uint32((m.repr>>16)&0xF))<<16)
+}
+
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#410
+func (m *metricUnit) TimeDim() int8 {
+	return int8(int32(m.repr<<4) >> 28)
+}
+
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#398
+func (m *metricUnit) TimeScale() TimeUnit {
+	d := m.TimeDim()
+	if d == 0 {
+		panic("no time scale on unit")
+	}
+
+	return TimeUnit(1<<24 | (uint32((m.repr>>12)&0xF))<<12)
+}
+
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#410
+func (m *metricUnit) CountDim() int8 {
+	return int8(int32(m.repr<<8) >> 28)
+}
+
+// https://docs.rs/hornet/0.1.0/src/hornet/client/metric/mod.rs.html#398
+func (m *metricUnit) CountScale() CountUnit {
+	d := m.CountDim()
+	if d == 0 {
+		panic("no count scale on unit")
+	}
+
+	return CountUnit(1<<20 | (uint32((m.repr>>8)&0xF))>>8)
+}
+
+func (m *metricUnit) String() string {
+	sd, td, cd := m.SpaceDim(), m.TimeDim(), m.CountDim()
+
+	ans := ""
+
+	if sd != 0 {
+		ans = ans + m.SpaceScale().String() + "^" + strconv.Itoa(int(m.SpaceDim()))
+	}
+
+	if td != 0 {
+		ans = ans + m.TimeScale().String() + "^" + strconv.Itoa(int(m.TimeDim()))
+	}
+
+	if cd != 0 {
+		ans = ans + m.CountScale().String() + "^" + strconv.Itoa(int(m.CountDim()))
+	}
+
+	return ans
 }
 
 // SpaceUnit is an enumerated type representing all units for space.
@@ -160,6 +283,21 @@ func (s SpaceUnit) PMAPI() uint32 {
 	return uint32(s)
 }
 
+// Space adds a space unit to the current unit at a specific dimension
+func (s SpaceUnit) Space(SpaceUnit, int8) MetricUnit {
+	panic("Cannot add another space unit")
+}
+
+// Time adds a time unit to the current unit at a specific dimension
+func (s SpaceUnit) Time(t TimeUnit, dimension int8) MetricUnit {
+	return (&metricUnit{uint32(s)}).Time(t, dimension)
+}
+
+// Count adds a count unit to the current unit at a specific dimension
+func (s SpaceUnit) Count(c CountUnit, dimension int8) MetricUnit {
+	return (&metricUnit{uint32(s)}).Count(c, dimension)
+}
+
 // TimeUnit is an enumerated type representing all possible units for representing time.
 type TimeUnit uint32
 
@@ -181,6 +319,21 @@ func (t TimeUnit) PMAPI() uint32 {
 	return uint32(t)
 }
 
+// Space adds a space unit to the current unit at a specific dimension
+func (t TimeUnit) Space(s SpaceUnit, dimension int8) MetricUnit {
+	return (&metricUnit{uint32(t)}).Space(s, dimension)
+}
+
+// Time adds a time unit to the current unit at a specific dimension
+func (t TimeUnit) Time(TimeUnit, int8) MetricUnit {
+	panic("Cannot add another time unit")
+}
+
+// Count adds a count unit to the current unit at a specific dimension
+func (t TimeUnit) Count(c CountUnit, dimension int8) MetricUnit {
+	return (&metricUnit{uint32(t)}).Count(c, dimension)
+}
+
 // CountUnit is a type representing a counted quantity.
 type CountUnit uint32
 
@@ -193,6 +346,21 @@ const OneUnit CountUnit = 1<<20 | iota<<8
 // PMAPI returns the PMAPI representation for a CountUnit.
 func (c CountUnit) PMAPI() uint32 {
 	return uint32(c)
+}
+
+// Space adds a space unit to the current unit at a specific dimension
+func (c CountUnit) Space(s SpaceUnit, dimension int8) MetricUnit {
+	return (&metricUnit{uint32(c)}).Space(s, dimension)
+}
+
+// Time adds a time unit to the current unit at a specific dimension
+func (c CountUnit) Time(t TimeUnit, dimension int8) MetricUnit {
+	return (&metricUnit{uint32(c)}).Time(t, dimension)
+}
+
+// Count adds a count unit to the current unit at a specific dimension
+func (c CountUnit) Count(CountUnit, int8) MetricUnit {
+	panic("Cannot add another time unit")
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -713,6 +881,18 @@ func NewPCPTimer(name string, unit TimeUnit, desc ...string) (*PCPTimer, error) 
 	return &PCPTimer{sm, sync.Mutex{}, false, time.Time{}}, nil
 }
 
+// Reset resets the timer to 0
+func (t *PCPTimer) Reset() error {
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	if t.started {
+		return errors.New("trying to reset an already started timer")
+	}
+
+	return t.set(float64(0))
+}
+
 // Start signals the timer to start monitoring.
 func (t *PCPTimer) Start() error {
 	t.mutex.Lock()
@@ -761,6 +941,7 @@ func (t *PCPTimer) Stop() (float64, error) {
 		return -1, err
 	}
 
+	t.started = false
 	return v + inc, nil
 }
 

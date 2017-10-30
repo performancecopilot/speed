@@ -55,6 +55,7 @@ func TestInputs(t *testing.T) {
 		{"testdata/test2.mmv", "testdata/output2.golden"},
 		{"testdata/test3.mmv", "testdata/output3.golden"},
 		{"testdata/test4.mmv", "testdata/output4.golden"},
+		{"testdata/test5.mmv", "testdata/output5.golden"},
 	} {
 		data, err := ioutil.ReadFile(c.input)
 		if err != nil {
@@ -80,7 +81,18 @@ func TestInputs(t *testing.T) {
 		actual := b.Bytes()
 
 		if bytes.Compare(expected, actual) != 0 {
-			t.Fatalf("Failed for input %s", c.input)
+			t.Fatalf(`
+Failed for input %s,
+expected
+-------------------------------------------
+%s
+-------------------------------------------
+got
+-------------------------------------------
+%s
+-------------------------------------------
+
+			`, c.input, string(expected), string(actual))
 		}
 	}
 }
