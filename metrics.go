@@ -1101,12 +1101,6 @@ type CounterVector interface {
 
 ///////////////////////////////////////////////////////////////////////////////
 
-// PCPCounterVector implements a CounterVector
-type PCPCounterVector struct {
-	*pcpInstanceMetric
-	mutex sync.RWMutex
-}
-
 func generateInstanceMetric(vals map[string]interface{}, name string, instances []string, t MetricType, s MetricSemantics, u MetricUnit, desc ...string) (*pcpInstanceMetric, error) {
 	indomname := name + ".indom"
 	indom, err := NewPCPInstanceDomain(indomname, instances)
@@ -1120,6 +1114,12 @@ func generateInstanceMetric(vals map[string]interface{}, name string, instances 
 	}
 
 	return newpcpInstanceMetric(vals, indom, d)
+}
+
+// PCPCounterVector implements a CounterVector
+type PCPCounterVector struct {
+	*pcpInstanceMetric
+	mutex sync.RWMutex
 }
 
 // NewPCPCounterVector creates a new instance of a PCPCounterVector.
@@ -1432,7 +1432,12 @@ func NewPCPHistogram(name string, low, high int64, sigfigures int, unit MetricUn
 		vals[s] = float64(0)
 	}
 
-	m, err := generateInstanceMetric(vals, name, instances, DoubleType, InstantSemantics, unit, desc...)
+	d, err := newpcpMetricDesc(name, DoubleType, InstantSemantics, unit, desc...)
+	if err != nil {
+		return nil, err
+	}
+
+	m, err := newpcpInstanceMetric(vals, histogramIndom, d)
 	if err != nil {
 		return nil, err
 	}
