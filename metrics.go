@@ -1426,9 +1426,8 @@ func NewPCPHistogram(name string, low, high int64, sigfigures int, unit MetricUn
 
 	h := histogram.New(low, high, sigfigures)
 
-	instances := []string{"min", "max", "mean", "variance", "standard_deviation"}
 	vals := make(Instances)
-	for _, s := range instances {
+	for _, s := range histogramInstances {
 		vals[s] = float64(0)
 	}
 
