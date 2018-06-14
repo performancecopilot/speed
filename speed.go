@@ -19,11 +19,20 @@ import (
 // Version is the last tagged version of the package
 const Version = "3.0.0"
 
+var histogramInstances = []string{"min", "max", "mean", "variance", "standard_deviation"}
+var histogramIndom *PCPInstanceDomain
+
 // init maintains a central location of all things that happen when the package is initialized
 // instead of everything being scattered in multiple source files
 func init() {
 	if err := initConfig(); err != nil {
 		fmt.Fprintln(os.Stderr, errors.Errorf("error initializing config. maybe PCP isn't installed properly"))
+	}
+
+	var err error
+	histogramIndom, err = NewPCPInstanceDomain("histogram", histogramInstances)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, errors.Errorf("could not initialize an instance domain for histograms"))
 	}
 }
 
