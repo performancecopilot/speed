@@ -14,11 +14,11 @@ gen:
 
 deps:
 	go get -u golang.org/x/tools/cmd/stringer
-	go get -u gopkg.in/alecthomas/gometalinter.v1
-	gometalinter.v1 --install
+	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s vX.Y.Z
+	golangci-lint --version
 
 lint:
-	gometalinter.v1 ./... --vendor --deadline=1h --dupl-threshold=100 --disable=interfacer --disable=gas
+	golangci-lint run
 
 test:
 	go test -v ./...
