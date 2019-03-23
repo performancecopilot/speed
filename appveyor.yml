@@ -6,13 +6,13 @@ environment:
   GOPATH: c:\gopath
   matrix:
     - environment:
-      GOVERSION: 1.7.6
-    - environment:
-      GOVERSION: 1.8.7
-    - environment:
       GOVERSION: 1.9.7
     - environment:
-      GOVERSION: 1.10.3
+      GOVERSION: 1.10.8
+    - environment:
+      GOVERSION: 1.11.6
+    - environment:
+      GOVERSION: 1.12.1
 
 install:
   - rmdir c:\go /s /q
