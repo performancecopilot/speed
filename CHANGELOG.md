@@ -1,4 +1,10 @@
 
+v3.0.1 / 2017-10-30
+==================
+
+  * metrics: use a global InstanceDomain for PCPHistogram, fixes #54 (#55)
+  * build: add golangci-lint and run lint on CI again (#56) 
+
 v3.0.0 / 2017-10-30
 ==================
 

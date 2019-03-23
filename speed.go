@@ -17,7 +17,7 @@ import (
 )
 
 // Version is the last tagged version of the package
-const Version = "3.0.0"
+const Version = "3.0.1"
 
 var histogramInstances = []string{"min", "max", "mean", "variance", "standard_deviation"}
 var histogramIndom *PCPInstanceDomain
