@@ -14,7 +14,7 @@ gen:
 
 deps:
 	go get -u golang.org/x/tools/cmd/stringer
-	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s vX.Y.Z
+	curl -sfL https://install.goreleaser.com/github.com/golangci/golangci-lint.sh | sh -s v1.14.1
 	golangci-lint --version
 
 lint:
