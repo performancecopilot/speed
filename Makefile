@@ -18,7 +18,7 @@ deps:
 	bin/golangci-lint --version
 
 lint:
-	golangci-lint run
+	bin/golangci-lint run
 
 test:
 	go test -v ./...
