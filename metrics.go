@@ -35,11 +35,11 @@ func (m MetricType) isCompatibleInt(val int) bool {
 	case Int32Type:
 		return v >= math.MinInt32 && v <= math.MaxInt32
 	case Int64Type:
-		return v >= math.MinInt64 && v <= math.MaxInt64
+		return v <= math.MaxInt64
 	case Uint32Type:
 		return v >= 0 && v <= math.MaxUint32
 	case Uint64Type:
-		return v >= 0 && uint64(v) <= math.MaxUint64
+		return v >= 0
 	}
 	return false
 }

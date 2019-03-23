@@ -309,8 +309,6 @@ func (c *PCPClient) writeHeaderBlock(genc chan int64, g2offc chan int) {
 	// or deadlock
 	genc <- gen
 	g2offc <- g2off
-
-	return
 }
 
 func (c *PCPClient) writeTocBlock() {
