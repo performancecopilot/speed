@@ -20,6 +20,7 @@ func BenchmarkGetHash(b *testing.B) {
 	}
 }
 
+//lint:ignore U1000 keeping for now
 type testWriter struct {
 	message string
 	t       testing.TB

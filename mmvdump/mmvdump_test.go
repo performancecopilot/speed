@@ -80,7 +80,7 @@ func TestInputs(t *testing.T) {
 
 		actual := b.Bytes()
 
-		if bytes.Compare(expected, actual) != 0 {
+		if !bytes.Equal(expected, actual) {
 			t.Fatalf(`
 Failed for input %s,
 expected
