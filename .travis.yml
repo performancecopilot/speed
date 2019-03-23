@@ -19,6 +19,7 @@ before_script:
   - make
 script:
   - make race
+  - make lint
   - "$HOME/gopath/bin/goveralls -v -service=travis-ci -package=."
 notifications:
   email:
