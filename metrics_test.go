@@ -45,7 +45,7 @@ func TestIsCompatible(t *testing.T) {
 
 		{Uint32Type, uint(math.MaxUint32), true},
 
-		{Uint32Type, math.MaxUint32, true},
+		{Uint32Type, uint32(math.MaxUint32), true},
 		{Uint64Type, uint64(math.MaxUint64), true},
 
 		{FloatType, math.MaxFloat32, true},
