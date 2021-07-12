@@ -205,7 +205,7 @@ calling `timer.Stop()` signals end of an operation and will return the total ela
 
 ### [Histogram](https://godoc.org/github.com/performancecopilot/speed#Histogram)
 
-A histogram implements a PCP Instance Metric that reports the `mean`, `variance` and `standard_deviation` while using a histogram backed by [codahale's hdrhistogram implementation in golang](https://github.com/codahale/hdrhistogram). Other than these, it also returns a custom percentile and buckets for plotting graphs. It requires a low and a high value and the number of significant figures used at the time of construction.
+A histogram implements a PCP Instance Metric that reports the `mean`, `variance` and `standard_deviation` while using a histogram backed by [codahale's hdrhistogram implementation in golang](https://github.com/HdrHistogram/hdrhistogram-go). Other than these, it also returns a custom percentile and buckets for plotting graphs. It requires a low and a high value and the number of significant figures used at the time of construction.
 
 ```
 m, err := speed.NewPCPHistogram("hist", 0, 1000, 5)
