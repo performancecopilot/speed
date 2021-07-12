@@ -1,0 +1,9 @@
+# github.com/HdrHistogram/hdrhistogram-go v1.1.0
+github.com/HdrHistogram/hdrhistogram-go
+# github.com/edsrzf/mmap-go v1.0.0
+github.com/edsrzf/mmap-go
+# github.com/pkg/errors v0.9.1
+github.com/pkg/errors
+# golang.org/x/sys v0.0.0-20190412213103-97732733099d
+golang.org/x/sys/unix
+golang.org/x/sys/windows
