@@ -55,8 +55,6 @@ var keysToTest = []string{
 	"PCP_PMCDOPTIONS_PATH",
 	"PCP_PMCDRCLOCAL_PATH",
 	"PCP_PMPROXYOPTIONS_PATH",
-	"PCP_PMWEBDOPTIONS_PATH",
-	"PCP_PMMGROPTIONS_PATH",
 	"PCP_PMIECONTROL_PATH",
 	"PCP_PMSNAPCONTROL_PATH",
 	"PCP_PMLOGGERCONTROL_PATH",
@@ -70,6 +68,11 @@ var keysToTest = []string{
 	"PCP_DEMOS_DIR",
 }
 
+var optionalKeysToTest = []string{
+	"PCP_PMWEBDOPTIONS_PATH",
+	"PCP_PMMGROPTIONS_PATH",
+}
+
 func TestConfig(t *testing.T) {
 	if config == nil {
 		return
@@ -79,6 +82,13 @@ func TestConfig(t *testing.T) {
 		_, ok := config[key]
 		if !ok {
 			t.Errorf("key %s not present in Config", key)
+		}
+	}
+
+	for _, key := range optionalKeysToTest {
+		_, ok := config[key]
+		if !ok {
+			t.Logf("key %s not present in Config (optional)", key)
 		}
 	}
 }
