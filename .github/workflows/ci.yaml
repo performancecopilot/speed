@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+      - github-actions
+  pull_request:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: ["1.15", "1.16"]
+    env:
+      GOFLAGS: -mod=readonly
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ matrix.go }}
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Install PCP
+        run: |
+          echo "::group::Installation"
+          sudo apt-get -y install pcp
+          echo "::endgroup::"
+
+          echo "::group::Config"
+          cat /etc/pcp.conf
+          echo "::endgroup::"
+
+
+      - name: Run tests
+        run: sudo make race
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    env:
+      GOFLAGS: -mod=readonly
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: "1.16"
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          skip-go-installation: true
