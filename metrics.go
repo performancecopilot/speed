@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	histogram "github.com/codahale/hdrhistogram"
+	histogram "github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/pkg/errors"
 
 	"github.com/performancecopilot/speed/bytewriter"
@@ -1368,7 +1368,7 @@ type Histogram interface {
 ///////////////////////////////////////////////////////////////////////////////
 
 // PCPHistogram implements a histogram for PCP backed by the coda hale hdrhistogram
-// https://github.com/codahale/hdrhistogram
+// https://github.com/HdrHistogram/hdrhistogram-go
 type PCPHistogram struct {
 	*pcpInstanceMetric
 	mutex sync.RWMutex
