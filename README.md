@@ -2,9 +2,15 @@
 
 Golang implementation of the Performance Co-Pilot (PCP) instrumentation API
 
-> [A **Google Summer of Code 2016** project!](https://summerofcode.withgoogle.com/archive/2016/projects/5093214348378112/)
+[![Build Status](https://github.com/performancecopilot/speed/workflows/CI/badge.svg)](https://github.com/performancecopilot/speed/actions/workflows/ci.yaml)
+[![Coverage Status](https://coveralls.io/repos/github/performancecopilot/speed/badge.svg?branch=master)](https://coveralls.io/github/performancecopilot/speed?branch=master)
+[![GoDoc](https://godoc.org/github.com/performancecopilot/speed?status.svg)](https://godoc.org/github.com/performancecopilot/speed)
+[![Go Report Card](https://goreportcard.com/badge/github.com/performancecopilot/speed)](https://goreportcard.com/report/github.com/performancecopilot/speed)
+[![Mailing List](https://img.shields.io/badge/Mailing%20List-pcp-blue.svg)](https://groups.io/g/pcp)
+[![Slack Team](https://img.shields.io/badge/Slack-pcp-blue.svg)](https://h7zo83mvt1.execute-api.us-west-2.amazonaws.com/Express/)
+[![IRC #pcp](https://img.shields.io/badge/IRC-pcp-blue.svg)](https://web.libera.chat/#pcp)
+[![Github Release](https://img.shields.io/github/release/performancecopilot/speed.svg)](https://github.com/performancecopilot/speed/releases/latest)
 
-[![Build Status](https://travis-ci.org/performancecopilot/speed.svg?branch=master)](https://travis-ci.org/performancecopilot/speed) [![Build status](https://ci.appveyor.com/api/projects/status/gins77i4ej1o5xef?svg=true)](https://ci.appveyor.com/project/suyash/speed) [![Coverage Status](https://coveralls.io/repos/github/performancecopilot/speed/badge.svg?branch=master)](https://coveralls.io/github/performancecopilot/speed?branch=master) [![GoDoc](https://godoc.org/github.com/performancecopilot/speed?status.svg)](https://godoc.org/github.com/performancecopilot/speed) [![Go Report Card](https://goreportcard.com/badge/github.com/performancecopilot/speed)](https://goreportcard.com/report/github.com/performancecopilot/speed)
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -14,7 +20,7 @@ Golang implementation of the Performance Co-Pilot (PCP) instrumentation API
   - [Prerequisites](#prerequisites)
     - [PCP](#pcp)
     - [Go](#go)
-    - [[Optional] [Vector](http://vectoross.io/)](#optional-vectorhttpvectorossio)
+    - [Grafana](#grafana)
   - [Getting the library](#getting-the-library)
   - [Getting the examples](#getting-the-examples)
 - [Walkthrough](#walkthrough)
@@ -26,7 +32,6 @@ Golang implementation of the Performance Co-Pilot (PCP) instrumentation API
   - [GaugeVector](#gaugevector)
   - [Timer](#timer)
   - [Histogram](#histogram)
-- [Visualization through Vector](#visualization-through-vector)
 - [Go Kit](#go-kit)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -35,13 +40,13 @@ Golang implementation of the Performance Co-Pilot (PCP) instrumentation API
 
 ### Prerequisites
 
-#### [PCP](http://pcp.io)
+#### [PCP](https://pcp.io)
 
-Install Performance Co-Pilot on your local machine, either using prebuilt archives or by getting and building the source code. For detailed instructions, read the [page from vector documentation](http://vectoross.io/docs/installing-performance-co-pilot). For building from source on ubuntu 14.04, a simplified list of steps is [here](https://gist.github.com/suyash/0def9b33890d4a99ca9dd96724e1ac84)
+Install Performance Co-Pilot on your local machine, either using prebuilt archives or by getting and building the source code. For detailed instructions, read the [page from pcp.readthedocs.io](https://pcp.readthedocs.io/en/latest/HowTos/installation/index.html).
 
 #### [Go](https://golang.org)
 
-Set up a go environment on your computer. For more information about these steps, please read [how to write go code](https://golang.org/doc/code.html), or [watch the video](https://www.youtube.com/watch?v=XCsL89YtqCs)
+Set up a go environment on your computer. For more information about these steps, please read [how to write go code](https://golang.org/doc/code.html).
 
 - download and install go 1.6 or above from [https://golang.org/dl](https://golang.org/dl)
 
@@ -49,9 +54,9 @@ Set up a go environment on your computer. For more information about these steps
 
 - add `$GOPATH/bin` to your `$PATH` by adding `export PATH=$GOPATH/bin:$PATH` to your shell configuration file, such as to your `.bashrc`, if using a Bourne shell variant.
 
-#### [Optional] [Vector](http://vectoross.io/)
+#### [Grafana](https://grafana-pcp.readthedocs.io/)
 
-Vector is an on premise visualization tool for metrics exposed using Performance Co-Pilot. For more read the [official documentation](http://vectoross.io/docs/) and play around with the [online demo](http://vectoross.io/demo)
+The grafana-pcp plugin provides PCP metrics in the popular Grafana visualization tool.  It includes [PCP Vector](https://grafana-pcp.readthedocs.io/en/latest/screenshots.html#pcp-vector), a live datasource for metrics exposed using Performance Co-Pilot. Metrics you create with Speed are immediately visible in Grafana using this datasource.
 
 ### Getting the library
 
@@ -211,43 +216,8 @@ A histogram implements a PCP Instance Metric that reports the `mean`, `variance`
 m, err := speed.NewPCPHistogram("hist", 0, 1000, 5)
 ```
 
-## Visualization through Vector
-
-[Vector supports adding custom widgets for custom metrics](http://vectoross.io/docs/creating-widgets.html). However, that requires you to rebuild vector from scratch after adding the widget configuration. But if it is a one time thing, its worth it. For example here is the configuration I added to display the metric from the basic_histogram example
-
-```
-{
-	name: 'mmv.histogram_test.hist',
-	title: 'speed basic histogram example',
-	directive: 'line-time-series',
-	dataAttrName: 'data',
-	dataModelType: CumulativeMetricDataModel,
-	dataModelOptions: {
-		name: 'mmv.histogram_test.hist'
-	},
-	size: {
-		width: '50%',
-		height: '250px'
-	},
-	enableVerticalResize: false,
-	group: 'speed',
-	attrs: {
-		forcey: 100,
-		percentage: false
-	}
-}
-```
-
-and the visualization I got
-
-![screenshot from 2016-08-27 01 05 56](https://cloud.githubusercontent.com/assets/16324837/18172229/45b0442c-7082-11e6-9edd-ab6f91dc9f2e.png)
-
 ## [Go Kit](https://gokit.io)
 
 Go kit provides [a wrapper package](https://godoc.org/github.com/go-kit/kit/metrics/pcp) over speed that can be used for building microservices that expose metrics using PCP.
 
 For modified versions of the examples in go-kit that use pcp to report metrics, see [suyash/kit-pcp-examples](https://github.com/suyash/kit-pcp-examples)
-
-## Projects using Speed
-
-* https://github.com/lzap/pcp-mmvstatsd
