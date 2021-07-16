@@ -18,7 +18,7 @@ type InstanceDomain interface {
 
 // PCPInstanceDomainBitLength is the maximum bit length of a PCP Instance Domain
 //
-// see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
+// see: https://github.com/performancecopilot/pcp/blob/main/src/include/pcp/impl.h#L102-L121
 const PCPInstanceDomainBitLength = 22
 
 // PCPInstanceDomain wraps a PCP compatible instance domain

@@ -135,7 +135,7 @@ type MetricUnit interface {
 	fmt.Stringer
 
 	// return 32 bit PMAPI representation for the unit
-	// see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/pmapi.h#L61-L101
+	// see: https://github.com/performancecopilot/pcp/blob/main/src/include/pcp/pmapi.h#L61-L101
 	PMAPI() uint32
 
 	// add a space unit to the current unit at a specific dimension
@@ -458,7 +458,7 @@ type PCPMetric interface {
 
 // PCPMetricItemBitLength is the maximum bit size of a PCP Metric id.
 //
-// see: https://github.com/performancecopilot/pcp/blob/master/src/include/pcp/impl.h#L102-L121
+// see: https://github.com/performancecopilot/pcp/blob/main/src/include/pcp/impl.h#L102-L121
 const PCPMetricItemBitLength = 10
 
 // pcpMetricDesc is a metric metadata wrapper

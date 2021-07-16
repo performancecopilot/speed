@@ -3,7 +3,7 @@
 Golang implementation of the Performance Co-Pilot (PCP) instrumentation API
 
 [![Build Status](https://github.com/performancecopilot/speed/workflows/CI/badge.svg)](https://github.com/performancecopilot/speed/actions/workflows/ci.yaml)
-[![Coverage Status](https://coveralls.io/repos/github/performancecopilot/speed/badge.svg?branch=master)](https://coveralls.io/github/performancecopilot/speed?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/performancecopilot/speed/badge.svg?branch=main)](https://coveralls.io/github/performancecopilot/speed?branch=main)
 [![GoDoc](https://godoc.org/github.com/performancecopilot/speed?status.svg)](https://godoc.org/github.com/performancecopilot/speed)
 [![Go Report Card](https://goreportcard.com/badge/github.com/performancecopilot/speed)](https://goreportcard.com/report/github.com/performancecopilot/speed)
 [![Mailing List](https://img.shields.io/badge/Mailing%20List-pcp-blue.svg)](https://groups.io/g/pcp)
