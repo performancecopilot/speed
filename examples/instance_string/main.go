@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/performancecopilot/speed"
+	"github.com/performancecopilot/speed/v4"
 )
 
 var timelimit = flag.Int("time", 60, "number of seconds to run for")

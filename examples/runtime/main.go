@@ -7,7 +7,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/performancecopilot/speed"
+	"github.com/performancecopilot/speed/v4"
 )
 
 // refresh interval

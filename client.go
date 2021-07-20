@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/performancecopilot/speed/bytewriter"
+	"github.com/performancecopilot/speed/v4/bytewriter"
 )
 
 // byte lengths of different components in an mmv file
