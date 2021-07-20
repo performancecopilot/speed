@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/performancecopilot/speed/mmvdump"
+	"github.com/performancecopilot/speed/v4/mmvdump"
 )
 
 func main() {

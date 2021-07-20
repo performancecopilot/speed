@@ -1,4 +1,4 @@
-module github.com/performancecopilot/speed
+module github.com/performancecopilot/speed/v4
 
 go 1.12
 

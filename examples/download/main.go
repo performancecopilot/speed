@@ -8,7 +8,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/performancecopilot/speed"
+	"github.com/performancecopilot/speed/v4"
 )
 
 type sink int

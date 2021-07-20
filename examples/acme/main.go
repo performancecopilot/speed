@@ -21,7 +21,7 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/performancecopilot/speed"
+	"github.com/performancecopilot/speed/v4"
 )
 
 var runforever bool

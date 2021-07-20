@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/performancecopilot/speed"
+	"github.com/performancecopilot/speed/v4"
 )
 
 func main() {

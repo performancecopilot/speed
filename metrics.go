@@ -10,7 +10,7 @@ import (
 	histogram "github.com/HdrHistogram/hdrhistogram-go"
 	"github.com/pkg/errors"
 
-	"github.com/performancecopilot/speed/bytewriter"
+	"github.com/performancecopilot/speed/v4/bytewriter"
 )
 
 // MetricType is an enumerated type representing all valid types for a metric.
