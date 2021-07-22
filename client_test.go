@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/HdrHistogram/hdrhistogram-go"
-	"github.com/performancecopilot/speed/mmvdump"
+	"github.com/performancecopilot/speed/v4/mmvdump"
 )
 
 func TestMmvFileLocation(t *testing.T) {
